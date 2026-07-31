@@ -7,6 +7,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ── Audit (owned by Audit module) ─────────────────────────────
 model AuditLog {
   id        String   @id @default(uuid())
   action    String
@@ -20,4 +21,75 @@ model AuditLog {
   @@index([entity, entityId])
   @@index([createdAt])
   @@map("audit_log")
+}
+
+// ── Users module models (minimal; owned by Users, read by Authentication) ──
+// Per DOMAIN_MODEL §5.2. Authentication (Sprint 2) lands first and needs these
+// tables to verify credentials. Full Users CRUD is a later sprint.
+
+model User {
+  id            String         @id @default(uuid())
+  email         String         @unique
+  name          String
+  passwordHash  String         @map("password_hash")
+  status        UserStatus     @default(ACTIVE)
+  timezone      String         @default("UTC")
+  locale        String         @default("en")
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+  roles         UserRole[]
+  refreshTokens RefreshToken[]
+
+  @@map("users")
+}
+
+enum UserStatus {
+  ACTIVE
+  DISABLED
+}
+
+model Role {
+  id            String         @id @default(uuid())
+  name          String         @unique
+  permissionCodes String[]     @map("permission_codes")
+  users         UserRole[]
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+
+  @@map("roles")
+}
+
+model UserRole {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  roleId    String   @map("role_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roleId])
+  @@index([roleId])
+  @@map("user_roles")
+}
+
+// ── Authentication module (owned by Authentication) ────────────
+// Per ADR-0010 §4: refresh_token table stores HASH of refresh token.
+// tokenHash is unique; familyId groups a rotation chain for reuse detection.
+
+model RefreshToken {
+  id         String    @id @default(uuid())
+  userId     String    @map("user_id")
+  tokenHash  String    @unique @map("token_hash")
+  familyId   String    @map("family_id")
+  expiresAt  DateTime  @map("expires_at")
+  revokedAt  DateTime? @map("revoked_at")
+  replacedBy String?   @map("replaced_by")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([familyId])
+  @@map("refresh_token")
 }
