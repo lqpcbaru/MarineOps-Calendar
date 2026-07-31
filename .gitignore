@@ -1,0 +1,36 @@
+# ── Dependencies ──────────────────────────────
+node_modules/
+
+# ── Build output ──────────────────────────────
+dist/
+build/
+.next/
+*.tsbuildinfo
+
+# ── Environment secrets ───────────────────────
+.env
+.env.local
+.env.*.local
+
+# ── IDE / editor ──────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ── OS ────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── Testing / coverage ────────────────────────
+coverage/
+.nyc_output/
+
+# ── Docker / infra artifacts ──────────────────
+docker-compose.override.yml
+*.log
+
+# ── Prisma ────────────────────────────────────
+.prisma/
+# prisma/*.db   # Uncomment if using SQLite for dev

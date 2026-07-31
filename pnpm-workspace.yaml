@@ -1,0 +1,14 @@
+name: MarineOps
+root: .
+version: 0.1.0
+
+# pnpm-workspace.yaml — Monorepo workspace configuration
+# Defines all packages in the workspace for pnpm.
+
+packages:
+  - apps/*
+  - packages/*
+  - tools/*
+
+# Shared catalog placeholder — populate with versions after scaffolding
+# catalog: {}

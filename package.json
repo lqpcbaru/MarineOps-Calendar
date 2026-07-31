@@ -1,0 +1,58 @@
+{
+  "name": "marineops",
+  "version": "0.1.0",
+  "private": true,
+  "description": "MarineOps Calendar — Marine operational planning platform",
+  "engines": {
+    "node": ">=22.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "packageManager": "pnpm@9.15.4",
+  "scripts": {
+    "dev": "pnpm --parallel -r dev",
+    "dev:api": "pnpm --filter @marineops/api dev",
+    "dev:web": "pnpm --filter @marineops/web dev",
+    "build": "pnpm -r build",
+    "build:api": "pnpm --filter @marineops/api build",
+    "build:web": "pnpm --filter @marineops/web build",
+    "lint": "pnpm -r lint",
+    "lint:fix": "pnpm -r lint:fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "test:watch": "pnpm -r test:watch",
+    "test:e2e": "pnpm --filter @marineops/api test:e2e",
+    "db:generate": "pnpm --filter @marineops/api db:generate",
+    "db:migrate": "pnpm --filter @marineops/api db:migrate",
+    "db:migrate:dev": "pnpm --filter @marineops/api db:migrate:dev",
+    "db:seed": "pnpm --filter @marineops/api db:seed",
+    "db:studio": "pnpm --filter @marineops/api db:studio",
+    "db:reset": "pnpm --filter @marineops/api db:reset",
+    "docker:up": "docker compose -f infrastructure/docker/docker-compose.yml up -d",
+    "docker:down": "docker compose -f infrastructure/docker/docker-compose.yml down",
+    "docker:logs": "docker compose -f infrastructure/docker/docker-compose.yml logs -f",
+    "clean": "pnpm -r clean && rm -rf node_modules",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.22.0",
+    "eslint": "^9.22.0",
+    "eslint-config-prettier": "^10.1.1",
+    "globals": "^16.0.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.5.0",
+    "prettier": "^3.5.3",
+    "typescript": "~5.7.0",
+    "typescript-eslint": "^8.27.0"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx}": [
+      "eslint --fix --no-warn-ignored",
+      "prettier --write"
+    ],
+    "*.{json,md,yaml,yml,css,html}": [
+      "prettier --write"
+    ]
+  }
+}

@@ -1,0 +1,24 @@
+version: '3.9'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: marineops-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: marineops
+      POSTGRES_PASSWORD: changeme
+      POSTGRES_DB: marineops_dev
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U marineops -d marineops_dev']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+    driver: local
