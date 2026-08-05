@@ -303,3 +303,169 @@ Sprint 2 should implement per ADR-0010:
 ---
 
 Sprint 1 is complete. Architecture remains frozen at v1.0.0. Sprint 2 is cleared to begin.
+
+---
+
+# Sprint 1 (Backend) — Completion Certificate
+
+**Date:** 2026-08-05
+**Author:** Lead Backend Engineer
+**Sprint status:** **COMPLETE**
+**Scope:** Authentication, User, Role, Permission, Audit — backend only per Sprint 1 scope.
+
+---
+
+## Scope
+
+Implement the five core platform modules against the frozen Hub v2.0.0 architecture:
+
+| Module         | Owns tables               | SRS IDs            |
+| -------------- | ------------------------- | ------------------ |
+| Authentication | `refresh_token`           | FR-AUTH-001..006   |
+| Users          | `users`, `user_roles`     | FR-USR-001..003    |
+| Roles          | `roles`, `role_permissions` (via `text[]`) | FR-ROL-001..003 |
+| Permission     | (no table — guard + use-case) | FR-AUTH-002     |
+| Audit          | `audit_log`               | FR-AUD-001..003    |
+
+---
+
+## Deliverables
+
+### Authentication module (39 files)
+
+| Layer            | Files                                                                     |
+| ---------------- | ------------------------------------------------------------------------- |
+| **domain**       | `refresh-token.aggregate.ts`, `tokens.ts`, `auth-principal.ts`, `events.ts`, `event-bus.port.ts`, `errors.ts` + spec |
+| **application**  | `login.use-case.ts`, `refresh.use-case.ts`, `logout.use-case.ts`, `authorize.use-case.ts`, `dtos.ts` (Zod), `di-tokens.ts`, `clock.ts`, `test-doubles.ts` + 4 specs |
+| **infrastructure** | `jwt-token.service.ts` (HS256 + opaque refresh), `argon2-password-hasher.ts`, `prisma-refresh-token.repository.ts`, `prisma-user-identity-provider.ts`, `in-process-event-bus.ts` |
+| **api**          | `jwt-auth.guard.ts`, `permissions.guard.ts`, `public.decorator.ts`, `current-principal.decorator.ts`, `refresh-cookie.ts`, `authentication.module.ts` |
+
+### Users module (19 files)
+
+| Layer            | Files                                                     |
+| ---------------- | --------------------------------------------------------- |
+| **domain**       | `user.ts` (record + params), `errors.ts`                  |
+| **application**  | `create-user.use-case.ts`, `get-users.use-case.ts`, `update-user.use-case.ts`, `disable-user.use-case.ts`, `dtos.ts` (Zod), `test-doubles.ts` + 4 specs |
+| **infrastructure** | `prisma-user.repository.ts`                             |
+| **api**          | `users.module.ts`                                        |
+
+### Roles module (18 files)
+
+| Layer            | Files                                                     |
+| ---------------- | --------------------------------------------------------- |
+| **domain**       | `role.ts` (record), `errors.ts`                           |
+| **application**  | `create-role.use-case.ts`, `get-roles.use-case.ts`, `update-role.use-case.ts`, `delete-role.use-case.ts`, `dtos.ts` (Zod), `test-doubles.ts` + 4 specs |
+| **infrastructure** | `prisma-role.repository.ts`                             |
+| **api**          | `roles.module.ts`                                        |
+
+### Audit module (14 files)
+
+| Layer            | Files                                                     |
+| ---------------- | --------------------------------------------------------- |
+| **domain**       | `audit-event.ts` (event + params)                         |
+| **application**  | `record-audit.use-case.ts`, `get-audit.use-case.ts`, `dtos.ts` (Zod), `test-doubles.ts` + 2 specs |
+| **infrastructure** | `prisma-audit.repository.ts`                            |
+| **api**          | `audit.module.ts`                                        |
+
+### Admin API controllers (`src/api/admin/`)
+
+| Controller            | Endpoints                                                    | Permission     |
+| --------------------- | ------------------------------------------------------------ | -------------- |
+| `auth.controller.ts`  | `POST /auth/login`, `POST /auth/refresh`, `POST /auth/logout`, `GET /auth/me` | Public / Bearer |
+| `users.controller.ts` | `GET /users`, `GET /users/:id`, `POST /users`, `PATCH /users/:id`, `DELETE /users/:id` | `user.manage`  |
+| `roles.controller.ts` | `GET /roles`, `GET /roles/:id`, `POST /roles`, `PATCH /roles/:id`, `DELETE /roles/:id` | `role.manage`  |
+| `audit.controller.ts` | `GET /audit`                                                | `audit.read`   |
+
+### Prisma schema (5 tables)
+
+| Table            | Owner          | Key fields                                            |
+| ---------------- | -------------- | ----------------------------------------------------- |
+| `users`          | Users          | id, email (UK), password_hash, status, timezone, locale |
+| `roles`          | Roles          | id, name (UK), permission_codes (text[])              |
+| `user_roles`     | Users          | id, user_id (FK), role_id (FK), UK(user_id, role_id)  |
+| `refresh_token`  | Authentication | id, token_hash (UK), family_id, expires_at, revoked_at, replaced_by |
+| `audit_log`      | Audit          | id, action, entity, entity_id, user_id, changes, created_at |
+
+### Seed data
+
+- `Admin` role — all 13 permission codes from AUTHORIZATION.md §4
+- `FisheriesOfficer` role — 6 permission codes (read + alert-write)
+- `Auditor` role — 6 permission codes (read-only)
+- `admin@marineops.local` user with `Admin` role
+
+---
+
+## Architecture compliance
+
+| Rule                                                              | Status |
+| ----------------------------------------------------------------- | ------ |
+| Clean Architecture (domain → application → infrastructure → api)  | Met    |
+| Domain-Driven Design (aggregates, value objects, domain events)   | Met    |
+| JWT access token (15-min TTL, HS256, response body)               | Met    |
+| Opaque refresh token (48-byte random, SHA-256 hash stored)        | Met    |
+| Refresh token rotation + family reuse detection                   | Met    |
+| httpOnly + Secure + SameSite=Lax cookie (`mops_rt`)               | Met    |
+| argon2id password hashing (OWASP params)                          | Met    |
+| RBAC via PermissionsGuard (controller) + AuthorizeUseCase (use-case) | Met    |
+| `@Public()` decorator for unauthenticated routes                  | Met    |
+| `@RequirePermissions()` decorator for protected routes            | Met    |
+| `@CurrentPrincipal()` param decorator                             | Met    |
+| `DomainExceptionFilter` mapping error codes to HTTP statuses      | Met    |
+| Zod validation on all write DTOs                                  | Met    |
+| No cross-module DB joins (per DATABASE_OWNERSHIP Rule 4)          | Met    |
+| Controllers in `src/api/admin/`, not inside module folders        | Met    |
+| Audit events append-only (no UPDATE/DELETE in application paths)  | Met    |
+| Admin-only authentication (public portal has no auth)             | Met    |
+
+---
+
+## Verification checklist
+
+| Check                          | Result        |
+| ------------------------------ | ------------- |
+| `npx tsc --noEmit`             | Pass (clean)  |
+| `npx eslint "src/**/*.ts"`     | Pass (clean)  |
+| `npx vitest run` (45 tests)    | 45/45 passed  |
+| `git status`                   | Clean         |
+| `git log --oneline` (3 commits)| Committed     |
+
+---
+
+## What was NOT implemented (by design)
+
+- Frontend (`apps/web` remains a stub — placeholder only)
+- Two-portal split (`apps/web-admin/`, `apps/web-public/` not yet created)
+- Password reset / invite flow (FR-AUTH-007 — P1)
+- MFA (FR-AUTH-008 — P2)
+- OIDC IdP (ADR-0010 §6 — port exists, no implementation)
+- All 12 business modules (stations, tide, weather, wind, wave, moon-phase, sunrise-sunset, hijri-calendar, marine-calendar, dashboard, patrol-planner, notifications, reports, settings)
+- E2E tests, contract tests
+- Rate limiting, correlation IDs
+
+---
+
+## Handoff to Sprint 2 (Frontend + Business Modules)
+
+Sprint 2 should implement:
+
+1. Two-portal frontend split (`apps/web-admin/` + `apps/web-public/`)
+2. Public API surface (`/api/public/*` controllers)
+3. Admin Portal UI (login, dashboard, users, roles, audit)
+4. Stations module (admin CRUD + public read)
+5. Calendar module (read projection)
+6. Tide module (sourced data per ADR-0008)
+
+### Key handoff files
+
+| Read first                                                     | Why                          |
+| -------------------------------------------------------------- | ---------------------------- |
+| `docs/structure/FOLDER_STRUCTURE.md` §2.2, §3, §4              | Controller split + portal layouts |
+| `docs/architecture/AUTHORIZATION.md` §3                        | Public vs admin audience     |
+| `docs/architecture/DATABASE_OWNERSHIP.md` §4                   | Public/admin read-sharing    |
+| `docs/requirements/SRS.md` FR-STN-*, FR-CAL-*, FR-TID-*        | Next module requirements     |
+| `docs/decisions/ADR-0008-calendar-data-source-strategy.md`     | Tide/weather data pattern    |
+| `docs/api/OPENAPI.md`                                          | Full API contract            |
+
+---
+
+Sprint 1 (Backend) is complete. Architecture remains frozen at v2.0.0. Sprint 2 is cleared to begin.
