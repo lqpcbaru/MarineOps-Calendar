@@ -7,10 +7,12 @@ import { AuthenticationModule } from './modules/authentication/api/authenticatio
 import { UsersModule } from './modules/users/api/users.module';
 import { RolesModule } from './modules/roles/api/roles.module';
 import { AuditModule } from './modules/audit/api/audit.module';
+import { DashboardModule } from './modules/dashboard/api/dashboard.module';
 import { AuthController } from './api/admin/auth.controller';
 import { UsersController } from './api/admin/users.controller';
 import { RolesController } from './api/admin/roles.controller';
 import { AuditController } from './api/admin/audit.controller';
+import { PublicDashboardController } from './api/public/public-dashboard.controller';
 import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { DomainExceptionFilter } from './platform/domain-exception.filter';
 import { JwtAuthGuard } from './modules/authentication/api/jwt-auth.guard';
@@ -25,8 +27,15 @@ import { JwtAuthGuard } from './modules/authentication/api/jwt-auth.guard';
     UsersModule,
     RolesModule,
     AuditModule,
+    DashboardModule,
   ],
-  controllers: [AuthController, UsersController, RolesController, AuditController],
+  controllers: [
+    AuthController,
+    UsersController,
+    RolesController,
+    AuditController,
+    PublicDashboardController,
+  ],
   providers: [
     { provide: APP_FILTER, useClass: DomainExceptionFilter },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
