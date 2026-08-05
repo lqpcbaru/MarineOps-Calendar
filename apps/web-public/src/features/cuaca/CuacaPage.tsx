@@ -1,57 +1,33 @@
 import {
   PageHeader,
-  AppCard,
   SectionTitle,
   AppTable,
   InfoPanel,
   EmptyState,
+  MarineConditionCard,
+  MarineSummaryGrid,
+  OperationalStatusCard,
+  OperationalRecommendationCard,
 } from '../../shared/components';
 
 /* ── Section 2: Ringkasan Hari Ini ── */
 function RingkasanHariIni() {
-  const items = [
-    { label: 'Keadaan Cuaca', value: '—', icon: '🌤️' },
-    { label: 'Suhu', value: '—', icon: '🌡️' },
-    { label: 'Kelembapan', value: '—', icon: '💧' },
-    { label: 'Jarak Penglihatan', value: '—', icon: '👁️' },
-  ];
-
   return (
     <section aria-label="Ringkasan cuaca hari ini" className="mb-8">
       <SectionTitle>Ringkasan Hari Ini</SectionTitle>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {items.map((item) => (
-          <AppCard key={item.label} variant="flat">
-            <div className="text-center">
-              <span aria-hidden="true" className="mb-1 block text-2xl">
-                {item.icon}
-              </span>
-              <p className="text-xs font-medium uppercase tracking-wider text-text-muted">
-                {item.label}
-              </p>
-              <p className="mt-1 text-xl font-bold text-text-primary">
-                {item.value}
-              </p>
-            </div>
-          </AppCard>
-        ))}
-      </div>
+      <MarineSummaryGrid columns={4}>
+        <MarineConditionCard icon="🌤️" title="Keadaan Cuaca" value="—" />
+        <MarineConditionCard icon="🌡️" title="Suhu" value="—" />
+        <MarineConditionCard icon="💧" title="Kelembapan" value="—" />
+        <MarineConditionCard icon="👁️" title="Jarak Penglihatan" value="—" />
+      </MarineSummaryGrid>
     </section>
   );
 }
 
 /* ── Section 3: Ramalan Cuaca ── */
 function RamalanCuaca() {
-  const rows = Array.from({ length: 7 }, (_, i) => ({
-    id: i,
-    hari: '—',
-    tarikh: '—',
-    cuaca: '—',
-    suhuMin: '—',
-    suhuMax: '—',
-    hujan: '—',
-    cadangan: '—',
-  }));
+  const rows = Array.from({ length: 7 }, (_, i) => ({ id: i }));
 
   return (
     <section aria-label="Ramalan cuaca" className="mb-8">
@@ -71,13 +47,13 @@ function RamalanCuaca() {
         <AppTable.Body>
           {rows.map((row) => (
             <AppTable.Row key={row.id}>
-              <AppTable.Td>{row.hari}</AppTable.Td>
-              <AppTable.Td>{row.tarikh}</AppTable.Td>
-              <AppTable.Td>{row.cuaca}</AppTable.Td>
-              <AppTable.Td>{row.suhuMin}</AppTable.Td>
-              <AppTable.Td>{row.suhuMax}</AppTable.Td>
-              <AppTable.Td>{row.hujan}</AppTable.Td>
-              <AppTable.Td>{row.cadangan}</AppTable.Td>
+              <AppTable.Td>—</AppTable.Td>
+              <AppTable.Td>—</AppTable.Td>
+              <AppTable.Td>—</AppTable.Td>
+              <AppTable.Td>—</AppTable.Td>
+              <AppTable.Td>—</AppTable.Td>
+              <AppTable.Td>—</AppTable.Td>
+              <AppTable.Td>—</AppTable.Td>
             </AppTable.Row>
           ))}
         </AppTable.Body>
@@ -102,7 +78,17 @@ export function CuacaPage() {
       {/* 3. Ramalan Cuaca */}
       <RamalanCuaca />
 
-      {/* 4. InfoPanel */}
+      {/* 4. OperationalStatusCard */}
+      <section aria-label="Status operasi" className="mb-8">
+        <OperationalStatusCard variant="neutral" />
+      </section>
+
+      {/* 5. OperationalRecommendationCard */}
+      <section aria-label="Cadangan operasi" className="mb-8">
+        <OperationalRecommendationCard variant="placeholder" />
+      </section>
+
+      {/* 6. InfoPanel */}
       <section aria-label="Maklumat cuaca" className="mb-8">
         <InfoPanel title="Mengapa Cuaca Penting kepada Operasi Laut">
           <p>
@@ -120,7 +106,7 @@ export function CuacaPage() {
         </InfoPanel>
       </section>
 
-      {/* 5. EmptyState — future integration */}
+      {/* 7. EmptyState — future integration */}
       <section aria-label="Integrasi masa depan">
         <EmptyState
           title="Integrasi Pembekal Cuaca"
