@@ -1,37 +1,27 @@
-/* ── Section 1: Header ── */
-function PageHeader() {
-  return (
-    <div className="mb-8">
-      <h1 className="text-3xl font-bold text-text-primary sm:text-4xl">
-        Pasang Surut
-      </h1>
-      <p className="mt-2 text-lg text-text-secondary">
-        Maklumat pasang surut air laut mengikut stesen dan tarikh.
-      </p>
-    </div>
-  );
-}
+import {
+  PageHeader,
+  SectionTitle,
+  AppTable,
+  InfoPanel,
+  EmptyState,
+  MarineConditionCard,
+  MarineSummaryGrid,
+  OperationalStatusCard,
+  OperationalRecommendationCard,
+  OperationalLegend,
+} from '../../shared/components';
 
 /* ── Section 2: Today's Summary ── */
 function TodaySummary() {
-  const cards = [
-    { label: 'Jenis Air', value: '—', icon: '🌊' },
-    { label: 'Fasa Bulan', value: '—', icon: '🌙' },
-    { label: 'Tarikh Hijrah', value: '—', icon: '📅' },
-    { label: 'Status Operasi', value: '—', icon: '📋' },
-  ];
-
   return (
     <section aria-label="Ringkasan hari ini" className="mb-8">
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {cards.map((card) => (
-          <div key={card.label} className="tide-info-card">
-            <span aria-hidden="true" className="text-2xl mb-1 block">{card.icon}</span>
-            <p className="tide-info-label">{card.label}</p>
-            <p className="tide-info-value">{card.value}</p>
-          </div>
-        ))}
-      </div>
+      <SectionTitle>Ringkasan Hari Ini</SectionTitle>
+      <MarineSummaryGrid columns={4}>
+        <MarineConditionCard icon="🌊" title="Jenis Air" value="—" />
+        <MarineConditionCard icon="🌙" title="Fasa Bulan" value="—" />
+        <MarineConditionCard icon="📅" title="Tarikh Hijrah" value="—" />
+        <MarineConditionCard icon="📋" title="Status Operasi" value="—" />
+      </MarineSummaryGrid>
     </section>
   );
 }
@@ -51,133 +41,96 @@ function TideTable() {
     'Cadangan Operasi',
   ];
 
-  /* Placeholder rows — 7 days */
-  const rows = Array.from({ length: 7 }, (_, i) => ({
-    id: i,
-    hari: '—',
-    tarikh: '—',
-    hijrah: '—',
-    fasaBulan: '—',
-    jenisAir: '—',
-    pasangPagi: '—',
-    surutPagi: '—',
-    pasangPetang: '—',
-    surutMalam: '—',
-    cadangan: '—',
-    rowClass: '',
-  }));
+  const rows = Array.from({ length: 7 }, (_, i) => ({ id: i }));
 
   return (
     <section aria-label="Jadual pasang surut" className="mb-8">
-      <h2 className="section-heading">Jadual Pasang Surut</h2>
-      <div className="tide-table-wrapper">
-        <table className="tide-table">
-          <thead>
-            <tr>
-              {headers.map((h) => (
-                <th key={h} scope="col">{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr key={row.id} className={row.rowClass}>
-                <td>{row.hari}</td>
-                <td>{row.tarikh}</td>
-                <td>{row.hijrah}</td>
-                <td>{row.fasaBulan}</td>
-                <td>{row.jenisAir}</td>
-                <td>{row.pasangPagi}</td>
-                <td>{row.surutPagi}</td>
-                <td>{row.pasangPetang}</td>
-                <td>{row.surutMalam}</td>
-                <td>{row.cadangan}</td>
-              </tr>
+      <SectionTitle>Jadual Pasang Surut</SectionTitle>
+      <AppTable>
+        <AppTable.Head>
+          <AppTable.Row>
+            {headers.map((h) => (
+              <AppTable.Th key={h}>{h}</AppTable.Th>
             ))}
-          </tbody>
-        </table>
-      </div>
-    </section>
-  );
-}
-
-/* ── Section 4: Legend ── */
-function Legend() {
-  const items = [
-    { color: 'legend-dot-safe', label: 'Sesuai' },
-    { color: 'legend-dot-caution', label: 'Berwaspada' },
-    { color: 'legend-dot-danger', label: 'Tidak Disyorkan' },
-  ];
-
-  return (
-    <section aria-label="Petunjuk status" className="mb-8">
-      <div className="card-flat">
-        <h2 className="section-heading mb-3">Petunjuk Status</h2>
-        <div className="flex flex-wrap gap-4">
-          {items.map((item) => (
-            <span key={item.label} className="inline-flex items-center text-sm text-text-secondary">
-              <span className={`legend-dot ${item.color}`} aria-hidden="true" />
-              {item.label}
-            </span>
+          </AppTable.Row>
+        </AppTable.Head>
+        <AppTable.Body>
+          {rows.map((row) => (
+            <AppTable.Row key={row.id}>
+              <AppTable.Td>—</AppTable.Td>
+              <AppTable.Td>—</AppTable.Td>
+              <AppTable.Td>—</AppTable.Td>
+              <AppTable.Td>—</AppTable.Td>
+              <AppTable.Td>—</AppTable.Td>
+              <AppTable.Td>—</AppTable.Td>
+              <AppTable.Td>—</AppTable.Td>
+              <AppTable.Td>—</AppTable.Td>
+              <AppTable.Td>—</AppTable.Td>
+              <AppTable.Td>—</AppTable.Td>
+            </AppTable.Row>
           ))}
-        </div>
-      </div>
+        </AppTable.Body>
+      </AppTable>
     </section>
   );
 }
 
 /* ── Section 5: Information Panel ── */
-function InfoPanel() {
-  const panels = [
-    {
-      title: 'Apa itu Air Besar',
-      text: 'Air Besar berlaku apabila paras air laut berada di tahap tertinggi dalam kitaran pasang surut. Pada masa ini, air laut naik ke paras maksimum sebelum mula surut semula. Air Besar penting untuk mengetahui paras air maksimum yang boleh dijangkakan bagi tujuan pelayaran dan operasi di laut.',
-    },
-    {
-      title: 'Apa itu Air Mati',
-      text: 'Air Mati berlaku apabila paras air laut berada di tahap terendah dalam kitaran pasang surut. Pada masa ini, air laut surut ke paras minimum sebelum mula pasang semula. Air Mati penting untuk mengetahui paras air minimum yang boleh dijangkakan bagi tujuan pelayaran dan operasi di laut.',
-    },
-    {
-      title: 'Mengapa Penting kepada Operasi Laut',
-      text: 'Pengetahuan tentang pasang surut adalah penting untuk keselamatan pelayaran, perancangan operasi perikanan, dan aktiviti maritim. Paras air yang mencukupi diperlukan untuk laluan selamat kapal, manakala waktu surut mempengaruhi akses ke kawasan cetek dan muara sungai. Perancangan operasi yang mengambil kira pasang surut dapat mengurangkan risiko kandas dan memastikan keselamatan anak kapal.',
-    },
-  ];
-
+function InfoPanels() {
   return (
-    <section aria-label="Maklumat pasang surut" className="mb-8">
-      <h2 className="section-heading">Maklumat Pasang Surut</h2>
-      <div className="space-y-4">
-        {panels.map((panel) => (
-          <div key={panel.title} className="info-panel">
-            <h3 className="info-panel-title">{panel.title}</h3>
-            <p className="info-panel-text">{panel.text}</p>
-          </div>
-        ))}
-      </div>
+    <section aria-label="Maklumat pasang surut" className="mb-8 space-y-4">
+      <InfoPanel title="Apa itu Air Besar">
+        <p>
+          Air Besar berlaku apabila paras air laut berada di tahap tertinggi dalam
+          kitaran pasang surut. Pada masa ini, air laut naik ke paras maksimum sebelum
+          mula surut semula. Air Besar penting untuk mengetahui paras air maksimum
+          yang boleh dijangkakan bagi tujuan pelayaran dan operasi di laut.
+        </p>
+      </InfoPanel>
+
+      <InfoPanel title="Apa itu Air Mati">
+        <p>
+          Air Mati berlaku apabila paras air laut berada di tahap terendah dalam
+          kitaran pasang surut. Pada masa ini, air laut surut ke paras minimum sebelum
+          mula pasang semula. Air Mati penting untuk mengetahui paras air minimum
+          yang boleh dijangkakan bagi tujuan pelayaran dan operasi di laut.
+        </p>
+      </InfoPanel>
+
+      <InfoPanel title="Mengapa Penting kepada Operasi Laut">
+        <p>
+          Pengetahuan tentang pasang surut adalah penting untuk keselamatan pelayaran,
+          perancangan operasi perikanan, dan aktiviti maritim. Paras air yang mencukupi
+          diperlukan untuk laluan selamat kapal, manakala waktu surut mempengaruhi
+          akses ke kawasan cetek dan muara sungai. Perancangan operasi yang mengambil
+          kira pasang surut dapat mengurangkan risiko kandas dan memastikan keselamatan
+          anak kapal.
+        </p>
+      </InfoPanel>
     </section>
   );
 }
 
-/* ── Section 6: Future Integration Placeholder ── */
+/* ── Section 6: Future Integration ── */
 function FutureIntegration() {
-  const items = [
-    { label: 'Cuaca', icon: '🌤️' },
-    { label: 'Angin', icon: '💨' },
-    { label: 'Ombak', icon: '🌊' },
-    { label: 'Cadangan AI', icon: '🤖' },
-  ];
-
   return (
-    <section aria-label="Integrasi masa depan" className="mb-8">
-      <h2 className="section-heading">Integrasi Masa Depan</h2>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {items.map((item) => (
-          <div key={item.label} className="future-box">
-            <span className="future-box-icon" aria-hidden="true">{item.icon}</span>
-            <span className="future-box-label">{item.label}</span>
-          </div>
-        ))}
-      </div>
+    <section aria-label="Integrasi masa depan" className="mb-8 space-y-4">
+      <EmptyState
+        title="Cuaca"
+        message="Maklumat akan dipaparkan selepas modul ini disepadukan."
+      />
+      <EmptyState
+        title="Angin"
+        message="Maklumat akan dipaparkan selepas modul ini disepadukan."
+      />
+      <EmptyState
+        title="Ombak"
+        message="Maklumat akan dipaparkan selepas modul ini disepadukan."
+      />
+      <EmptyState
+        title="Cadangan AI"
+        message="Maklumat akan dipaparkan selepas modul ini disepadukan."
+      />
     </section>
   );
 }
@@ -186,11 +139,37 @@ function FutureIntegration() {
 export function PasangSurutPage() {
   return (
     <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
-      <PageHeader />
+      {/* 1. PageHeader */}
+      <PageHeader
+        title="Pasang Surut"
+        subtitle="Maklumat pasang surut air laut mengikut stesen dan tarikh."
+      />
+
+      {/* 2. Today's Summary */}
       <TodaySummary />
+
+      {/* 3. Tide Table */}
       <TideTable />
-      <Legend />
-      <InfoPanel />
+
+      {/* 4. OperationalStatusCard */}
+      <section aria-label="Status operasi" className="mb-8">
+        <OperationalStatusCard variant="neutral" />
+      </section>
+
+      {/* 5. OperationalRecommendationCard */}
+      <section aria-label="Cadangan operasi" className="mb-8">
+        <OperationalRecommendationCard variant="placeholder" />
+      </section>
+
+      {/* 6. OperationalLegend */}
+      <section aria-label="Petunjuk status" className="mb-8">
+        <OperationalLegend />
+      </section>
+
+      {/* 7. InfoPanels */}
+      <InfoPanels />
+
+      {/* 8. Future Integration */}
       <FutureIntegration />
     </div>
   );
