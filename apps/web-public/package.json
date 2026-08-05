@@ -1,9 +1,9 @@
 {
-  "name": "@marineops/web",
+  "name": "@marineops/web-public",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "MarineOps Calendar — React web client",
+  "description": "MarineOps Hub — Public Portal (Bahasa Melayu)",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
