@@ -1,10 +1,19 @@
 import { Link } from '@tanstack/react-router';
+import {
+  PageHeader,
+  SectionTitle,
+  AppCard,
+  MarineSummaryGrid,
+  MarineConditionCard,
+  OperationalStatusCard,
+  OperationalRecommendationCard,
+} from '../../shared/components';
 
 /* ── Section 1: Header Summary ── */
 function HeaderSummary() {
   return (
     <section aria-label="Ringkasan hari ini" className="mb-6">
-      <div className="card-flat">
+      <AppCard variant="flat">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-sm text-text-muted">Hari</p>
@@ -19,60 +28,47 @@ function HeaderSummary() {
             <p className="text-xl font-bold text-text-primary">—</p>
           </div>
         </div>
-      </div>
-    </section>
-  );
-}
-
-/* ── Section 2: Status Operasi ── */
-function StatusOperasi() {
-  return (
-    <section aria-label="Status operasi hari ini" className="mb-6">
-      <h2 className="section-heading">Status Operasi Hari Ini</h2>
-      <div className="status-card status-card-caution">
-        <div className="status-card-icon" aria-hidden="true">🟡</div>
-        <p className="status-card-title">Berwaspada</p>
-        <p className="status-card-subtitle">
-          Maklumat status operasi akan dipaparkan di sini.
-        </p>
-      </div>
+      </AppCard>
     </section>
   );
 }
 
 /* ── Section 3–7: Summary Cards ── */
-interface SummaryCardProps {
-  title: string;
-  icon: string;
-  placeholder: string;
-}
-
-function SummaryCard({ title, icon, placeholder }: SummaryCardProps) {
+function SummaryCards() {
   return (
-    <section aria-label={title}>
-      <div className="card-flat">
-        <div className="flex items-center gap-2 mb-3">
-          <span aria-hidden="true" className="text-xl">{icon}</span>
-          <h2 className="section-heading mb-0">{title}</h2>
-        </div>
-        <div className="placeholder-content">
-          <p>{placeholder}</p>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ── Section 8: Cadangan Operasi ── */
-function CadanganOperasi() {
-  return (
-    <section aria-label="Cadangan operasi" className="mb-6">
-      <h2 className="section-heading">Cadangan Operasi</h2>
-      <div className="card-flat">
-        <div className="placeholder-content">
-          <p>Maklumat operasi akan dipaparkan di sini.</p>
-        </div>
-      </div>
+    <section aria-label="Ringkasan modul" className="mb-6">
+      <MarineSummaryGrid columns={3}>
+        <MarineConditionCard
+          icon="🌊"
+          title="Ringkasan Pasang Surut"
+          value="—"
+          subtitle="Data pasang surut akan dipaparkan di sini."
+        />
+        <MarineConditionCard
+          icon="🌤️"
+          title="Ringkasan Cuaca"
+          value="—"
+          subtitle="Data cuaca akan dipaparkan di sini."
+        />
+        <MarineConditionCard
+          icon="💨"
+          title="Ringkasan Angin"
+          value="—"
+          subtitle="Data angin akan dipaparkan di sini."
+        />
+        <MarineConditionCard
+          icon="🌊"
+          title="Ringkasan Ombak"
+          value="—"
+          subtitle="Data ombak akan dipaparkan di sini."
+        />
+        <MarineConditionCard
+          icon="🌙"
+          title="Fasa Bulan"
+          value="—"
+          subtitle="Data fasa bulan akan dipaparkan di sini."
+        />
+      </MarineSummaryGrid>
     </section>
   );
 }
@@ -92,7 +88,7 @@ const quickNavItems = [
 function QuickNav() {
   return (
     <section aria-label="Navigasi pantas">
-      <h2 className="section-heading">Navigasi Pantas</h2>
+      <SectionTitle>Navigasi Pantas</SectionTitle>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {quickNavItems.map((item) => (
           <Link key={item.to} to={item.to} className="quick-nav-btn" aria-label={item.label}>
@@ -109,55 +105,31 @@ function QuickNav() {
 export function HomePage() {
   return (
     <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 lg:px-8">
-      {/* Page heading */}
-      <div className="mb-8 text-center">
-        <h1 className="text-3xl font-bold text-text-primary sm:text-4xl">
-          Pusat Operasi
-        </h1>
-        <p className="mt-2 text-lg text-text-secondary">
-          Ringkasan keadaan marin hari ini
-        </p>
-      </div>
+      {/* 1. PageHeader */}
+      <PageHeader
+        title="Pusat Operasi"
+        subtitle="Ringkasan keadaan marin hari ini"
+      />
 
-      {/* 1. Header Summary */}
+      {/* 2. Header Summary */}
       <HeaderSummary />
 
-      {/* 2. Status Operasi */}
-      <StatusOperasi />
+      {/* 3. Status Operasi */}
+      <section aria-label="Status operasi hari ini" className="mb-6">
+        <SectionTitle>Status Operasi Hari Ini</SectionTitle>
+        <OperationalStatusCard variant="kuning" />
+      </section>
 
-      {/* 3–7: Summary Cards Grid */}
-      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <SummaryCard
-          title="Ringkasan Pasang Surut"
-          icon="🌊"
-          placeholder="Data pasang surut akan dipaparkan di sini."
-        />
-        <SummaryCard
-          title="Ringkasan Cuaca"
-          icon="🌤️"
-          placeholder="Data cuaca akan dipaparkan di sini."
-        />
-        <SummaryCard
-          title="Ringkasan Angin"
-          icon="💨"
-          placeholder="Data angin akan dipaparkan di sini."
-        />
-        <SummaryCard
-          title="Ringkasan Ombak"
-          icon="🌊"
-          placeholder="Data ombak akan dipaparkan di sini."
-        />
-        <SummaryCard
-          title="Fasa Bulan"
-          icon="🌙"
-          placeholder="Data fasa bulan akan dipaparkan di sini."
-        />
-      </div>
+      {/* 4–8. Summary Cards */}
+      <SummaryCards />
 
-      {/* 8. Cadangan Operasi */}
-      <CadanganOperasi />
+      {/* 9. Cadangan Operasi */}
+      <section aria-label="Cadangan operasi" className="mb-6">
+        <SectionTitle>Cadangan Operasi</SectionTitle>
+        <OperationalRecommendationCard variant="placeholder" />
+      </section>
 
-      {/* 9. Quick Navigation */}
+      {/* 10. Quick Navigation */}
       <QuickNav />
     </div>
   );
