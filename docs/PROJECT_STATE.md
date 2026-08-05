@@ -469,3 +469,87 @@ Sprint 2 should implement:
 ---
 
 Sprint 1 (Backend) is complete. Architecture remains frozen at v2.0.0. Sprint 2 is cleared to begin.
+
+---
+
+# Sprint 3.0 — Public API Architecture (Documentation Only)
+
+**Date:** 2026-08-05  
+**Author:** Chief Backend Architect  
+**Sprint status:** **COMPLETE**  
+**Scope:** Public API architecture design — documentation only, no code.
+
+---
+
+## Scope
+
+Design the complete Public API architecture for the `/api/public` surface, covering endpoints, DTOs, caching, error handling, versioning, and the provider adapter pattern. No application code was written.
+
+---
+
+## Deliverables
+
+### New documentation
+
+| File | Description |
+|------|-------------|
+| `docs/architecture/PUBLIC_API.md` | Complete Public API architecture: route map, endpoints, DTOs, caching strategy, error responses, versioning, provider adapter architecture, sequence diagram, public dashboard design |
+
+### Updated documentation
+
+| File | Changes |
+|------|---------|
+| `docs/api/OPENAPI.md` | Added `/wind-wave` combined endpoint; added `/dashboard` public endpoint; expanded DTO schemas (TideDataPoint, WeatherDataPoint, WindWaveDataPoint, PublicDashboardResponse, CalendarDayEntry); added 503 ProviderUnavailable response; version bumped to 2.1.0 |
+| `docs/api/SEQUENCE_DIAGRAMS.md` | Added diagram 9 (sourced data read with cache + stale fallback); added diagram 10 (public dashboard fan-out) |
+| `docs/PROJECT_STATE.md` | This entry |
+
+---
+
+## Key design decisions
+
+| Decision | Rationale |
+|----------|-----------|
+| `/wind-wave` combined endpoint | Reduces round-trips for the Public Portal "Angin & Ombak" page; granular `/wind` and `/wave` remain available |
+| `/dashboard` public endpoint | Single-call aggregation for the "Pusat Operasi" homepage; 5-minute CDN cache; no PII |
+| Two-tier cache (CDN L1 + PostgreSQL L2) | CDN for shared response caching; DB for adapter-pattern source-of-truth cache |
+| Stale-while-revalidate on provider failure | Graceful degradation per ADR-0008; never 503 when any cached data exists |
+| 503 only on cache miss + provider failure | Clear signal that data is truly unavailable |
+| Computable data (moon/sun/hijri) — no cache table | Pure functions, deterministic per date; 24h CDN cache only; sub-100ms response (NFR-PERF-003) |
+| Provider adapter pattern (ADR-0008) | Provider swappable without domain/application change; API keys isolated to infrastructure |
+
+---
+
+## What was NOT implemented (by design)
+
+- No application code (documentation-only sprint)
+- No backend controllers, use-cases, or repositories
+- No Prisma schema changes
+- No frontend changes
+- No API integration
+
+---
+
+## Handoff to Sprint 3.1 (Backend Implementation)
+
+Sprint 3.1 should implement:
+
+1. Public controllers (`src/api/public/*.controller.ts`)
+2. Sourced-data modules (Tide, Weather, Wind, Wave) with adapter + cache
+3. Computable modules (MoonPhase, SunriseSunset, HijriCalendar) as pure functions
+4. Marine Calendar read projection
+5. Public Dashboard read projection
+6. Prisma schema for cache tables (`tide_cache`, `weather_cache`, `wind_cache`, `wave_cache`)
+
+### Key handoff files
+
+| Read first | Why |
+|------------|-----|
+| `docs/architecture/PUBLIC_API.md` | Complete Public API architecture |
+| `docs/api/OPENAPI.md` | API contract (source of truth) |
+| `docs/decisions/ADR-0008-calendar-data-source-strategy.md` | Adapter pattern + caching convention |
+| `docs/architecture/DATABASE_OWNERSHIP.md` | Table ownership rules |
+| `docs/data/ERD.md` | Cache table schemas (§2.9–§2.12) |
+
+---
+
+Sprint 3.0 is complete. Architecture remains frozen at v2.0.0. Sprint 3.1 is cleared to begin.

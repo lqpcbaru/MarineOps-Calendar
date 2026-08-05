@@ -294,8 +294,119 @@ sequenceDiagram
 
 ---
 
-## 8. Change log
+## 9. Sourced Data Read — Cache + Stale Fallback (FR-TID-001..003, NFR-REL-002)
+
+Detailed flow inside a single sourced-data module (Tide shown as example). Applies to Weather, Wind, Wave identically.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor V as Anonymous Visitor
+    participant PC as PublicController (/api/public/tide)
+    participant QP as TideQueryPort
+    participant CS as TideCacheService
+    participant CR as TideCacheRepository
+    participant P as TideProvider (adapter)
+    participant API as External Tide API
+
+    V->>PC: GET /api/public/tide?stationId&dateFrom&dateTo
+    PC->>QP: query(stationId, range)
+    QP->>CS: get(stationId, range)
+    CS->>CR: findValid(stationId, parameter, range)
+    CR-->>CS: cacheRow | null
+
+    alt cache FRESH (now < validUntil)
+        CS-->>QP: { data, freshness: { status: "fresh" } }
+        QP-->>PC: TideResponse
+        PC-->>V: 200 { data, freshness } + Cache-Control: public, max-age=N
+    else cache STALE (now >= validUntil)
+        CS->>P: fetch(stationId, range)
+        alt provider success
+            P->>API: HTTPS GET /tide?...
+            API-->>P: tide data
+            P-->>CS: TideDataPoint[] (domain-mapped)
+            CS->>CR: upsert(stationId, payload, validUntil)
+            CS-->>QP: { data, freshness: { status: "fresh" } }
+            QP-->>PC: TideResponse
+            PC-->>V: 200 + Cache-Control: public, max-age=N
+        else provider failure / timeout
+            P-->>CS: error
+            CS-->>QP: { data: cachedData, freshness: { status: "stale" } }
+            QP-->>PC: TideResponse (stale)
+            PC-->>V: 200 + Cache-Control: max-age=0, stale-while-revalidate=60
+            Note over PC,V: X-Data-Freshness: stale
+        end
+    else cache MISS (no row)
+        CS->>P: fetch(stationId, range)
+        alt provider success
+            P-->>CS: TideDataPoint[]
+            CS->>CR: insert(stationId, payload, validUntil)
+            CS-->>QP: { data, freshness: { status: "fresh" } }
+            QP-->>PC: TideResponse
+            PC-->>V: 200 + Cache-Control
+        else provider failure
+            P-->>CS: error
+            CS-->>QP: null
+            QP-->>PC: throw ProviderUnavailableError
+            PC-->>V: 503 PROVIDER_UNAVAILABLE
+        end
+    end
+```
+
+---
+
+## 10. Public Dashboard Fan-Out (FR-DSH-001..002)
+
+Single API call aggregates today's conditions from all modules. No auth, 5-minute CDN cache.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor V as Anonymous Visitor
+    participant PD as PublicDashboardController (/api/public/dashboard)
+    participant DASH as Dashboard (read projection)
+    participant T as Tide query port
+    participant W as Weather query port
+    participant WW as Wind/Wave query port
+    participant M as MoonPhase (pure)
+    participant S as SunriseSunset (pure)
+    participant HZ as HijriCalendar (pure)
+    participant AL as MarineAlerts query port
+
+    V->>PD: GET /api/public/dashboard?stationId=...
+    PD->>DASH: getPublicDashboard(stationId)
+    par fan-out reads
+        DASH->>T: query(stationId, today)
+        T-->>DASH: tide + freshness
+    and
+        DASH->>W: query(stationId, today)
+        W-->>DASH: weather + freshness
+    and
+        DASH->>WW: query(stationId, today)
+        WW-->>DASH: windWave + freshness
+    and
+        DASH->>M: computeMoonPhase(today)
+        M-->>DASH: MoonPhaseData (instant)
+    and
+        DASH->>S: computeSunriseSunset(lat, long, today)
+        S-->>DASH: SunriseSunsetData (instant)
+    and
+        DASH->>HZ: convertToHijri(today)
+        HZ-->>DASH: HijriDateData (instant)
+    and
+        DASH->>AL: findPublic(stationId)
+        AL-->>DASH: published alerts (count + latest)
+    end
+    DASH-->>PD: PublicDashboardResponse
+    PD-->>V: 200 { date, station, tide, weather, windWave, moon, sun, activeAlerts, operationalStatus }
+    Note over PD,V: Cache-Control: public, max-age=300
+```
+
+---
+
+## 11. Change log
 
 | Version | Date       | Notes                                    |
 | ------- | ---------- | ---------------------------------------- |
+| 2.1.0   | 2026-08-05 | Sprint 3.0: Add diagrams 9 (sourced data read with cache + stale fallback) and 10 (public dashboard fan-out) |
 | 2.0.0   | 2026-07-31 | Initial Hub sequence diagrams (ADR-0011) |

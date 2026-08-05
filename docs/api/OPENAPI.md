@@ -44,10 +44,12 @@ tags:
   - name: public-weather
   - name: public-wind
   - name: public-wave
+  - name: public-wind-wave
   - name: public-moon
   - name: public-sun
   - name: public-hijri
   - name: public-calendar
+  - name: public-dashboard
   - name: public-alerts
   - name: public-stations
   - name: public-about
@@ -158,6 +160,24 @@ paths:
               schema: { $ref: '#/components/schemas/WaveResponse' }
         '429': { $ref: '#/components/responses/RateLimited' }
 
+  /wind-wave:
+    get:
+      tags: [public-wind-wave]
+      summary: Combined wind and wave data
+      security: []
+      parameters:
+        - { $ref: '#/components/parameters/StationIdQuery' }
+        - { $ref: '#/components/parameters/DateFromQuery' }
+        - { $ref: '#/components/parameters/DateToQuery' }
+      responses:
+        '200':
+          description: Combined wind and wave data with freshness
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WindWaveResponse' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/ProviderUnavailable' }
+
   /moon:
     get:
       tags: [public-moon]
@@ -217,6 +237,21 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/CalendarResponse' }
+
+  /dashboard:
+    get:
+      tags: [public-dashboard]
+      summary: Public dashboard summary — today's key marine conditions
+      security: []
+      parameters:
+        - { name: stationId, in: query, required: false, schema: { type: string }, description: 'Defaults to org default station if omitted' }
+      responses:
+        '200':
+          description: Public dashboard summary
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PublicDashboardResponse' }
+        '429': { $ref: '#/components/responses/RateLimited' }
 
   /alerts:
     get:
@@ -751,6 +786,11 @@ components:
       content:
         application/json:
           schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    ProviderUnavailable:
+      description: External data provider unavailable and no cached data
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
 
   schemas:
     HealthResponse:
@@ -810,25 +850,69 @@ components:
         permissionCodes: { type: array, items: { type: string } }
 
     # ── Sourced data (public + admin read same shape) ──
+    TideDataPoint:
+      type: object
+      properties:
+        date: { type: string, format: date }
+        time: { type: string, format: date-time }
+        height: { type: number, description: 'meters' }
+        type: { type: string, enum: [HIGH, LOW] }
     TideResponse:
       type: object
       properties:
-        data: { type: array, items: { type: object } }
+        data: { type: array, items: { $ref: '#/components/schemas/TideDataPoint' } }
         freshness: { $ref: '#/components/schemas/Freshness' }
+    WeatherDataPoint:
+      type: object
+      properties:
+        date: { type: string, format: date }
+        temperature: { type: number, description: '°C' }
+        conditions: { type: string }
+        visibility: { type: number, description: 'km' }
+        precipitation: { type: number, description: 'mm' }
     WeatherResponse:
       type: object
       properties:
-        data: { type: array, items: { type: object } }
+        data: { type: array, items: { $ref: '#/components/schemas/WeatherDataPoint' } }
         freshness: { $ref: '#/components/schemas/Freshness' }
     WindResponse:
       type: object
       properties:
-        data: { type: array, items: { type: object } }
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              date: { type: string, format: date }
+              windSpeed: { type: number, description: 'knots' }
+              windDirection: { type: string }
+              windGusts: { type: number, description: 'knots' }
         freshness: { $ref: '#/components/schemas/Freshness' }
     WaveResponse:
       type: object
       properties:
-        data: { type: array, items: { type: object } }
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              date: { type: string, format: date }
+              waveHeight: { type: number, description: 'meters' }
+              wavePeriod: { type: number, description: 'seconds' }
+        freshness: { $ref: '#/components/schemas/Freshness' }
+    WindWaveDataPoint:
+      type: object
+      properties:
+        date: { type: string, format: date }
+        windSpeed: { type: number, description: 'knots' }
+        windDirection: { type: string }
+        windGusts: { type: number, description: 'knots' }
+        waveHeight: { type: number, description: 'meters' }
+        wavePeriod: { type: number, description: 'seconds' }
+    WindWaveResponse:
+      type: object
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/WindWaveDataPoint' } }
         freshness: { $ref: '#/components/schemas/Freshness' }
 
     # ── Computable (no freshness) ──
@@ -867,6 +951,74 @@ components:
           items:
             type: object
             description: Per-day combined projection (tide/weather/wind/wave/moon/sun/hijri)
+            properties:
+              date: { type: string, format: date }
+              hijriDate: { type: string }
+              tide: { type: array, items: { $ref: '#/components/schemas/TideDataPoint' } }
+              moon:
+                type: object
+                properties:
+                  phaseName: { type: string }
+                  illumination: { type: number }
+              sun:
+                type: object
+                properties:
+                  sunrise: { type: string, format: date-time }
+                  sunset: { type: string, format: date-time }
+              weather: { $ref: '#/components/schemas/WeatherDataPoint' }
+              windWave: { $ref: '#/components/schemas/WindWaveDataPoint' }
+              operationalStatus: { type: string, enum: [SAFE, CAUTION, DANGER, UNKNOWN] }
+        freshness: { $ref: '#/components/schemas/Freshness' }
+
+    PublicDashboardResponse:
+      type: object
+      properties:
+        date: { type: string, format: date }
+        hijriDate: { type: string }
+        station:
+          type: object
+          properties:
+            id: { type: string }
+            name: { type: string }
+            code: { type: string }
+        tide:
+          type: object
+          properties:
+            next: { $ref: '#/components/schemas/TideDataPoint', nullable: true }
+            freshness: { $ref: '#/components/schemas/Freshness' }
+        weather:
+          type: object
+          properties:
+            current: { $ref: '#/components/schemas/WeatherDataPoint', nullable: true }
+            freshness: { $ref: '#/components/schemas/Freshness' }
+        windWave:
+          type: object
+          properties:
+            current: { $ref: '#/components/schemas/WindWaveDataPoint', nullable: true }
+            freshness: { $ref: '#/components/schemas/Freshness' }
+        moon:
+          type: object
+          properties:
+            phaseName: { type: string }
+            illumination: { type: number }
+        sun:
+          type: object
+          properties:
+            sunrise: { type: string, format: date-time }
+            sunset: { type: string, format: date-time }
+        activeAlerts:
+          type: object
+          properties:
+            count: { type: integer }
+            latest:
+              type: object
+              nullable: true
+              properties:
+                id: { type: string }
+                severity: { type: string, enum: [INFO, WARNING, CRITICAL] }
+                title: { type: string }
+                publishAt: { type: string, format: date-time }
+        operationalStatus: { type: string, enum: [SAFE, CAUTION, DANGER, UNKNOWN] }
 
     # ── Stations ──
     StationPublic:
@@ -1120,6 +1272,7 @@ components:
 
 ## 4. Change log
 
-| Version | Date       | Notes                                       |
-| ------- | ---------- | ------------------------------------------- |
-| 2.0.0   | 2026-07-31 | Initial Hub OpenAPI 3.1 contract (ADR-0011) |
+| Version | Date       | Notes                                           |
+| ------- | ---------- | ----------------------------------------------- |
+| 2.1.0   | 2026-08-05 | Sprint 3.0: Add `/wind-wave`, `/dashboard` (public); expand DTOs (TideDataPoint, WeatherDataPoint, WindWaveDataPoint, PublicDashboardResponse, CalendarDayEntry); add 503 ProviderUnavailable response |
+| 2.0.0   | 2026-07-31 | Initial Hub OpenAPI 3.1 contract (ADR-0011)     |
