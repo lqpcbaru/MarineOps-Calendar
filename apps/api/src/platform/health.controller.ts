@@ -1,6 +1,8 @@
 import { Controller, Get } from '@nestjs/common';
 import { LoggingService } from './logging.service';
+import { Public } from '../modules/authentication/api/public.decorator';
 
+@Public()
 @Controller('health')
 export class HealthController {
   private readonly logger = new LoggingService('HealthController');

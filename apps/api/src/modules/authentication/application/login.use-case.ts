@@ -1,21 +1,30 @@
-import { DomainError, createId } from '../../../shared-kernel';
+import { Inject, Injectable } from '@nestjs/common';
+import { createId } from '../../../shared-kernel';
 import { type DomainId } from '../../../shared-kernel';
 import {
   InvalidCredentialsError,
   UserDisabledError,
+  RefreshToken,
   type DomainEventBus,
-  type RefreshToken,
 } from '../domain';
-import {
-  type Clock,
-  type LoginCommand,
-  type LoginResult,
-  type PasswordHasher,
-  type RefreshTokenRepository,
-  type TokenService,
-  type UserIdentityProvider,
+import type {
+  Clock,
+  LoginCommand,
+  LoginResult,
+  PasswordHasher,
+  RefreshTokenRepository,
+  TokenService,
+  UserIdentityProvider,
 } from './contracts';
 import { loginCommandSchema } from './dtos';
+import {
+  CLOCK,
+  DOMAIN_EVENT_BUS,
+  PASSWORD_HASHER,
+  REFRESH_TOKEN_REPOSITORY,
+  TOKEN_SERVICE,
+  USER_IDENTITY_PROVIDER,
+} from './di-tokens';
 
 /**
  * FR-AUTH-001 — authenticate with email and password.
@@ -27,14 +36,16 @@ import { loginCommandSchema } from './dtos';
  * 4. Mint access JWT (15-min) + opaque refresh token (7-day).
  * 5. Persist refresh token HASH; emit UserLoggedIn event.
  */
+@Injectable()
 export class LoginUseCase {
   constructor(
-    private readonly users: UserIdentityProvider,
-    private readonly hasher: PasswordHasher,
-    private readonly tokens: TokenService,
+    @Inject(USER_IDENTITY_PROVIDER) private readonly users: UserIdentityProvider,
+    @Inject(PASSWORD_HASHER) private readonly hasher: PasswordHasher,
+    @Inject(TOKEN_SERVICE) private readonly tokens: TokenService,
+    @Inject(REFRESH_TOKEN_REPOSITORY)
     private readonly refreshRepo: RefreshTokenRepository,
-    private readonly events: DomainEventBus,
-    private readonly clock: Clock,
+    @Inject(DOMAIN_EVENT_BUS) private readonly events: DomainEventBus,
+    @Inject(CLOCK) private readonly clock: Clock,
   ) {}
 
   async execute(command: LoginCommand): Promise<LoginResult> {
@@ -89,5 +100,3 @@ export class LoginUseCase {
     };
   }
 }
-
-export { DomainError };

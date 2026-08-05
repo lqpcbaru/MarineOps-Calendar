@@ -26,10 +26,10 @@ export class AuthorizeUseCase {
 
   /** Require ANY of the given permission codes. */
   requireAny(principal: AuthPrincipal | null, anyOf: string[]): void {
+    if (anyOf.length === 0) return;
     if (!principal) {
       throw new ForbiddenError(anyOf.join(','));
     }
-    if (anyOf.length === 0) return;
     const held = new Set(principal.permissionCodes);
     const ok = anyOf.some((code) => held.has(code));
     if (!ok) {

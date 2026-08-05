@@ -1,28 +1,36 @@
+import { Inject, Injectable } from '@nestjs/common';
 import { createId } from '../../../shared-kernel';
 import { type DomainId } from '../../../shared-kernel';
 import {
+  RefreshToken,
   RefreshTokenExpiredError,
   RefreshTokenNotFoundError,
   RefreshTokenReusedError,
   type DomainEventBus,
-  type RefreshToken,
 } from '../domain';
-import {
-  type Clock,
-  type RefreshCommand,
-  type RefreshResult,
-  type RefreshTokenRepository,
-  type TokenService,
-  type UserIdentityProvider,
+import type {
+  Clock,
+  RefreshCommand,
+  RefreshResult,
+  RefreshTokenRepository,
+  TokenService,
+  UserIdentityProvider,
 } from './contracts';
 import { refreshCommandSchema } from './dtos';
+import {
+  CLOCK,
+  DOMAIN_EVENT_BUS,
+  REFRESH_TOKEN_REPOSITORY,
+  TOKEN_SERVICE,
+  USER_IDENTITY_PROVIDER,
+} from './di-tokens';
 
 /**
  * FR-AUTH-004 / FR-AUTH-005 — refresh access token with rotation.
  *
  * Rotation + theft detection (ADR-0010 §1):
  * 1. Hash the presented refresh token; load the matching record.
- * 2. If no record → REFRESH_NOT_FOUND (treat as suspicious; do nothing more).
+ * 2. If no record → REFRESH_NOT_FOUND.
  * 3. If record is revoked/replaced → REUSE_DETECTED → revoke entire family.
  * 4. If expired → REFRESH_EXPIRED.
  * 5. Otherwise: revoke this token, mint a NEW refresh token in the SAME family,
@@ -32,13 +40,15 @@ import { refreshCommandSchema } from './dtos';
  * stays traceable. Any future reuse of a revoked token in the chain invalidates
  * the whole family.
  */
+@Injectable()
 export class RefreshUseCase {
   constructor(
-    private readonly users: UserIdentityProvider,
-    private readonly tokens: TokenService,
+    @Inject(USER_IDENTITY_PROVIDER) private readonly users: UserIdentityProvider,
+    @Inject(TOKEN_SERVICE) private readonly tokens: TokenService,
+    @Inject(REFRESH_TOKEN_REPOSITORY)
     private readonly refreshRepo: RefreshTokenRepository,
-    private readonly events: DomainEventBus,
-    private readonly clock: Clock,
+    @Inject(DOMAIN_EVENT_BUS) private readonly events: DomainEventBus,
+    @Inject(CLOCK) private readonly clock: Clock,
   ) {}
 
   async execute(command: RefreshCommand): Promise<RefreshResult> {
@@ -111,16 +121,9 @@ export class RefreshUseCase {
 
   /**
    * If the user no longer exists or is disabled, the refresh token is no longer
-   * valid → revoke the family and surface as expired/not-found.
+   * valid → revoke the family and surface as expired.
    */
-  private async findUserOrInvalidate(
-    userId: string,
-    familyId: string,
-    now: Date,
-  ) {
-    // The identity provider must support lookup by id for refresh; we reuse
-    // findByEmail semantics by extending the contract via a throw on missing.
-    // Here we use an explicit cast-free lookup through a helper.
+  private async findUserOrInvalidate(userId: string, familyId: string, now: Date) {
     const record = await this.users.findById(userId);
     if (!record || record.status === 'DISABLED') {
       await this.refreshRepo.revokeFamily(familyId, now);

@@ -1,26 +1,22 @@
-import {
-  RefreshTokenNotFoundError,
-  type DomainEventBus,
-} from '../domain';
-import {
-  type Clock,
-  type LogoutCommand,
-  type RefreshTokenRepository,
-  type TokenService,
-} from './contracts';
+import { Inject, Injectable } from '@nestjs/common';
+import { type DomainEventBus } from '../domain';
+import type { Clock, LogoutCommand, RefreshTokenRepository, TokenService } from './contracts';
 import { logoutCommandSchema } from './dtos';
+import { CLOCK, DOMAIN_EVENT_BUS, REFRESH_TOKEN_REPOSITORY, TOKEN_SERVICE } from './di-tokens';
 
 /**
  * FR-AUTH-003 — logout invalidates the refresh token and (via controller)
  * clears the httpOnly cookie. The access token expires naturally within its
  * short TTL window (ADR-0010 §2).
  */
+@Injectable()
 export class LogoutUseCase {
   constructor(
-    private readonly tokens: TokenService,
+    @Inject(TOKEN_SERVICE) private readonly tokens: TokenService,
+    @Inject(REFRESH_TOKEN_REPOSITORY)
     private readonly refreshRepo: RefreshTokenRepository,
-    private readonly events: DomainEventBus,
-    private readonly clock: Clock,
+    @Inject(DOMAIN_EVENT_BUS) private readonly events: DomainEventBus,
+    @Inject(CLOCK) private readonly clock: Clock,
   ) {}
 
   async execute(command: LogoutCommand): Promise<void> {
@@ -50,5 +46,3 @@ export class LogoutUseCase {
     }
   }
 }
-
-export { RefreshTokenNotFoundError };
