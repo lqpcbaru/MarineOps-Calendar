@@ -11,6 +11,7 @@ import { DashboardModule } from './modules/dashboard/api/dashboard.module';
 import { WeatherModule } from './modules/weather/api/weather.module';
 import { TideModule } from './modules/tide/api/tide.module';
 import { WindWaveModule } from './modules/wind-wave/api/wind-wave.module';
+import { MoonModule } from './modules/moon/api/moon.module';
 import { AuthController } from './api/admin/auth.controller';
 import { UsersController } from './api/admin/users.controller';
 import { RolesController } from './api/admin/roles.controller';
@@ -19,6 +20,7 @@ import { PublicDashboardController } from './api/public/public-dashboard.control
 import { PublicWeatherController } from './api/public/public-weather.controller';
 import { PublicTideController } from './api/public/public-tide.controller';
 import { PublicWindWaveController } from './api/public/public-wind-wave.controller';
+import { PublicMoonController } from './api/public/public-moon.controller';
 import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { DomainExceptionFilter } from './platform/domain-exception.filter';
 import { JwtAuthGuard } from './modules/authentication/api/jwt-auth.guard';
@@ -37,6 +39,7 @@ import { JwtAuthGuard } from './modules/authentication/api/jwt-auth.guard';
     WeatherModule,
     TideModule,
     WindWaveModule,
+    MoonModule,
   ],
   controllers: [
     AuthController,
@@ -47,6 +50,7 @@ import { JwtAuthGuard } from './modules/authentication/api/jwt-auth.guard';
     PublicWeatherController,
     PublicTideController,
     PublicWindWaveController,
+    PublicMoonController,
   ],
   providers: [
     { provide: APP_FILTER, useClass: DomainExceptionFilter },
