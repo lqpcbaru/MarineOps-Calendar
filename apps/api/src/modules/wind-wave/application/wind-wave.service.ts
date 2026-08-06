@@ -1,6 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { WindWaveResponse, Freshness } from '../domain';
 import type { WindWaveProviderPort } from '../domain';
+import { validateDateString } from '../../../shared-kernel/date-validation';
 
 export const WIND_WAVE_PROVIDER = 'WIND_WAVE_PROVIDER';
 
@@ -16,8 +17,8 @@ export class WindWaveService {
     dateTo?: string,
   ): Promise<WindWaveResponse> {
     const now = new Date();
-    const from = dateFrom || now.toISOString().slice(0, 10);
-    const to = dateTo || from;
+    const from = validateDateString(dateFrom, 'dateFrom');
+    const to = validateDateString(dateTo || from, 'dateTo');
 
     const data = await this.provider.getWindWave(stationId, from, to);
 

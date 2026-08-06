@@ -1,6 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { TideResponse, Freshness } from '../domain';
 import type { TideProviderPort } from '../domain';
+import { validateDateString } from '../../../shared-kernel/date-validation';
 
 export const TIDE_PROVIDER = 'TIDE_PROVIDER';
 
@@ -12,8 +13,8 @@ export class TideService {
 
   async getTide(stationId: string, dateFrom?: string, dateTo?: string): Promise<TideResponse> {
     const now = new Date();
-    const from = dateFrom || now.toISOString().slice(0, 10);
-    const to = dateTo || from;
+    const from = validateDateString(dateFrom, 'dateFrom');
+    const to = validateDateString(dateTo || from, 'dateTo');
 
     const data = await this.provider.getTide(stationId, from, to);
 

@@ -1,6 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { SunResponse } from '../domain';
 import type { SunProviderPort } from '../domain';
+import { validateDateString } from '../../../shared-kernel/date-validation';
 
 export const SUN_PROVIDER = 'SUN_PROVIDER';
 
@@ -11,7 +12,7 @@ export class SunService {
   ) {}
 
   async getSunData(stationId: string, date?: string): Promise<SunResponse> {
-    const targetDate = date || new Date().toISOString().slice(0, 10);
+    const targetDate = validateDateString(date, 'date');
     const data = await this.provider.getSunData(stationId, targetDate);
     return { data };
   }

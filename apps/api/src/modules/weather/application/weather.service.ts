@@ -1,6 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { WeatherResponse, Freshness } from '../domain';
 import type { WeatherProviderPort } from '../domain';
+import { validateDateString } from '../../../shared-kernel/date-validation';
 
 export const WEATHER_PROVIDER = 'WEATHER_PROVIDER';
 
@@ -16,8 +17,8 @@ export class WeatherService {
     dateTo?: string,
   ): Promise<WeatherResponse> {
     const now = new Date();
-    const from = dateFrom || now.toISOString().slice(0, 10);
-    const to = dateTo || from;
+    const from = validateDateString(dateFrom, 'dateFrom');
+    const to = validateDateString(dateTo || from, 'dateTo');
 
     const data = await this.provider.getForecast(stationId, from, to);
 

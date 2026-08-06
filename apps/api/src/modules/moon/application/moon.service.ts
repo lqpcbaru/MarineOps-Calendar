@@ -1,6 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { MoonResponse } from '../domain';
 import type { MoonProviderPort } from '../domain';
+import { validateDateString } from '../../../shared-kernel/date-validation';
 
 export const MOON_PROVIDER = 'MOON_PROVIDER';
 
@@ -11,7 +12,7 @@ export class MoonService {
   ) {}
 
   async getMoonPhase(stationId: string, date?: string): Promise<MoonResponse> {
-    const targetDate = date || new Date().toISOString().slice(0, 10);
+    const targetDate = validateDateString(date, 'date');
     const data = await this.provider.getMoonPhase(stationId, targetDate);
     return { data };
   }

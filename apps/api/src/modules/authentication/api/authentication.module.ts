@@ -55,7 +55,13 @@ import {
     },
     {
       provide: JWT_ACCESS_SECRET,
-      useFactory: () => process.env['JWT_ACCESS_SECRET'] || 'change-me',
+      useFactory: () => {
+        const secret = process.env['JWT_ACCESS_SECRET'];
+        if (!secret) {
+          throw new Error('JWT_ACCESS_SECRET environment variable is required');
+        }
+        return secret;
+      },
     },
     {
       provide: JWT_REFRESH_TTL_DAYS,
