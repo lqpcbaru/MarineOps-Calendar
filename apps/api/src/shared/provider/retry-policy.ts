@@ -1,4 +1,6 @@
 import { isRetryableError } from './provider-error';
+import type { ProviderMetrics } from './provider-metrics';
+import type { ProviderLogger } from './provider-logger';
 
 export interface RetryPolicyConfig {
   maxRetries: number;
@@ -8,8 +10,14 @@ export interface RetryPolicyConfig {
 export class RetryPolicy {
   constructor(private readonly config: RetryPolicyConfig) {}
 
-  async execute<T>(fn: () => Promise<T>, _providerName: string): Promise<T> {
+  async execute<T>(
+    fn: () => Promise<T>,
+    providerName: string,
+    logger?: ProviderLogger,
+    metrics?: ProviderMetrics,
+  ): Promise<T> {
     let lastError: Error | null = null;
+    let retries = 0;
 
     for (let attempt = 1; attempt <= this.config.maxRetries; attempt++) {
       try {
@@ -22,12 +30,15 @@ export class RetryPolicy {
         }
 
         if (attempt < this.config.maxRetries) {
+          retries++;
           const delay = this.calculateDelay(attempt);
+          logger?.requestRetry(providerName, attempt, lastError.message);
           await this.sleep(delay);
         }
       }
     }
 
+    metrics?.recordRetries(retries);
     throw lastError!;
   }
 

@@ -9,8 +9,6 @@ import {
   ProviderMetrics,
   ProviderHealth,
   createProviderConfig,
-  ProviderAuthenticationError,
-  ProviderRateLimitError,
   ProviderInvalidResponseError,
 } from '../../../../shared/provider';
 import { PROVIDER_MAPPING_PORT } from '../../../stations/api/stations.module';
@@ -58,7 +56,7 @@ export class MetMalaysiaWeatherProvider implements WeatherProviderPort {
           throw new ProviderInvalidResponseError('MetMalaysia', 'missing data array');
         }
         return response;
-      }, 'MetMalaysia');
+      }, 'MetMalaysia', this.logger, this.metrics);
 
       const points = mapForecastItems(data.data);
       const result = points[0] || this.emptyPoint();
@@ -88,7 +86,7 @@ export class MetMalaysiaWeatherProvider implements WeatherProviderPort {
           throw new ProviderInvalidResponseError('MetMalaysia', 'missing data array');
         }
         return response;
-      }, 'MetMalaysia');
+      }, 'MetMalaysia', this.logger, this.metrics);
 
       const points = mapForecastItems(data.data);
 
@@ -117,15 +115,6 @@ export class MetMalaysiaWeatherProvider implements WeatherProviderPort {
   }
 
   private classifyError(error: unknown): Error {
-    if (error instanceof Error) {
-      const msg = error.message;
-      if (msg.includes('401') || msg.includes('403')) {
-        return new ProviderAuthenticationError('MetMalaysia', msg.includes('401') ? 401 : 403);
-      }
-      if (msg.includes('429')) {
-        return new ProviderRateLimitError('MetMalaysia');
-      }
-    }
     if (error instanceof Error) return error;
     return new Error(String(error));
   }

@@ -1,5 +1,11 @@
 import type { ProviderConfig } from './provider-config';
-import { ProviderTimeoutError, ProviderServerError } from './provider-error';
+import {
+  ProviderTimeoutError,
+  ProviderServerError,
+  ProviderAuthenticationError,
+  ProviderRateLimitError,
+  ProviderConfigurationError,
+} from './provider-error';
 
 export class ProviderHttpClient {
   constructor(private readonly config: ProviderConfig) {}
@@ -21,16 +27,26 @@ export class ProviderHttpClient {
         signal: controller.signal,
       });
 
-      if (response.status >= 500) {
-        throw new ProviderServerError(this.config.providerName, response.status);
+      if (response.ok) {
+        return response.json() as Promise<T>;
       }
 
-      if (!response.ok) {
-        void await response.text().catch(() => '');
-        throw new ProviderServerError(this.config.providerName, response.status);
-      }
+      void await response.text().catch(() => '');
 
-      return response.json() as Promise<T>;
+      switch (response.status) {
+        case 401:
+        case 403:
+          throw new ProviderAuthenticationError(this.config.providerName, response.status);
+        case 404:
+          throw new ProviderServerError(this.config.providerName, 404);
+        case 429:
+          throw new ProviderRateLimitError(this.config.providerName);
+        default:
+          if (response.status >= 500) {
+            throw new ProviderServerError(this.config.providerName, response.status);
+          }
+          throw new ProviderServerError(this.config.providerName, response.status);
+      }
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') {
         throw new ProviderTimeoutError(this.config.providerName, this.config.timeoutMs);
@@ -54,7 +70,7 @@ export class ProviderHttpClient {
   private resolveApiKey(): string | null {
     const key = process.env[this.config.apiKeyEnvVar];
     if (!key) {
-      throw new Error(`API key '${this.config.apiKeyEnvVar}' tidak dijumpai dalam environment`);
+      throw new ProviderConfigurationError(this.config.providerName, `API key '${this.config.apiKeyEnvVar}' tidak dijumpai dalam environment`);
     }
     return key;
   }
