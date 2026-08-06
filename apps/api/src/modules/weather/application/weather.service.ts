@@ -31,4 +31,9 @@ export class WeatherService {
 
     return { data, freshness };
   }
+
+  async refreshStation(stationId: string): Promise<void> {
+    const today = new Date().toISOString().slice(0, 10);
+    await this.getWeather(stationId, today, today);
+  }
 }
