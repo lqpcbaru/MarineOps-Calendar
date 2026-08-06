@@ -42,6 +42,25 @@ export class GetStationUseCase {
   }
 
   async listRegions(): Promise<OperationRegionRecord[]> {
-    return this.regionRepo.findAllActive();
+    const regions = await this.regionRepo.findAllActive();
+    return this.buildRegionTree(regions);
+  }
+
+  buildRegionTree(regions: OperationRegionRecord[]): OperationRegionRecord[] {
+    const map = new Map<string, OperationRegionRecord>();
+    for (const r of regions) {
+      map.set(r.id, { ...r, children: [] });
+    }
+    const roots: OperationRegionRecord[] = [];
+    for (const r of map.values()) {
+      if (r.parentRegionId && map.has(r.parentRegionId)) {
+        const parent = map.get(r.parentRegionId)!;
+        parent.children = parent.children || [];
+        parent.children!.push(r);
+      } else {
+        roots.push(r);
+      }
+    }
+    return roots;
   }
 }

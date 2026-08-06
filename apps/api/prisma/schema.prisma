@@ -162,6 +162,7 @@ model StationProviderMapping {
 
   station Station @relation(fields: [stationId], references: [id], onDelete: Cascade)
 
+  @@unique([stationId, dataType])
   @@index([stationId, dataType])
   @@map("station_provider_mappings")
 }
