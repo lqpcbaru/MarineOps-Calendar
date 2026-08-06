@@ -93,3 +93,75 @@ model RefreshToken {
   @@index([familyId])
   @@map("refresh_token")
 }
+
+// ── Stations module (owned by Stations) ─────────────────────────
+// Per ADR-0012: single source of truth for operational locations.
+// Soft-delete via status ARCHIVED. Region hierarchy is operational.
+
+model OperationRegion {
+  id             String            @id @default(uuid())
+  code           String            @unique
+  name           String
+  description    String?
+  parentRegionId String?           @map("parent_region_id")
+  status         RegionStatus      @default(ACTIVE)
+  sortOrder      Int               @default(0) @map("sort_order")
+  createdAt      DateTime          @default(now()) @map("created_at")
+  updatedAt      DateTime          @updatedAt @map("updated_at")
+
+  parent   OperationRegion?  @relation("RegionHierarchy", fields: [parentRegionId], references: [id])
+  children OperationRegion[] @relation("RegionHierarchy")
+  stations Station[]
+
+  @@index([parentRegionId])
+  @@index([status])
+  @@map("operation_regions")
+}
+
+enum RegionStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+model Station {
+  id        String        @id @default(uuid())
+  code      String        @unique
+  name      String
+  latitude  Decimal       @db.Decimal(9, 6)
+  longitude Decimal       @db.Decimal(9, 6)
+  timezone  String
+  regionId  String?       @map("region_id")
+  status    StationStatus @default(ACTIVE)
+  metadata  Json?
+  createdAt DateTime      @default(now()) @map("created_at")
+  updatedAt DateTime      @updatedAt @map("updated_at")
+
+  region            OperationRegion?            @relation(fields: [regionId], references: [id])
+  providerMappings  StationProviderMapping[]
+
+  @@index([regionId])
+  @@index([status])
+  @@map("stations")
+}
+
+enum StationStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+model StationProviderMapping {
+  id                String   @id @default(uuid())
+  stationId         String   @map("station_id")
+  dataType          String   @map("data_type")
+  providerName      String   @map("provider_name")
+  providerStationId String?  @map("provider_station_id")
+  config            Json?
+  isActive          Boolean  @default(true) @map("is_active")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  station Station @relation(fields: [stationId], references: [id], onDelete: Cascade)
+
+  @@index([stationId, dataType])
+  @@map("station_provider_mappings")
+}

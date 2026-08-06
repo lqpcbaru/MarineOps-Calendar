@@ -53,12 +53,18 @@ export class DomainExceptionFilter implements ExceptionFilter {
       case 'NOT_FOUND':
       case 'USER_NOT_FOUND':
       case 'ROLE_NOT_FOUND':
+      case 'STATION_NOT_FOUND':
+      case 'REGION_NOT_FOUND':
         return HttpStatus.NOT_FOUND;
       case 'USER_EMAIL_EXISTS':
       case 'ROLE_NAME_EXISTS':
       case 'ROLE_HAS_USERS':
       case 'USER_STATUS_ERROR':
+      case 'STATION_CODE_EXISTS':
+      case 'REGION_CODE_EXISTS':
         return HttpStatus.CONFLICT;
+      case 'STATION_ARCHIVED':
+        return HttpStatus.BAD_REQUEST;
       case 'AUTH_INVALID_CREDENTIALS':
       case 'AUTH_UNAUTHORIZED':
       case 'AUTH_REFRESH_NOT_FOUND':
