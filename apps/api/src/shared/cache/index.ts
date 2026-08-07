@@ -9,6 +9,7 @@ export type { CacheMetricsState } from './cache-metrics';
 export { CacheService } from './cache.service';
 export type { CacheResult } from './cache.service';
 export { InMemoryCacheStore } from './in-memory-cache.store';
+export { RedisCacheStore } from './redis-cache.store';
 
 export const CACHE_STORE = 'CACHE_STORE';
 export const CACHE_POLICY = 'CACHE_POLICY';

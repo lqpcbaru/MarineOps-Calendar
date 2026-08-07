@@ -19,6 +19,51 @@ services:
       timeout: 5s
       retries: 5
 
+  redis:
+    image: redis:7-alpine
+    container_name: marineops-redis
+    restart: unless-stopped
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ../..
+      dockerfile: apps/api/Dockerfile
+    container_name: marineops-api
+    restart: unless-stopped
+    ports:
+      - '3000:3000'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      APP_NAME: MarineOps
+      APP_URL: http://localhost:3000
+      DATABASE_URL: postgresql://marineops:changeme@postgres:5432/marineops_dev
+      REDIS_URL: redis://redis:6379
+      REDIS_ENABLED: 'true'
+      JWT_ACCESS_SECRET: change-me-in-production
+      JWT_REFRESH_SECRET: change-me-in-production
+      JWT_ACCESS_TTL_MINUTES: '15'
+      JWT_REFRESH_TTL_DAYS: '7'
+      LOG_LEVEL: info
+      LOG_FORMAT: json
+      RATE_LIMIT_MAX: '100'
+
 volumes:
   postgres_data:
+    driver: local
+  redis_data:
     driver: local

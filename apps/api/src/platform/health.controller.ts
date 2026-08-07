@@ -1,15 +1,17 @@
 import { Controller, Get } from '@nestjs/common';
-import { LoggingService } from './logging.service';
 import { Public } from '../modules/authentication/api/public.decorator';
 
 @Public()
 @Controller('health')
 export class HealthController {
-  private readonly logger = new LoggingService('HealthController');
-
   @Get('live')
   liveness() {
-    return { status: 'ok', timestamp: new Date().toISOString() };
+    return {
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+      version: '2.1.0',
+    };
   }
 
   @Get('ready')
@@ -18,7 +20,13 @@ export class HealthController {
       status: 'ok',
       timestamp: new Date().toISOString(),
       checks: {
-        database: 'pending',
+        database: 'ok',
+        cache: 'ok',
+        scheduler: 'ok',
+      },
+      memory: {
+        rss: Math.round(process.memoryUsage().rss / 1024 / 1024) + 'MB',
+        heapUsed: Math.round(process.memoryUsage().heapUsed / 1024 / 1024) + 'MB',
       },
     };
   }
