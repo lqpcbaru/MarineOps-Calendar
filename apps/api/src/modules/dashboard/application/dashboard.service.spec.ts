@@ -1,141 +1,78 @@
 import { describe, expect, it } from 'vitest';
 import { DashboardService } from './dashboard.service';
-import type { WeatherService } from '../../weather/application/weather.service';
-import type { TideService } from '../../tide/application/tide.service';
-import type { WindWaveService } from '../../wind-wave/application/wind-wave.service';
-import type { MoonService } from '../../moon/application/moon.service';
-import type { SunService } from '../../sun/application/sun.service';
-
-function createMockWeather(): WeatherService {
-  return {
-    getWeather: async () => ({
-      data: [{ date: '2026-08-05', temperature: 0, conditions: '—', visibility: 0, precipitation: 0 }],
-      freshness: { status: 'fresh', fetchedAt: '', validUntil: '', source: 'mock' },
-    }),
-  } as unknown as WeatherService;
-}
-
-function createMockTide(): TideService {
-  return {
-    getTide: async () => ({
-      data: [{ date: '2026-08-05', time: '2026-08-05T06:00:00Z', height: 0, type: 'HIGH' }],
-      freshness: { status: 'fresh', fetchedAt: '', validUntil: '', source: 'mock' },
-    }),
-  } as unknown as TideService;
-}
-
-function createMockWindWave(): WindWaveService {
-  return {
-    getWindWave: async () => ({
-      data: [{ date: '2026-08-05', windSpeed: 0, windDirection: '—', windGusts: 0, waveHeight: 0, wavePeriod: 0 }],
-      freshness: { status: 'fresh', fetchedAt: '', validUntil: '', source: 'mock' },
-    }),
-  } as unknown as WindWaveService;
-}
-
-function createMockMoon(): MoonService {
-  return {
-    getMoonPhase: async () => ({
-      data: { date: '2026-08-05', phaseName: '—', illumination: 0, ageDays: 0, moonrise: null, moonset: null },
-    }),
-  } as unknown as MoonService;
-}
-
-function createMockSun(): SunService {
-  return {
-    getSunData: async () => ({
-      data: { date: '2026-08-05', sunrise: '—', sunset: '—', solarNoon: '—', daylightDuration: '—' },
-    }),
-  } as unknown as SunService;
-}
+import type { OperationalCalendarService } from '../../operational-calendar/application/operational-calendar.service';
+import type { RecommendationService } from '../../recommendation/application/recommendation.service';
 
 describe('DashboardService', () => {
-  it('orchestrates data from all dependent services', async () => {
-    const service = new DashboardService(
-      createMockWeather(),
-      createMockTide(),
-      createMockWindWave(),
-      createMockMoon(),
-      createMockSun(),
-    );
+  function createService() {
+    const calendarService = {
+      async getCalendar() {
+        return {
+          data: [{
+            stationId: 'st-001', stationName: 'Pelabuhan Klang', stationCode: 'PKG-01', regionName: 'Selangor',
+            date: '2026-08-06', hijriDate: '—',
+            weather: { conditions: 'Cerah', temperature: 30, visibility: 10, precipitation: 0 },
+            tide: { nextHigh: { time: '06:30', height: 2.5 }, nextLow: { time: '12:45', height: 0.8 }, type: 'HIGH' },
+            windWave: { windSpeed: 10, windDirection: 'SW', windGusts: 15, waveHeight: 1.0, wavePeriod: 6 },
+            moon: { phaseName: 'Bulan Penuh', illumination: 100, moonrise: '18:30', moonset: '06:00' },
+            sun: { sunrise: '06:30', sunset: '18:45', dayLength: 'PT12H15M' },
+            freshness: { status: 'fresh', fetchedAt: '', validUntil: '', source: '' },
+            generatedAt: '',
+          }],
+          freshness: { status: 'fresh', fetchedAt: '', validUntil: '', source: '' },
+        };
+      },
+    } as unknown as OperationalCalendarService;
 
-    const result = await service.getPublicDashboard();
+    const recommendationService = {
+      async getRecommendation() {
+        return {
+          data: [{
+            stationId: 'st-001', stationName: 'Pelabuhan Klang', date: '2026-08-06',
+            overallStatus: 'SAFE' as const, overallScore: 85,
+            recommendation: 'Keadaan sesuai untuk operasi laut.',
+            warnings: [], advisories: ['Angin sederhana'],
+            ruleResults: [], generatedAt: '',
+          }],
+          generatedAt: '',
+        };
+      },
+    } as unknown as RecommendationService;
 
+    return new DashboardService(calendarService, recommendationService);
+  }
+
+  it('merges calendar and recommendation into dashboard', async () => {
+    const svc = createService();
+    const result = await svc.getPublicDashboard('st-001');
+    expect(result.station.name).toBe('Pelabuhan Klang');
+    expect(result.station.code).toBe('PKG-01');
+    expect(result.operationalStatus).toBe('SAFE');
+    expect(result.overallScore).toBe(85);
+    expect(result.weather!.conditions).toBe('Cerah');
+    expect(result.wind!.speed).toBe(10);
+    expect(result.wave!.height).toBe(1.0);
+    expect(result.moon!.phaseName).toBe('Bulan Penuh');
+    expect(result.sun!.sunrise).toBe('06:30');
+    expect(result.advisories).toHaveLength(1);
+  });
+
+  it('handles missing calendar data', async () => {
+    const calendarService = {
+      async getCalendar() { return { data: [], freshness: { status: 'fresh', fetchedAt: '', validUntil: '', source: '' } }; },
+    } as unknown as OperationalCalendarService;
+    const recommendationService = {
+      async getRecommendation() { return { data: [], generatedAt: '' }; },
+    } as unknown as RecommendationService;
+    const svc = new DashboardService(calendarService, recommendationService);
+    const result = await svc.getPublicDashboard('st-001');
     expect(result.operationalStatus).toBe('UNKNOWN');
-    expect(result.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-    expect(result.tide.next).toBeDefined();
-    expect(result.weather.current).toBeDefined();
-    expect(result.windWave.current).toBeDefined();
-    expect(result.moon.phaseName).toBe('—');
-    expect(result.sun.sunrise).toBe('—');
-    expect(result.activeAlerts.count).toBe(0);
+    expect(result.weather).toBeNull();
   });
 
-  it('passes optional stationId to all services', async () => {
-    let capturedStationId = '';
-    const service = new DashboardService(
-      createMockWeather(),
-      createMockTide(),
-      createMockWindWave(),
-      createMockMoon(),
-      {
-        getSunData: async (stationId: string) => {
-          capturedStationId = stationId;
-          return { data: { date: '', sunrise: '', sunset: '', solarNoon: '', daylightDuration: '' } };
-        },
-      } as unknown as SunService,
-    );
-
-    await service.getPublicDashboard('st-001');
-    expect(capturedStationId).toBe('st-001');
-  });
-
-  it('defaults stationId to — when omitted', async () => {
-    let capturedStationId = '';
-    const service = new DashboardService(
-      createMockWeather(),
-      createMockTide(),
-      createMockWindWave(),
-      createMockMoon(),
-      {
-        getSunData: async (stationId: string) => {
-          capturedStationId = stationId;
-          return { data: { date: '', sunrise: '', sunset: '', solarNoon: '', daylightDuration: '' } };
-        },
-      } as unknown as SunService,
-    );
-
-    await service.getPublicDashboard();
-    expect(capturedStationId).toBe('—');
-  });
-
-  it('calls all five services in parallel', async () => {
-    const calls: string[] = [];
-
-    const mockWeather = {
-      getWeather: async () => { calls.push('weather'); return { data: [], freshness: { status: 'fresh' as const, fetchedAt: '', validUntil: '', source: '' } }; },
-    } as unknown as WeatherService;
-    const mockTide = {
-      getTide: async () => { calls.push('tide'); return { data: [], freshness: { status: 'fresh' as const, fetchedAt: '', validUntil: '', source: '' } }; },
-    } as unknown as TideService;
-    const mockWindWave = {
-      getWindWave: async () => { calls.push('windWave'); return { data: [], freshness: { status: 'fresh' as const, fetchedAt: '', validUntil: '', source: '' } }; },
-    } as unknown as WindWaveService;
-    const mockMoon = {
-      getMoonPhase: async () => { calls.push('moon'); return { data: { date: '', phaseName: '', illumination: 0, ageDays: 0, moonrise: null, moonset: null } }; },
-    } as unknown as MoonService;
-    const mockSun = {
-      getSunData: async () => { calls.push('sun'); return { data: { date: '', sunrise: '', sunset: '', solarNoon: '', daylightDuration: '' } }; },
-    } as unknown as SunService;
-
-    const service = new DashboardService(mockWeather, mockTide, mockWindWave, mockMoon, mockSun);
-    await service.getPublicDashboard();
-
-    expect(calls).toHaveLength(5);
-    expect(calls).toContain('weather');
-    expect(calls).toContain('tide');
-    expect(calls).toContain('windWave');
-    expect(calls).toContain('moon');
-    expect(calls).toContain('sun');
+  it('defaults stationId to —', async () => {
+    const svc = createService();
+    const result = await svc.getPublicDashboard();
+    expect(result.station.id).toBe('—');
   });
 });
