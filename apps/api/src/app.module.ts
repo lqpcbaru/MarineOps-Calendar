@@ -16,6 +16,7 @@ import { SunModule } from './modules/sun/api/sun.module';
 import { StationsModule } from './modules/stations/api/stations.module';
 import { OperationalCalendarModule } from './modules/operational-calendar/api/operational-calendar.module';
 import { RecommendationModule } from './modules/recommendation/api/recommendation.module';
+import { AisModule } from './modules/ais/api/ais.module';
 import { AuthController } from './api/admin/auth.controller';
 import { UsersController } from './api/admin/users.controller';
 import { RolesController } from './api/admin/roles.controller';
@@ -30,6 +31,7 @@ import { PublicStationsController } from './api/public/public-stations.controlle
 import { AdminStationsController } from './api/admin/admin-stations.controller';
 import { PublicCalendarController } from './api/public/public-calendar.controller';
 import { PublicRecommendationController } from './api/public/public-recommendation.controller';
+import { PublicAisController } from './api/public/public-ais.controller';
 import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { DomainExceptionFilter } from './platform/domain-exception.filter';
 import { JwtAuthGuard } from './modules/authentication/api/jwt-auth.guard';
@@ -53,6 +55,7 @@ import { JwtAuthGuard } from './modules/authentication/api/jwt-auth.guard';
     StationsModule,
     OperationalCalendarModule,
     RecommendationModule,
+    AisModule,
   ],
   controllers: [
     AuthController,
@@ -69,6 +72,7 @@ import { JwtAuthGuard } from './modules/authentication/api/jwt-auth.guard';
     AdminStationsController,
     PublicCalendarController,
     PublicRecommendationController,
+    PublicAisController,
   ],
   providers: [
     { provide: APP_FILTER, useClass: DomainExceptionFilter },
