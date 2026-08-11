@@ -34,3 +34,8 @@ docker-compose.override.yml
 # ── Prisma ────────────────────────────────────
 .prisma/
 # prisma/*.db   # Uncomment if using SQLite for dev
+
+
+.env
+.env.local
+.env.*.local
