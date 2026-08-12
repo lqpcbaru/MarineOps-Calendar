@@ -22,6 +22,7 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: pnpm }
       - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @marineops/api exec prisma generate
       - run: pnpm run lint
       - run: pnpm run typecheck
 
@@ -44,6 +45,7 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: pnpm }
       - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @marineops/api exec prisma generate
       - run: pnpm run db:migrate
         env: { DATABASE_URL: postgresql://marineops:test@localhost:5432/marineops_test }
       - run: pnpm run test
@@ -62,6 +64,7 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: pnpm }
       - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @marineops/api exec prisma generate
       - run: pnpm run build
 
   docker:
