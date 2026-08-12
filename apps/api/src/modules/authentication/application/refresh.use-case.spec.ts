@@ -51,7 +51,7 @@ describe('RefreshUseCase', () => {
     const next = await refreshRepo.findByHash(newHash);
     expect(old?.isRevoked()).toBe(true);
     expect(old?.replacedBy).toBe(next?.id);
-    expect(next?.isUsable()).toBe(true);
+    expect(next?.isUsable(T0)).toBe(true);
     // Same family — the chain is preserved.
     expect(next?.familyId).toBe(old?.familyId);
   });
