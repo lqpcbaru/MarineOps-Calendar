@@ -43,7 +43,7 @@ export interface AisVesselProfile {
 export interface AisVesselEvent {
   id: string;
   vesselId: string;
-  type: 'FISHING' | 'ENCOUNTER' | 'PORT_VISIT' | 'UNKNOWN';
+  type: 'FISHING' | 'ENCOUNTER' | 'PORT_VISIT' | 'LOITERING' | 'AIS_GAP' | 'UNKNOWN';
   startAt: string;
   endAt: string | null;
   latitude: number | null;

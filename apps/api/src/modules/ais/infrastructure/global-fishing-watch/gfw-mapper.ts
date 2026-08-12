@@ -1,7 +1,23 @@
 import type { AisVesselSummary, AisVesselProfile, AisVesselEvent, AisPosition } from '../../domain';
-import type { GfwVesselSearchItem, GfwVesselProfileResponse, GfwVesselEventItem } from './gfw-raw-dto';
+import type {
+  GfwVesselSearchItem,
+  GfwVesselProfileResponse,
+  GfwVesselEventItem,
+} from './gfw-raw-dto';
 
-export function mapPosition(raw: { lat: number; lon: number; speed: number | null; course: number | null; heading: number | null; timestamp: string } | null | undefined): AisPosition | null {
+export function mapPosition(
+  raw:
+    | {
+        lat: number;
+        lon: number;
+        speed: number | null;
+        course: number | null;
+        heading: number | null;
+        timestamp: string;
+      }
+    | null
+    | undefined,
+): AisPosition | null {
   if (!raw || raw.lat == null || raw.lon == null) return null;
   if (raw.lat < -90 || raw.lat > 90 || raw.lon < -180 || raw.lon > 180) return null;
   return {
@@ -56,12 +72,16 @@ export function mapVesselProfile(raw: GfwVesselProfileResponse): AisVesselProfil
 }
 
 const EVENT_TYPE_MAP: Record<string, AisVesselEvent['type']> = {
-  'FISHING': 'FISHING',
-  'fishing': 'FISHING',
-  'ENCOUNTER': 'ENCOUNTER',
-  'encounter': 'ENCOUNTER',
-  'PORT_VISIT': 'PORT_VISIT',
-  'port_visit': 'PORT_VISIT',
+  FISHING: 'FISHING',
+  fishing: 'FISHING',
+  ENCOUNTER: 'ENCOUNTER',
+  encounter: 'ENCOUNTER',
+  PORT_VISIT: 'PORT_VISIT',
+  port_visit: 'PORT_VISIT',
+  LOITERING: 'LOITERING',
+  loitering: 'LOITERING',
+  GAP: 'AIS_GAP',
+  gap: 'AIS_GAP',
 };
 
 export function mapEventType(rawType: string): AisVesselEvent['type'] {
