@@ -56,4 +56,28 @@ describe('VesselIntelligenceService', () => {
     expect(result.events[0]!.type).toBe('FISHING');
     expect(result.source).toBe('gfw');
   });
+
+  it('preserves AIS_GAP event type through normalization', async () => {
+    const aisService = {
+      async searchVessels() { return { vessels: [], total: 0, page: 1, pageSize: 20, freshness: { status: 'fresh' as const, fetchedAt: '', source: 'gfw' } }; },
+      async getVesselProfile() { return { profile: { identity: { id: '', name: null, mmsi: null, imo: null, flag: null, callsign: null, vesselType: null, length: null, width: null, grossTonnage: null }, position: null, activity: { fishingHours: null, encounterCount: null, portVisitCount: null } }, freshness: { status: 'fresh' as const, fetchedAt: '', source: 'gfw' } }; },
+      async getVesselEvents() {
+        return {
+          vesselId: 'v-1',
+          events: [
+            { id: 'ev-1', vesselId: 'v-1', type: 'FISHING' as const, startAt: '', endAt: null, latitude: null, longitude: null, metadata: null },
+            { id: 'ev-2', vesselId: 'v-1', type: 'AIS_GAP' as const, startAt: '', endAt: null, latitude: null, longitude: null, metadata: null },
+            { id: 'ev-3', vesselId: 'v-1', type: 'LOITERING' as const, startAt: '', endAt: null, latitude: null, longitude: null, metadata: null },
+          ],
+          freshness: { status: 'fresh' as const, fetchedAt: '', source: 'gfw' },
+        };
+      },
+    } as unknown as AisService;
+    const svc = new VesselIntelligenceService(aisService);
+    const result = await svc.getVesselEvents('v-1');
+    expect(result.events).toHaveLength(3);
+    expect(result.events[0]!.type).toBe('FISHING');
+    expect(result.events[1]!.type).toBe('AIS_GAP');
+    expect(result.events[2]!.type).toBe('LOITERING');
+  });
 });
