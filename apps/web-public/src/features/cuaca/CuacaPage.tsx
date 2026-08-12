@@ -1,117 +1,129 @@
+import { useQuery } from '@tanstack/react-query';
 import {
   PageHeader,
   SectionTitle,
   AppTable,
   InfoPanel,
   EmptyState,
+  ErrorState,
+  LoadingState,
   MarineConditionCard,
   MarineSummaryGrid,
   OperationalStatusCard,
   OperationalRecommendationCard,
 } from '../../shared/components';
+import { getWeather, type WeatherDataPoint } from './cuaca.api';
 
-/* ── Section 2: Ringkasan Hari Ini ── */
-function RingkasanHariIni() {
+function RingkasanHariIni({ data }: { data: WeatherDataPoint[] }) {
+  const today = new Date().toISOString().slice(0, 10);
+  const current = data.find((p) => p.date === today) || data[0];
+
   return (
     <section aria-label="Ringkasan cuaca hari ini" className="mb-8">
       <SectionTitle>Ringkasan Hari Ini</SectionTitle>
       <MarineSummaryGrid columns={4}>
-        <MarineConditionCard icon="🌤️" title="Keadaan Cuaca" value="—" />
-        <MarineConditionCard icon="🌡️" title="Suhu" value="—" />
+        <MarineConditionCard icon="🌤️" title="Keadaan Cuaca" value={current?.conditions ?? '—'} />
+        <MarineConditionCard
+          icon="🌡️"
+          title="Suhu"
+          value={current ? `${current.temperature}°C` : '—'}
+        />
         <MarineConditionCard icon="💧" title="Kelembapan" value="—" />
-        <MarineConditionCard icon="👁️" title="Jarak Penglihatan" value="—" />
+        <MarineConditionCard
+          icon="👁️"
+          title="Jarak Penglihatan"
+          value={current ? `${current.visibility} km` : '—'}
+        />
       </MarineSummaryGrid>
     </section>
   );
 }
 
-/* ── Section 3: Ramalan Cuaca ── */
-function RamalanCuaca() {
-  const rows = Array.from({ length: 7 }, (_, i) => ({ id: i }));
-
+function RamalanCuaca({ data }: { data: WeatherDataPoint[] }) {
   return (
     <section aria-label="Ramalan cuaca" className="mb-8">
       <SectionTitle>Ramalan Cuaca</SectionTitle>
-      <AppTable>
-        <AppTable.Head>
-          <AppTable.Row>
-            <AppTable.Th>Hari</AppTable.Th>
-            <AppTable.Th>Tarikh</AppTable.Th>
-            <AppTable.Th>Cuaca</AppTable.Th>
-            <AppTable.Th>Suhu Minimum</AppTable.Th>
-            <AppTable.Th>Suhu Maksimum</AppTable.Th>
-            <AppTable.Th>Kebarangkalian Hujan</AppTable.Th>
-            <AppTable.Th>Cadangan Operasi</AppTable.Th>
-          </AppTable.Row>
-        </AppTable.Head>
-        <AppTable.Body>
-          {rows.map((row) => (
-            <AppTable.Row key={row.id}>
-              <AppTable.Td>—</AppTable.Td>
-              <AppTable.Td>—</AppTable.Td>
-              <AppTable.Td>—</AppTable.Td>
-              <AppTable.Td>—</AppTable.Td>
-              <AppTable.Td>—</AppTable.Td>
-              <AppTable.Td>—</AppTable.Td>
-              <AppTable.Td>—</AppTable.Td>
+      {data.length === 0 ? (
+        <EmptyState title="Tiada Data" message="Data cuaca tidak tersedia." />
+      ) : (
+        <AppTable>
+          <AppTable.Head>
+            <AppTable.Row>
+              <AppTable.Th>Tarikh</AppTable.Th>
+              <AppTable.Th>Cuaca</AppTable.Th>
+              <AppTable.Th>Suhu (°C)</AppTable.Th>
+              <AppTable.Th>Penglihatan (km)</AppTable.Th>
+              <AppTable.Th>Hujan (mm)</AppTable.Th>
             </AppTable.Row>
-          ))}
-        </AppTable.Body>
-      </AppTable>
+          </AppTable.Head>
+          <AppTable.Body>
+            {data.slice(0, 7).map((p, i) => (
+              <AppTable.Row key={i}>
+                <AppTable.Td>{p.date}</AppTable.Td>
+                <AppTable.Td>{p.conditions}</AppTable.Td>
+                <AppTable.Td>{p.temperature}</AppTable.Td>
+                <AppTable.Td>{p.visibility}</AppTable.Td>
+                <AppTable.Td>{p.precipitation}</AppTable.Td>
+              </AppTable.Row>
+            ))}
+          </AppTable.Body>
+        </AppTable>
+      )}
     </section>
   );
 }
 
-/* ── Main Page ── */
 export function CuacaPage() {
+  const today = new Date().toISOString().slice(0, 10);
+  const { data, isLoading, isError, error } = useQuery({
+    queryKey: ['public-weather', today],
+    queryFn: () => getWeather(undefined, today, today),
+  });
+
+  if (isLoading)
+    return (
+      <div className="mx-auto max-w-6xl px-4 py-6">
+        <PageHeader
+          title="Cuaca Marin"
+          subtitle="Keadaan cuaca semasa dan ramalan ringkas untuk operasi laut."
+        />
+        <LoadingState lines={5} />
+      </div>
+    );
+  if (isError)
+    return (
+      <div className="mx-auto max-w-6xl px-4 py-6">
+        <PageHeader
+          title="Cuaca Marin"
+          subtitle="Keadaan cuaca semasa dan ramalan ringkas untuk operasi laut."
+        />
+        <ErrorState
+          title="Ralat"
+          message={error instanceof Error ? error.message : 'Gagal mendapatkan data.'}
+        />
+      </div>
+    );
+
+  const points = data?.data ?? [];
+
   return (
     <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
-      {/* 1. PageHeader */}
       <PageHeader
         title="Cuaca Marin"
         subtitle="Keadaan cuaca semasa dan ramalan ringkas untuk operasi laut."
       />
-
-      {/* 2. Ringkasan Hari Ini */}
-      <RingkasanHariIni />
-
-      {/* 3. Ramalan Cuaca */}
-      <RamalanCuaca />
-
-      {/* 4. OperationalStatusCard */}
-      <section aria-label="Status operasi" className="mb-8">
+      <RingkasanHariIni data={points} />
+      <RamalanCuaca data={points} />
+      <section className="mb-8">
         <OperationalStatusCard variant="neutral" />
       </section>
-
-      {/* 5. OperationalRecommendationCard */}
-      <section aria-label="Cadangan operasi" className="mb-8">
+      <section className="mb-8">
         <OperationalRecommendationCard variant="placeholder" />
       </section>
-
-      {/* 6. InfoPanel */}
-      <section aria-label="Maklumat cuaca" className="mb-8">
-        <InfoPanel title="Mengapa Cuaca Penting kepada Operasi Laut">
-          <p>
-            Cuaca adalah faktor utama yang mempengaruhi keselamatan dan kejayaan
-            operasi di laut. Keadaan cuaca buruk seperti ribut, hujan lebat, dan
-            kabus tebal boleh mengurangkan jarak penglihatan, meningkatkan risiko
-            kemalangan, dan membahayakan nyawa anak kapal.
-          </p>
-          <p className="mt-3">
-            Perubahan cuaca yang mendadak juga boleh menjejaskan kestabilan kapal
-            dan mengganggu aktiviti perikanan. Oleh itu, pemantauan cuaca yang
-            berterusan dan ramalan yang tepat adalah penting untuk memastikan
-            operasi laut dijalankan dengan selamat dan cekap.
-          </p>
+      <section className="mb-8">
+        <InfoPanel title="Mengapa Cuaca Penting">
+          <p>Cuaca adalah faktor utama yang mempengaruhi keselamatan operasi di laut.</p>
         </InfoPanel>
-      </section>
-
-      {/* 7. EmptyState — future integration */}
-      <section aria-label="Integrasi masa depan">
-        <EmptyState
-          title="Integrasi Pembekal Cuaca"
-          message="Maklumat akan dipaparkan selepas modul ini disepadukan."
-        />
       </section>
     </div>
   );

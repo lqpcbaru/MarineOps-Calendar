@@ -1,129 +1,134 @@
+import { useQuery } from '@tanstack/react-query';
 import {
   PageHeader,
   SectionTitle,
   AppTable,
   InfoPanel,
   EmptyState,
+  ErrorState,
+  LoadingState,
   MarineConditionCard,
   MarineSummaryGrid,
   OperationalStatusCard,
   OperationalRecommendationCard,
   OperationalLegend,
 } from '../../shared/components';
+import { getWindWave, type WindWaveDataPoint } from './angin-ombak.api';
 
-/* ── Section 2: Ringkasan Hari Ini ── */
-function RingkasanHariIni() {
+function RingkasanHariIni({ data }: { data: WindWaveDataPoint[] }) {
+  const current = data[0];
   return (
-    <section aria-label="Ringkasan angin dan ombak hari ini" className="mb-8">
+    <section aria-label="Ringkasan angin dan ombak" className="mb-8">
       <SectionTitle>Ringkasan Hari Ini</SectionTitle>
       <MarineSummaryGrid columns={4}>
-        <MarineConditionCard icon="🧭" title="Arah Angin" value="—" />
-        <MarineConditionCard icon="💨" title="Kelajuan Angin" value="—" />
-        <MarineConditionCard icon="🌊" title="Ketinggian Ombak" value="—" />
-        <MarineConditionCard icon="⏱️" title="Tempoh Ombak" value="—" />
+        <MarineConditionCard icon="🧭" title="Arah Angin" value={current?.windDirection ?? '—'} />
+        <MarineConditionCard
+          icon="💨"
+          title="Kelajuan Angin"
+          value={current ? `${current.windSpeed} kn` : '—'}
+          subtitle={current ? `Gust ${current.windGusts} kn` : ''}
+        />
+        <MarineConditionCard
+          icon="🌊"
+          title="Ketinggian Ombak"
+          value={current ? `${current.waveHeight} m` : '—'}
+        />
+        <MarineConditionCard
+          icon="⏱️"
+          title="Tempoh Ombak"
+          value={current ? `${current.wavePeriod}s` : '—'}
+        />
       </MarineSummaryGrid>
     </section>
   );
 }
 
-/* ── Section 3: Jadual Ramalan ── */
-function JadualRamalan() {
-  const rows = Array.from({ length: 7 }, (_, i) => ({ id: i }));
-
+function JadualRamalan({ data }: { data: WindWaveDataPoint[] }) {
   return (
-    <section aria-label="Jadual ramalan angin dan ombak" className="mb-8">
+    <section aria-label="Jadual ramalan" className="mb-8">
       <SectionTitle>Jadual Ramalan</SectionTitle>
-      <AppTable>
-        <AppTable.Head>
-          <AppTable.Row>
-            <AppTable.Th>Hari</AppTable.Th>
-            <AppTable.Th>Tarikh</AppTable.Th>
-            <AppTable.Th>Arah Angin</AppTable.Th>
-            <AppTable.Th>Kelajuan</AppTable.Th>
-            <AppTable.Th>Ketinggian Ombak</AppTable.Th>
-            <AppTable.Th>Tempoh Ombak</AppTable.Th>
-            <AppTable.Th>Tahap Risiko</AppTable.Th>
-            <AppTable.Th>Cadangan Operasi</AppTable.Th>
-          </AppTable.Row>
-        </AppTable.Head>
-        <AppTable.Body>
-          {rows.map((row) => (
-            <AppTable.Row key={row.id}>
-              <AppTable.Td>—</AppTable.Td>
-              <AppTable.Td>—</AppTable.Td>
-              <AppTable.Td>—</AppTable.Td>
-              <AppTable.Td>—</AppTable.Td>
-              <AppTable.Td>—</AppTable.Td>
-              <AppTable.Td>—</AppTable.Td>
-              <AppTable.Td>—</AppTable.Td>
-              <AppTable.Td>—</AppTable.Td>
+      {data.length === 0 ? (
+        <EmptyState title="Tiada Data" message="Data angin dan ombak tidak tersedia." />
+      ) : (
+        <AppTable>
+          <AppTable.Head>
+            <AppTable.Row>
+              <AppTable.Th>Tarikh</AppTable.Th>
+              <AppTable.Th>Arah Angin</AppTable.Th>
+              <AppTable.Th>Kelajuan (kn)</AppTable.Th>
+              <AppTable.Th>Gust (kn)</AppTable.Th>
+              <AppTable.Th>Ombak (m)</AppTable.Th>
+              <AppTable.Th>Tempoh (s)</AppTable.Th>
             </AppTable.Row>
-          ))}
-        </AppTable.Body>
-      </AppTable>
+          </AppTable.Head>
+          <AppTable.Body>
+            {data.slice(0, 7).map((p, i) => (
+              <AppTable.Row key={i}>
+                <AppTable.Td>{p.date}</AppTable.Td>
+                <AppTable.Td>{p.windDirection}</AppTable.Td>
+                <AppTable.Td>{p.windSpeed}</AppTable.Td>
+                <AppTable.Td>{p.windGusts}</AppTable.Td>
+                <AppTable.Td>{p.waveHeight}</AppTable.Td>
+                <AppTable.Td>{p.wavePeriod}</AppTable.Td>
+              </AppTable.Row>
+            ))}
+          </AppTable.Body>
+        </AppTable>
+      )}
     </section>
   );
 }
 
-/* ── Main Page ── */
 export function AnginOmbakPage() {
+  const today = new Date().toISOString().slice(0, 10);
+  const { data, isLoading, isError, error } = useQuery({
+    queryKey: ['public-wind-wave', today],
+    queryFn: () => getWindWave(undefined, today, today),
+  });
+
+  if (isLoading)
+    return (
+      <div className="mx-auto max-w-6xl px-4 py-6">
+        <PageHeader title="Angin & Ombak" subtitle="Maklumat keadaan angin dan ombak." />
+        <LoadingState lines={5} />
+      </div>
+    );
+  if (isError)
+    return (
+      <div className="mx-auto max-w-6xl px-4 py-6">
+        <PageHeader title="Angin & Ombak" subtitle="Maklumat keadaan angin dan ombak." />
+        <ErrorState
+          title="Ralat"
+          message={error instanceof Error ? error.message : 'Gagal mendapatkan data.'}
+        />
+      </div>
+    );
+
+  const points = data?.data ?? [];
+
   return (
     <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
-      {/* 1. PageHeader */}
       <PageHeader
         title="Angin & Ombak"
         subtitle="Maklumat keadaan angin dan ombak untuk membantu operasi di laut."
       />
-
-      {/* 2. Ringkasan Hari Ini */}
-      <RingkasanHariIni />
-
-      {/* 3. Jadual Ramalan */}
-      <JadualRamalan />
-
-      {/* 4. OperationalStatusCard */}
-      <section aria-label="Status operasi" className="mb-8">
+      <RingkasanHariIni data={points} />
+      <JadualRamalan data={points} />
+      <section className="mb-8">
         <OperationalStatusCard variant="neutral" />
       </section>
-
-      {/* 5. OperationalRecommendationCard */}
-      <section aria-label="Cadangan operasi" className="mb-8">
+      <section className="mb-8">
         <OperationalRecommendationCard variant="placeholder" />
       </section>
-
-      {/* 6. OperationalLegend */}
-      <section aria-label="Petunjuk status" className="mb-8">
+      <section className="mb-8">
         <OperationalLegend />
       </section>
-
-      {/* 7. InfoPanel */}
-      <section aria-label="Maklumat angin dan ombak" className="mb-8">
-        <InfoPanel title="Mengapa Angin dan Ombak Penting kepada Keselamatan Operasi Laut">
+      <section className="mb-8">
+        <InfoPanel title="Mengapa Angin dan Ombak Penting">
           <p>
-            Angin dan ombak adalah dua faktor utama yang menentukan keselamatan
-            operasi di laut. Angin kencang boleh menghasilkan ombak besar yang
-            membahayakan bot kecil dan menyukarkan pergerakan kapal.
-          </p>
-          <p className="mt-3">
-            Ketinggian ombak yang berlebihan boleh menyebabkan kapal terumbang-ambing,
-            mengurangkan kestabilan, dan meningkatkan risiko kemasukan air. Tempoh
-            ombak yang pendek menandakan ombak yang curam dan berbahaya, manakala
-            tempoh yang panjang menandakan ombak yang lebih teratur.
-          </p>
-          <p className="mt-3">
-            Oleh itu, pemantauan arah angin, kelajuan angin, ketinggian ombak, dan
-            tempoh ombak adalah penting untuk memastikan keselamatan anak kapal
-            dan kejayaan operasi maritim.
+            Angin dan ombak adalah dua faktor utama yang menentukan keselamatan operasi di laut.
           </p>
         </InfoPanel>
-      </section>
-
-      {/* 8. EmptyState */}
-      <section aria-label="Integrasi masa depan">
-        <EmptyState
-          title="Data Angin & Ombak Secara Langsung"
-          message="Maklumat akan dipaparkan selepas modul ini disepadukan."
-        />
       </section>
     </div>
   );

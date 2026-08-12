@@ -1,176 +1,152 @@
+import { useQuery } from '@tanstack/react-query';
 import {
   PageHeader,
   SectionTitle,
   AppTable,
   InfoPanel,
   EmptyState,
+  ErrorState,
+  LoadingState,
   MarineConditionCard,
   MarineSummaryGrid,
   OperationalStatusCard,
   OperationalRecommendationCard,
   OperationalLegend,
 } from '../../shared/components';
+import { getTide, type TideDataPoint } from './pasang-surut.api';
 
-/* ── Section 2: Today's Summary ── */
-function TodaySummary() {
+function TodaySummary({ data }: { data: TideDataPoint[] }) {
+  const today = new Date().toISOString().slice(0, 10);
+  const todayPoints = data.filter((p) => p.date === today);
+  const high = todayPoints.find((p) => p.type === 'HIGH');
+  const low = todayPoints.find((p) => p.type === 'LOW');
+
   return (
     <section aria-label="Ringkasan hari ini" className="mb-8">
       <SectionTitle>Ringkasan Hari Ini</SectionTitle>
       <MarineSummaryGrid columns={4}>
-        <MarineConditionCard icon="🌊" title="Jenis Air" value="—" />
-        <MarineConditionCard icon="🌙" title="Fasa Bulan" value="—" />
-        <MarineConditionCard icon="📅" title="Tarikh Hijrah" value="—" />
-        <MarineConditionCard icon="📋" title="Status Operasi" value="—" />
+        <MarineConditionCard
+          icon="🌊"
+          title="Jenis Air"
+          value={todayPoints.length > 0 ? (high ? 'Pasang' : 'Surut') : '—'}
+        />
+        <MarineConditionCard
+          icon="⬆️"
+          title="Pasang Tinggi"
+          value={high ? `${high.height}m` : '—'}
+          subtitle={high?.time ?? ''}
+        />
+        <MarineConditionCard
+          icon="⬇️"
+          title="Surut Rendah"
+          value={low ? `${low.height}m` : '—'}
+          subtitle={low?.time ?? ''}
+        />
+        <MarineConditionCard
+          icon="📊"
+          title="Titik Data"
+          value={String(todayPoints.length)}
+          subtitle="hari ini"
+        />
       </MarineSummaryGrid>
     </section>
   );
 }
 
-/* ── Section 3: Tide Table ── */
-function TideTable() {
-  const headers = [
-    'Hari',
-    'Tarikh',
-    'Hijrah',
-    'Fasa Bulan',
-    'Jenis Air',
-    'Pasang Pagi',
-    'Surut Pagi',
-    'Pasang Petang',
-    'Surut Malam',
-    'Cadangan Operasi',
-  ];
-
-  const rows = Array.from({ length: 7 }, (_, i) => ({ id: i }));
+function TideTable({ data }: { data: TideDataPoint[] }) {
+  const rows = data.slice(0, 14);
 
   return (
     <section aria-label="Jadual pasang surut" className="mb-8">
       <SectionTitle>Jadual Pasang Surut</SectionTitle>
-      <AppTable>
-        <AppTable.Head>
-          <AppTable.Row>
-            {headers.map((h) => (
-              <AppTable.Th key={h}>{h}</AppTable.Th>
-            ))}
-          </AppTable.Row>
-        </AppTable.Head>
-        <AppTable.Body>
-          {rows.map((row) => (
-            <AppTable.Row key={row.id}>
-              <AppTable.Td>—</AppTable.Td>
-              <AppTable.Td>—</AppTable.Td>
-              <AppTable.Td>—</AppTable.Td>
-              <AppTable.Td>—</AppTable.Td>
-              <AppTable.Td>—</AppTable.Td>
-              <AppTable.Td>—</AppTable.Td>
-              <AppTable.Td>—</AppTable.Td>
-              <AppTable.Td>—</AppTable.Td>
-              <AppTable.Td>—</AppTable.Td>
-              <AppTable.Td>—</AppTable.Td>
+      {rows.length === 0 ? (
+        <EmptyState title="Tiada Data" message="Data pasang surut tidak tersedia." />
+      ) : (
+        <AppTable>
+          <AppTable.Head>
+            <AppTable.Row>
+              <AppTable.Th>Tarikh</AppTable.Th>
+              <AppTable.Th>Masa</AppTable.Th>
+              <AppTable.Th>Jenis</AppTable.Th>
+              <AppTable.Th>Ketinggian (m)</AppTable.Th>
             </AppTable.Row>
-          ))}
-        </AppTable.Body>
-      </AppTable>
+          </AppTable.Head>
+          <AppTable.Body>
+            {rows.map((p, i) => (
+              <AppTable.Row key={i}>
+                <AppTable.Td>{p.date}</AppTable.Td>
+                <AppTable.Td>{p.time}</AppTable.Td>
+                <AppTable.Td>{p.type === 'HIGH' ? '🟢 Pasang' : '🔴 Surut'}</AppTable.Td>
+                <AppTable.Td>{p.height}</AppTable.Td>
+              </AppTable.Row>
+            ))}
+          </AppTable.Body>
+        </AppTable>
+      )}
     </section>
   );
 }
 
-/* ── Section 5: Information Panel ── */
-function InfoPanels() {
-  return (
-    <section aria-label="Maklumat pasang surut" className="mb-8 space-y-4">
-      <InfoPanel title="Apa itu Air Besar">
-        <p>
-          Air Besar berlaku apabila paras air laut berada di tahap tertinggi dalam
-          kitaran pasang surut. Pada masa ini, air laut naik ke paras maksimum sebelum
-          mula surut semula. Air Besar penting untuk mengetahui paras air maksimum
-          yang boleh dijangkakan bagi tujuan pelayaran dan operasi di laut.
-        </p>
-      </InfoPanel>
-
-      <InfoPanel title="Apa itu Air Mati">
-        <p>
-          Air Mati berlaku apabila paras air laut berada di tahap terendah dalam
-          kitaran pasang surut. Pada masa ini, air laut surut ke paras minimum sebelum
-          mula pasang semula. Air Mati penting untuk mengetahui paras air minimum
-          yang boleh dijangkakan bagi tujuan pelayaran dan operasi di laut.
-        </p>
-      </InfoPanel>
-
-      <InfoPanel title="Mengapa Penting kepada Operasi Laut">
-        <p>
-          Pengetahuan tentang pasang surut adalah penting untuk keselamatan pelayaran,
-          perancangan operasi perikanan, dan aktiviti maritim. Paras air yang mencukupi
-          diperlukan untuk laluan selamat kapal, manakala waktu surut mempengaruhi
-          akses ke kawasan cetek dan muara sungai. Perancangan operasi yang mengambil
-          kira pasang surut dapat mengurangkan risiko kandas dan memastikan keselamatan
-          anak kapal.
-        </p>
-      </InfoPanel>
-    </section>
-  );
-}
-
-/* ── Section 6: Future Integration ── */
-function FutureIntegration() {
-  return (
-    <section aria-label="Integrasi masa depan" className="mb-8 space-y-4">
-      <EmptyState
-        title="Cuaca"
-        message="Maklumat akan dipaparkan selepas modul ini disepadukan."
-      />
-      <EmptyState
-        title="Angin"
-        message="Maklumat akan dipaparkan selepas modul ini disepadukan."
-      />
-      <EmptyState
-        title="Ombak"
-        message="Maklumat akan dipaparkan selepas modul ini disepadukan."
-      />
-      <EmptyState
-        title="Cadangan AI"
-        message="Maklumat akan dipaparkan selepas modul ini disepadukan."
-      />
-    </section>
-  );
-}
-
-/* ── Main Page ── */
 export function PasangSurutPage() {
+  const today = new Date().toISOString().slice(0, 10);
+  const { data, isLoading, isError, error } = useQuery({
+    queryKey: ['public-tide', today],
+    queryFn: () => getTide(undefined, today, today),
+  });
+
+  if (isLoading) {
+    return (
+      <div className="mx-auto max-w-6xl px-4 py-6">
+        <PageHeader
+          title="Pasang Surut"
+          subtitle="Maklumat pasang surut air laut mengikut stesen dan tarikh."
+        />
+        <LoadingState lines={5} />
+      </div>
+    );
+  }
+  if (isError) {
+    return (
+      <div className="mx-auto max-w-6xl px-4 py-6">
+        <PageHeader
+          title="Pasang Surut"
+          subtitle="Maklumat pasang surut air laut mengikut stesen dan tarikh."
+        />
+        <ErrorState
+          title="Ralat"
+          message={error instanceof Error ? error.message : 'Gagal mendapatkan data.'}
+        />
+      </div>
+    );
+  }
+
+  const points = data?.data ?? [];
+
   return (
     <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
-      {/* 1. PageHeader */}
       <PageHeader
         title="Pasang Surut"
         subtitle="Maklumat pasang surut air laut mengikut stesen dan tarikh."
       />
-
-      {/* 2. Today's Summary */}
-      <TodaySummary />
-
-      {/* 3. Tide Table */}
-      <TideTable />
-
-      {/* 4. OperationalStatusCard */}
+      <TodaySummary data={points} />
+      <TideTable data={points} />
       <section aria-label="Status operasi" className="mb-8">
         <OperationalStatusCard variant="neutral" />
       </section>
-
-      {/* 5. OperationalRecommendationCard */}
       <section aria-label="Cadangan operasi" className="mb-8">
         <OperationalRecommendationCard variant="placeholder" />
       </section>
-
-      {/* 6. OperationalLegend */}
       <section aria-label="Petunjuk status" className="mb-8">
         <OperationalLegend />
       </section>
-
-      {/* 7. InfoPanels */}
-      <InfoPanels />
-
-      {/* 8. Future Integration */}
-      <FutureIntegration />
+      <section aria-label="Maklumat pasang surut" className="mb-8">
+        <InfoPanel title="Mengapa Penting kepada Operasi Laut">
+          <p>
+            Pengetahuan tentang pasang surut adalah penting untuk keselamatan pelayaran, perancangan
+            operasi perikanan, dan aktiviti maritim.
+          </p>
+        </InfoPanel>
+      </section>
     </div>
   );
 }
