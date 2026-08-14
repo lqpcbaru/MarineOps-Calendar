@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { Link } from '@tanstack/react-router';
 import {
   PageHeader,
   SectionTitle,
@@ -9,14 +10,19 @@ import {
   LoadingState,
   MarineConditionCard,
   MarineSummaryGrid,
-  OperationalStatusCard,
-  OperationalRecommendationCard,
   OperationalLegend,
 } from '../../shared/components';
 import { getTide, type TideDataPoint } from './pasang-surut.api';
 
+function toLocalDateString(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 function TodaySummary({ data }: { data: TideDataPoint[] }) {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = toLocalDateString(new Date());
   const todayPoints = data.filter((p) => p.date === today);
   const high = todayPoints.find((p) => p.type === 'HIGH');
   const low = todayPoints.find((p) => p.type === 'LOW');
@@ -88,7 +94,7 @@ function TideTable({ data }: { data: TideDataPoint[] }) {
 }
 
 export function PasangSurutPage() {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = toLocalDateString(new Date());
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ['public-tide', today],
     queryFn: () => getTide(undefined, today, today),
@@ -130,11 +136,15 @@ export function PasangSurutPage() {
       />
       <TodaySummary data={points} />
       <TideTable data={points} />
-      <section aria-label="Status operasi" className="mb-8">
-        <OperationalStatusCard variant="neutral" />
-      </section>
       <section aria-label="Cadangan operasi" className="mb-8">
-        <OperationalRecommendationCard variant="placeholder" />
+        <div className="card-flat flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-text-secondary">
+            Semakan status dan cadangan operasi tersedia di Amaran Marin.
+          </p>
+          <Link to="/amaran-marin" className="btn-primary" aria-label="Ke halaman Amaran Marin">
+            Amaran Marin
+          </Link>
+        </div>
       </section>
       <section aria-label="Petunjuk status" className="mb-8">
         <OperationalLegend />

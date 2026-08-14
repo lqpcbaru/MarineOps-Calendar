@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { Link } from '@tanstack/react-router';
 import {
   PageHeader,
   SectionTitle,
@@ -9,13 +10,18 @@ import {
   LoadingState,
   MarineConditionCard,
   MarineSummaryGrid,
-  OperationalStatusCard,
-  OperationalRecommendationCard,
 } from '../../shared/components';
 import { getWeather, type WeatherDataPoint } from './cuaca.api';
 
+function toLocalDateString(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 function RingkasanHariIni({ data }: { data: WeatherDataPoint[] }) {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = toLocalDateString(new Date());
   const current = data.find((p) => p.date === today) || data[0];
 
   return (
@@ -74,7 +80,7 @@ function RamalanCuaca({ data }: { data: WeatherDataPoint[] }) {
 }
 
 export function CuacaPage() {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = toLocalDateString(new Date());
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ['public-weather', today],
     queryFn: () => getWeather(undefined, today, today),
@@ -115,10 +121,14 @@ export function CuacaPage() {
       <RingkasanHariIni data={points} />
       <RamalanCuaca data={points} />
       <section className="mb-8">
-        <OperationalStatusCard variant="neutral" />
-      </section>
-      <section className="mb-8">
-        <OperationalRecommendationCard variant="placeholder" />
+        <div className="card-flat flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-text-secondary">
+            Semakan status dan cadangan operasi tersedia di Amaran Marin.
+          </p>
+          <Link to="/amaran-marin" className="btn-primary" aria-label="Ke halaman Amaran Marin">
+            Amaran Marin
+          </Link>
+        </div>
       </section>
       <section className="mb-8">
         <InfoPanel title="Mengapa Cuaca Penting">
