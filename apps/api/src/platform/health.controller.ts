@@ -1,9 +1,12 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, HttpException, HttpStatus } from '@nestjs/common';
 import { Public } from '../modules/authentication/api/public.decorator';
+import { PrismaService } from './prisma.service';
 
 @Public()
 @Controller('health')
 export class HealthController {
+  constructor(private readonly prisma: PrismaService) {}
+
   @Get('live')
   liveness() {
     return {
@@ -15,19 +18,23 @@ export class HealthController {
   }
 
   @Get('ready')
-  readiness() {
-    return {
-      status: 'ok',
+  async readiness() {
+    let database: 'ok' | 'error' = 'ok';
+    try {
+      await this.prisma.$queryRaw`SELECT 1`;
+    } catch {
+      database = 'error';
+    }
+
+    const body = {
+      status: database === 'ok' ? 'ok' : 'error',
       timestamp: new Date().toISOString(),
-      checks: {
-        database: 'ok',
-        cache: 'ok',
-        scheduler: 'ok',
-      },
-      memory: {
-        rss: Math.round(process.memoryUsage().rss / 1024 / 1024) + 'MB',
-        heapUsed: Math.round(process.memoryUsage().heapUsed / 1024 / 1024) + 'MB',
-      },
+      checks: { database },
     };
+
+    if (database !== 'ok') {
+      throw new HttpException(body, HttpStatus.SERVICE_UNAVAILABLE);
+    }
+    return body;
   }
 }
