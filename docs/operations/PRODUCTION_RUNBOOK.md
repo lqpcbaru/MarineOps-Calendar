@@ -78,7 +78,7 @@ Browser → web host / reverse proxy → /api → NestJS API
 
 ```
 GET /health/live  → {"status":"ok","uptime":3600,"version":"2.1.0"}
-GET /health/ready → {"status":"ok","checks":{"database":"ok","cache":"ok","scheduler":"ok"}}
+GET /health/ready → {"status":"ok","checks":{"database":"ok"}}   (503 with {"status":"error","checks":{"database":"error"}} if DB is unreachable)
 ```
 
 ### Database Backup

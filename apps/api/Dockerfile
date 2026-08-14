@@ -7,6 +7,7 @@ COPY packages/shared-kernel/package.json packages/shared-kernel/
 RUN corepack enable && pnpm install --frozen-lockfile
 COPY apps/api/ apps/api/
 COPY packages/ packages/
+RUN pnpm --filter @marineops/api exec prisma generate
 RUN pnpm --filter @marineops/api build
 
 FROM node:22-alpine AS runner
@@ -16,7 +17,6 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/apps/api/dist ./dist
 COPY --from=builder /app/apps/api/package.json ./
 COPY --from=builder /app/apps/api/prisma ./prisma
-COPY --from=builder /app/apps/api/migrations ./migrations
 ENV NODE_ENV=production
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
