@@ -1,12 +1,9 @@
 FROM node:22-alpine AS builder
 WORKDIR /app
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json tsconfig.base.json ./
-COPY apps/api/package.json apps/api/
-COPY apps/api/tsconfig.json apps/api/nest-cli.json apps/api/
-COPY packages/shared-kernel/package.json packages/shared-kernel/
-RUN corepack enable && pnpm install --frozen-lockfile
 COPY apps/api/ apps/api/
 COPY packages/ packages/
+RUN corepack enable && pnpm install --frozen-lockfile
 RUN pnpm --filter @marineops/api exec prisma generate
 RUN pnpm --filter @marineops/api build
 
