@@ -110,15 +110,25 @@ describe('MetWeatherMapper', () => {
       expect(result.date).toBe('2026-08-06');
       expect(result.conditions).toBe('THUNDERSTORM');
       expect(result.temperature).toBe(32);
-      expect(result.visibility).toBe(0);
-      expect(result.precipitation).toBe(0);
+      expect(result.visibility).toBeNull();
+      expect(result.precipitation).toBeNull();
     });
 
     it('uses minTemperature when maxTemperature is null', () => {
       const raw: MetRawForecastItem = {
-        date: '06/08/2026', day: '', weatherCode: '', weatherCondition: 'Cerah',
-        morningForecast: '', afternoonForecast: '', nightForecast: '',
-        minTemperature: 25, maxTemperature: null, windDirection: '', windSpeed: '', waveHeight: '', humidity: null,
+        date: '06/08/2026',
+        day: '',
+        weatherCode: '',
+        weatherCondition: 'Cerah',
+        morningForecast: '',
+        afternoonForecast: '',
+        nightForecast: '',
+        minTemperature: 25,
+        maxTemperature: null,
+        windDirection: '',
+        windSpeed: '',
+        waveHeight: '',
+        humidity: null,
       };
       expect(mapForecastItem(raw).temperature).toBe(25);
     });
@@ -127,8 +137,36 @@ describe('MetWeatherMapper', () => {
   describe('mapForecastItems', () => {
     it('maps an array of items', () => {
       const items: MetRawForecastItem[] = [
-        { date: '06/08/2026', day: '', weatherCode: '', weatherCondition: 'Cerah', morningForecast: '', afternoonForecast: '', nightForecast: '', minTemperature: null, maxTemperature: null, windDirection: '', windSpeed: '', waveHeight: '', humidity: null },
-        { date: '07/08/2026', day: '', weatherCode: '', weatherCondition: 'Hujan', morningForecast: '', afternoonForecast: '', nightForecast: '', minTemperature: null, maxTemperature: null, windDirection: '', windSpeed: '', waveHeight: '', humidity: null },
+        {
+          date: '06/08/2026',
+          day: '',
+          weatherCode: '',
+          weatherCondition: 'Cerah',
+          morningForecast: '',
+          afternoonForecast: '',
+          nightForecast: '',
+          minTemperature: null,
+          maxTemperature: null,
+          windDirection: '',
+          windSpeed: '',
+          waveHeight: '',
+          humidity: null,
+        },
+        {
+          date: '07/08/2026',
+          day: '',
+          weatherCode: '',
+          weatherCondition: 'Hujan',
+          morningForecast: '',
+          afternoonForecast: '',
+          nightForecast: '',
+          minTemperature: null,
+          maxTemperature: null,
+          windDirection: '',
+          windSpeed: '',
+          waveHeight: '',
+          humidity: null,
+        },
       ];
       const result = mapForecastItems(items);
       expect(result).toHaveLength(2);

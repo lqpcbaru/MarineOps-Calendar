@@ -8,8 +8,8 @@ export interface DailyOperationalRecord {
   weather: {
     conditions: string;
     temperature: number;
-    visibility: number;
-    precipitation: number;
+    visibility: number | null;
+    precipitation: number | null;
   } | null;
   tide: {
     nextHigh: { time: string; height: number } | null;

@@ -18,9 +18,20 @@ class ContractWeatherController {
     return {
       data: Array.from({ length: days }, (_, i) => {
         const d = new Date(from.getTime() + i * 86_400_000);
-        return { date: d.toISOString().slice(0, 10), temperature: 0, conditions: '—', visibility: 0, precipitation: 0 };
+        return {
+          date: d.toISOString().slice(0, 10),
+          temperature: 0,
+          conditions: '—',
+          visibility: null,
+          precipitation: null,
+        };
       }),
-      freshness: { status: 'fresh', fetchedAt: new Date().toISOString(), validUntil: new Date(Date.now() + 10_800_000).toISOString(), source: 'placeholder' },
+      freshness: {
+        status: 'fresh',
+        fetchedAt: new Date().toISOString(),
+        validUntil: new Date(Date.now() + 10_800_000).toISOString(),
+        source: 'placeholder',
+      },
     };
   }
 }
@@ -36,7 +47,9 @@ describe('Public API Contract — GET /api/public/weather', () => {
     await app.init();
   }, 30000);
 
-  afterAll(async () => { await app?.close(); });
+  afterAll(async () => {
+    await app?.close();
+  });
 
   it('returns 200 with WeatherResponse shape per PUBLIC_API.md §3.3', async () => {
     const res = await request(app.getHttpServer()).get('/weather');
@@ -53,18 +66,23 @@ describe('Public API Contract — GET /api/public/weather', () => {
       expect(typeof p.date).toBe('string');
       expect(typeof p.temperature).toBe('number');
       expect(typeof p.conditions).toBe('string');
-      expect(typeof p.visibility).toBe('number');
-      expect(typeof p.precipitation).toBe('number');
+      // visibility/precipitation are nullable (source may not provide them).
+      expect(p.visibility === null || typeof p.visibility === 'number').toBe(true);
+      expect(p.precipitation === null || typeof p.precipitation === 'number').toBe(true);
     }
   });
 
   it('accepts optional stationId, dateFrom, dateTo', async () => {
-    const res = await request(app.getHttpServer()).get('/weather?stationId=st-001&dateFrom=2026-08-01&dateTo=2026-08-07');
+    const res = await request(app.getHttpServer()).get(
+      '/weather?stationId=st-001&dateFrom=2026-08-01&dateTo=2026-08-07',
+    );
     expect(res.status).toBe(200);
   });
 
   it('returns data array matching date range length', async () => {
-    const res = await request(app.getHttpServer()).get('/weather?dateFrom=2026-08-01&dateTo=2026-08-03');
+    const res = await request(app.getHttpServer()).get(
+      '/weather?dateFrom=2026-08-01&dateTo=2026-08-03',
+    );
     expect(res.status).toBe(200);
     expect(res.body.data).toHaveLength(3);
   });

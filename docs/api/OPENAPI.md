@@ -244,7 +244,13 @@ paths:
       summary: Public dashboard summary — today's key marine conditions
       security: []
       parameters:
-        - { name: stationId, in: query, required: false, schema: { type: string }, description: 'Defaults to org default station if omitted' }
+        - {
+            name: stationId,
+            in: query,
+            required: false,
+            schema: { type: string },
+            description: 'Defaults to org default station if omitted',
+          }
       responses:
         '200':
           description: Public dashboard summary
@@ -868,8 +874,18 @@ components:
         date: { type: string, format: date }
         temperature: { type: number, description: '°C' }
         conditions: { type: string }
-        visibility: { type: number, description: 'km' }
-        precipitation: { type: number, description: 'mm' }
+        visibility:
+          {
+            type: number,
+            nullable: true,
+            description: 'km — null apabila sumber tidak menyediakan',
+          }
+        precipitation:
+          {
+            type: number,
+            nullable: true,
+            description: 'mm — null apabila sumber tidak menyediakan',
+          }
     WeatherResponse:
       type: object
       properties:
@@ -1272,7 +1288,7 @@ components:
 
 ## 4. Change log
 
-| Version | Date       | Notes                                           |
-| ------- | ---------- | ----------------------------------------------- |
+| Version | Date       | Notes                                                                                                                                                                                                  |
+| ------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | 2.1.0   | 2026-08-05 | Sprint 3.0: Add `/wind-wave`, `/dashboard` (public); expand DTOs (TideDataPoint, WeatherDataPoint, WindWaveDataPoint, PublicDashboardResponse, CalendarDayEntry); add 503 ProviderUnavailable response |
-| 2.0.0   | 2026-07-31 | Initial Hub OpenAPI 3.1 contract (ADR-0011)     |
+| 2.0.0   | 2026-07-31 | Initial Hub OpenAPI 3.1 contract (ADR-0011)                                                                                                                                                            |

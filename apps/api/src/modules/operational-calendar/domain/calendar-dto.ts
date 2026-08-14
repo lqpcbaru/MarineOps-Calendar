@@ -8,8 +8,8 @@ export interface Freshness {
 export interface WeatherSummary {
   conditions: string;
   temperature: number;
-  visibility: number;
-  precipitation: number;
+  visibility: number | null;
+  precipitation: number | null;
 }
 
 export interface TideSummary {

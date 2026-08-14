@@ -96,6 +96,7 @@ The complete provider pipeline has **7 layers**, each with a single responsibili
 **Responsibility:** Parse HTTP, delegate to service, return response.
 
 **Does NOT:**
+
 - Call providers directly
 - Know which provider is active
 - Build freshness
@@ -108,6 +109,7 @@ The complete provider pipeline has **7 layers**, each with a single responsibili
 **Responsibility:** Orchestrate cache check, provider call, freshness envelope.
 
 **Future state (when caching is added):**
+
 ```
 getWeather(stationId, dateFrom, dateTo):
   1. Validate dates (existing)
@@ -124,6 +126,7 @@ getWeather(stationId, dateFrom, dateTo):
 ```
 
 **Does NOT:**
+
 - Know about MET API
 - Parse BM field values
 - Know station coordinates
@@ -133,6 +136,7 @@ getWeather(stationId, dateFrom, dateTo):
 **File:** `src/modules/weather/domain/weather-provider.port.ts` (existing — no change)
 
 **Contract:**
+
 ```typescript
 interface WeatherProviderPort {
   getCurrentWeather(stationId: string): Promise<WeatherDataPoint>;
@@ -147,6 +151,7 @@ interface WeatherProviderPort {
 **File:** `src/modules/weather/infrastructure/met-malaysia-weather.provider.ts` (new)
 
 **Responsibility:**
+
 1. Resolve station → MET marine area via `StationProviderMappingPort`
 2. Construct HTTP request to `api.met.gov.my`
 3. Add Bearer token from environment
@@ -157,6 +162,7 @@ interface WeatherProviderPort {
 8. Return mapped `WeatherDataPoint[]`
 
 **Dependencies:**
+
 - `StationProviderMappingPort` (to resolve station → MET area)
 - `MET_MALAYSIA_API_KEY` (environment, fail-fast)
 - `MetWeatherMapper` (pure functions)
@@ -169,14 +175,14 @@ interface WeatherProviderPort {
 
 ```typescript
 interface MetRawForecastItem {
-  date: string;          // "06/08/2026"
-  condition: string;     // "Ribut petir di beberapa tempat"
+  date: string; // "06/08/2026"
+  condition: string; // "Ribut petir di beberapa tempat"
   morningForecast: string;
   afternoonForecast: string;
   nightForecast: string;
-  windDirection: string;  // "BD"
-  windSpeed: string;      // "10-20km/h"
-  waveHeight: string;     // "0.5-1.0 m"
+  windDirection: string; // "BD"
+  windSpeed: string; // "10-20km/h"
+  waveHeight: string; // "0.5-1.0 m"
 }
 
 interface MetRawForecastResponse {
@@ -195,6 +201,7 @@ interface MetRawForecastResponse {
 **Responsibility:** Pure functions that transform `MetRawForecastItem` → `WeatherDataPoint`.
 
 **Characteristics:**
+
 - **Pure functions** — no I/O, no side effects, no async
 - **Testable in isolation** — pass raw DTO in, get internal DTO out
 - **Provider-specific** — each provider has its own mapper
@@ -236,13 +243,14 @@ function mapForecast(raw: MetRawForecastItem): WeatherDataPoint;
 **File:** `src/modules/weather/domain/weather-dto.ts` (existing — no change)
 
 **Contract:**
+
 ```typescript
 interface WeatherDataPoint {
-  date: string;          // ISO 8601 date
-  temperature: number;   // °C
-  conditions: string;    // Standard code (CLEAR, THUNDERSTORM, etc.)
-  visibility: number;    // km
-  precipitation: number; // mm
+  date: string; // ISO 8601 date
+  temperature: number; // °C
+  conditions: string; // Standard code (CLEAR, THUNDERSTORM, etc.)
+  visibility: number | null; // km — null apabila sumber tidak menyediakan
+  precipitation: number | null; // mm — null apabila sumber tidak menyediakan
 }
 ```
 
@@ -254,39 +262,39 @@ interface WeatherDataPoint {
 
 ### 3.1 Why mappers are separate from providers
 
-| Concern | Provider (I/O) | Mapper (Pure) |
-|---------|----------------|---------------|
-| HTTP calls | ✅ | ❌ |
-| Auth/tokens | ✅ | ❌ |
-| Retry/timeout | ✅ | ❌ |
-| Error classification | ✅ | ❌ |
-| Field transformation | ❌ | ✅ |
-| Unit/BM conversion | ❌ | ✅ |
-| Date format parsing | ❌ | ✅ |
-| Testable without HTTP | ❌ | ✅ |
+| Concern               | Provider (I/O) | Mapper (Pure) |
+| --------------------- | -------------- | ------------- |
+| HTTP calls            | ✅             | ❌            |
+| Auth/tokens           | ✅             | ❌            |
+| Retry/timeout         | ✅             | ❌            |
+| Error classification  | ✅             | ❌            |
+| Field transformation  | ❌             | ✅            |
+| Unit/BM conversion    | ❌             | ✅            |
+| Date format parsing   | ❌             | ✅            |
+| Testable without HTTP | ❌             | ✅            |
 
 Separation makes mappers **100% unit-testable** with no mocks — just input/output assertions.
 
 ### 3.2 MET Weather Mapper
 
-| Input (Raw) | Transform | Output (Internal) |
-|------------|-----------|-------------------|
-| `"06/08/2026"` | Parse DD/MM/YYYY → YYYY-MM-DD | `date: "2026-08-06"` |
-| `"Ribut petir di beberapa tempat"` | BM condition lookup table | `conditions: "THUNDERSTORM"` |
-| (Not in marine forecast) | Default 0 | `temperature: 0` |
-| (Not in marine forecast) | Default 0 | `visibility: 0` |
-| (Not in marine forecast) | Default 0 | `precipitation: 0` |
+| Input (Raw)                        | Transform                        | Output (Internal)            |
+| ---------------------------------- | -------------------------------- | ---------------------------- |
+| `"06/08/2026"`                     | Parse DD/MM/YYYY → YYYY-MM-DD    | `date: "2026-08-06"`         |
+| `"Ribut petir di beberapa tempat"` | BM condition lookup table        | `conditions: "THUNDERSTORM"` |
+| (Not in marine forecast)           | Default 0                        | `temperature: 0`             |
+| (Not in marine forecast)           | `null` (source does not provide) | `visibility: null`           |
+| (Not in marine forecast)           | `null` (source does not provide) | `precipitation: null`        |
 
 ### 3.3 MET Marine Mapper (for WindWave)
 
-| Input (Raw) | Transform | Output (Internal) |
-|------------|-----------|-------------------|
-| `"06/08/2026"` | Parse DD/MM/YYYY | `date: "2026-08-06"` |
-| `"BD"` | BM compass → standard | `windDirection: "SW"` |
-| `"10-20km/h"` | Range → midpoint, km/h → knots | `windSpeed: 8.1` |
-| `"10-20km/h"` | Range → upper bound, km/h → knots | `windGusts: 10.8` |
-| `"0.5-1.0 m"` | Range → midpoint | `waveHeight: 0.75` |
-| (Not available) | Default 0 | `wavePeriod: 0` |
+| Input (Raw)     | Transform                         | Output (Internal)     |
+| --------------- | --------------------------------- | --------------------- |
+| `"06/08/2026"`  | Parse DD/MM/YYYY                  | `date: "2026-08-06"`  |
+| `"BD"`          | BM compass → standard             | `windDirection: "SW"` |
+| `"10-20km/h"`   | Range → midpoint, km/h → knots    | `windSpeed: 8.1`      |
+| `"10-20km/h"`   | Range → upper bound, km/h → knots | `windGusts: 10.8`     |
+| `"0.5-1.0 m"`   | Range → midpoint                  | `waveHeight: 0.75`    |
+| (Not available) | Default 0                         | `wavePeriod: 0`       |
 
 ### 3.4 Future Provider Mapper Reuse
 
@@ -302,6 +310,7 @@ ECMWF:           EcmwfMapper         (GRIB/NetCDF → domain DTO)
 **All mappers output the same internal DTO.** The service and controller never change.
 
 **Mapper interface (convention, not enforced):**
+
 ```typescript
 // Each provider's mapper is a set of pure functions.
 // No common interface needed — mappers are called only by their own provider.
@@ -352,20 +361,20 @@ getWeather(stationId, dateFrom, dateTo):
 
 ### 4.3 Cache TTL per Data Type
 
-| Data type | valid_until offset | Source |
-|-----------|-------------------|--------|
-| Marine forecast | +6 hours | MET updates ~4× daily |
-| General forecast | +3 hours | MET updates ~8× daily |
-| Observations | +1 hour | Hourly updates |
+| Data type        | valid_until offset | Source                |
+| ---------------- | ------------------ | --------------------- |
+| Marine forecast  | +6 hours           | MET updates ~4× daily |
+| General forecast | +3 hours           | MET updates ~8× daily |
+| Observations     | +1 hour            | Hourly updates        |
 
 ### 4.4 Cache Invalidation
 
-| Event | Action |
-|-------|--------|
-| Cron refresh succeeds | UPSERT cache row with new `valid_until` |
-| Cron refresh fails | Leave existing row (now stale) |
-| Admin manual refresh | UPSERT cache row immediately |
-| Station archived | Cache row expires naturally; no active purge needed |
+| Event                 | Action                                              |
+| --------------------- | --------------------------------------------------- |
+| Cron refresh succeeds | UPSERT cache row with new `valid_until`             |
+| Cron refresh fails    | Leave existing row (now stale)                      |
+| Admin manual refresh  | UPSERT cache row immediately                        |
+| Station archived      | Cache row expires naturally; no active purge needed |
 
 ---
 
@@ -373,33 +382,33 @@ getWeather(stationId, dateFrom, dateTo):
 
 ### 5.1 Retry Policy
 
-| Attempt | Delay | Max Delay | Condition |
-|---------|-------|-----------|-----------|
-| 1 (initial) | 0s | — | Always |
-| 2 | 5s | — | If error is retryable (429, 500, 502, 503, timeout, network) |
-| 3 | 15s | — | If error is retryable |
-| After 3 | — | — | Give up: serve stale or 503 |
+| Attempt     | Delay | Max Delay | Condition                                                    |
+| ----------- | ----- | --------- | ------------------------------------------------------------ |
+| 1 (initial) | 0s    | —         | Always                                                       |
+| 2           | 5s    | —         | If error is retryable (429, 500, 502, 503, timeout, network) |
+| 3           | 15s   | —         | If error is retryable                                        |
+| After 3     | —     | —         | Give up: serve stale or 503                                  |
 
 ### 5.2 Non-retryable Errors
 
 These are **not** retried — they will always fail:
 
-| HTTP Status | Reason |
-|------------|--------|
-| 401 | Invalid token (retrying won't help) |
-| 403 | No permission (retrying won't help) |
-| 404 | Area not found (data issue, not transient) |
+| HTTP Status | Reason                                     |
+| ----------- | ------------------------------------------ |
+| 401         | Invalid token (retrying won't help)        |
+| 403         | No permission (retrying won't help)        |
+| 404         | Area not found (data issue, not transient) |
 
 ### 5.3 Retryable Errors
 
-| HTTP Status | Reason | Retry |
-|------------|--------|-------|
-| 429 | Rate limited | ✅ (with delay) |
-| 500 | Server error | ✅ |
-| 502 | Bad gateway | ✅ |
-| 503 | Service unavailable | ✅ |
-| Timeout | Request timed out | ✅ |
-| Network error | DNS/connection refused | ✅ |
+| HTTP Status   | Reason                 | Retry           |
+| ------------- | ---------------------- | --------------- |
+| 429           | Rate limited           | ✅ (with delay) |
+| 500           | Server error           | ✅              |
+| 502           | Bad gateway            | ✅              |
+| 503           | Service unavailable    | ✅              |
+| Timeout       | Request timed out      | ✅              |
+| Network error | DNS/connection refused | ✅              |
 
 ### 5.4 Retry Implementation Location
 
@@ -411,24 +420,24 @@ Retry logic lives in the **provider implementation** (Layer 4), not the service.
 
 ### 6.1 What to Log
 
-| Event | Level | Data |
-|-------|-------|------|
-| Provider request sent | debug | `{ stationId, endpoint, area }` (no API key) |
-| Provider response received | debug | `{ stationId, statusCode, responseSize }` |
-| Provider retry | warn | `{ attempt, delay, error }` |
-| Provider failed (all retries exhausted) | error | `{ stationId, error, stack }` |
-| Cache hit (fresh) | debug | `{ stationId, validUntil }` |
-| Cache hit (stale) | warn | `{ stationId, validUntil, servingStale: true }` |
-| Cache miss + provider fail | error | `{ stationId, error }` |
-| BM mapping failure (unknown condition) | warn | `{ rawValue, defaultValue }` |
+| Event                                   | Level | Data                                            |
+| --------------------------------------- | ----- | ----------------------------------------------- |
+| Provider request sent                   | debug | `{ stationId, endpoint, area }` (no API key)    |
+| Provider response received              | debug | `{ stationId, statusCode, responseSize }`       |
+| Provider retry                          | warn  | `{ attempt, delay, error }`                     |
+| Provider failed (all retries exhausted) | error | `{ stationId, error, stack }`                   |
+| Cache hit (fresh)                       | debug | `{ stationId, validUntil }`                     |
+| Cache hit (stale)                       | warn  | `{ stationId, validUntil, servingStale: true }` |
+| Cache miss + provider fail              | error | `{ stationId, error }`                          |
+| BM mapping failure (unknown condition)  | warn  | `{ rawValue, defaultValue }`                    |
 
 ### 6.2 What NOT to Log
 
-| Item | Reason |
-|------|--------|
-| API key / Bearer token | Security |
+| Item                                  | Reason                                              |
+| ------------------------------------- | --------------------------------------------------- |
+| API key / Bearer token                | Security                                            |
 | Full response payload (at info level) | Size + potential PII if MET includes location names |
-| User's IP address | Not relevant to provider calls |
+| User's IP address                     | Not relevant to provider calls                      |
 
 ### 6.3 Correlation
 
@@ -452,15 +461,15 @@ ProviderError (base)
 
 ### 7.2 Error to HTTP Mapping
 
-| Provider Error | Service Action | HTTP to Client | Freshness |
-|----------------|---------------|----------------|-----------|
-| `ProviderAuthError` | Serve stale if available | 200 (stale) or 503 | `stale` / `unavailable` |
-| `ProviderDataNotFoundError` | Serve stale if available | 200 (stale) or 404 | `stale` |
-| `ProviderRateLimitedError` | Serve stale | 200 (stale) | `stale` |
-| `ProviderServerError` | Serve stale | 200 (stale) | `stale` |
-| `ProviderTimeoutError` | Serve stale | 200 (stale) | `stale` |
-| `ProviderNetworkError` | Serve stale | 200 (stale) | `stale` |
-| Any + no cache | 503 | 503 `PROVIDER_UNAVAILABLE` | `unavailable` |
+| Provider Error              | Service Action           | HTTP to Client             | Freshness               |
+| --------------------------- | ------------------------ | -------------------------- | ----------------------- |
+| `ProviderAuthError`         | Serve stale if available | 200 (stale) or 503         | `stale` / `unavailable` |
+| `ProviderDataNotFoundError` | Serve stale if available | 200 (stale) or 404         | `stale`                 |
+| `ProviderRateLimitedError`  | Serve stale              | 200 (stale)                | `stale`                 |
+| `ProviderServerError`       | Serve stale              | 200 (stale)                | `stale`                 |
+| `ProviderTimeoutError`      | Serve stale              | 200 (stale)                | `stale`                 |
+| `ProviderNetworkError`      | Serve stale              | 200 (stale)                | `stale`                 |
+| Any + no cache              | 503                      | 503 `PROVIDER_UNAVAILABLE` | `unavailable`           |
 
 ### 7.3 Error Location
 
@@ -587,21 +596,21 @@ src/modules/wind-wave/
 
 ## 11. Design Rules (Binding)
 
-| Rule | Enforcement |
-|------|-------------|
-| Raw DTOs never leave infrastructure layer | TypeScript visibility + barrel exports |
-| Mappers are pure functions (no async, no I/O) | Code review + unit test pattern |
-| Provider errors thrown in infrastructure, caught in application | Architecture convention |
-| API key only in infrastructure, never in domain/application | Code review + lint |
-| Freshness envelope built by service, not provider | Existing code convention |
-| Controller never imports provider | FOLDER_STRUCTURE §2.2 + lint |
-| Each provider has its own mapper | Convention — no shared mapper interface |
-| Port returns mapped internal DTO, not raw | Provider implementation responsibility |
+| Rule                                                            | Enforcement                             |
+| --------------------------------------------------------------- | --------------------------------------- |
+| Raw DTOs never leave infrastructure layer                       | TypeScript visibility + barrel exports  |
+| Mappers are pure functions (no async, no I/O)                   | Code review + unit test pattern         |
+| Provider errors thrown in infrastructure, caught in application | Architecture convention                 |
+| API key only in infrastructure, never in domain/application     | Code review + lint                      |
+| Freshness envelope built by service, not provider               | Existing code convention                |
+| Controller never imports provider                               | FOLDER_STRUCTURE §2.2 + lint            |
+| Each provider has its own mapper                                | Convention — no shared mapper interface |
+| Port returns mapped internal DTO, not raw                       | Provider implementation responsibility  |
 
 ---
 
 ## 12. Change Log
 
-| Version | Date | Notes |
-|---------|------|-------|
-| 1.0.0 | 2026-08-06 | Initial weather provider pipeline design (Sprint 4.0B) |
+| Version | Date       | Notes                                                  |
+| ------- | ---------- | ------------------------------------------------------ |
+| 1.0.0   | 2026-08-06 | Initial weather provider pipeline design (Sprint 4.0B) |

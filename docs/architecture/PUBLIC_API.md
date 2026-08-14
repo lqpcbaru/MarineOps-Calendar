@@ -58,16 +58,17 @@ src/api/public/
 ```
 
 Every public controller is decorated `@Public()` and mounted under `/api/public`. A CI lint rule forbids:
+
 - `@Public()` on any controller outside `src/api/public/`.
 - Importing a command/write use-case from any file under `src/api/public/`.
 
 ### 1.3 CORS
 
-| Header | Value |
-|--------|-------|
-| `Access-Control-Allow-Origin` | `*` (or allow-list of partner domains) |
-| `Access-Control-Allow-Credentials` | `false` |
-| `Access-Control-Allow-Methods` | `GET` |
+| Header                             | Value                                  |
+| ---------------------------------- | -------------------------------------- |
+| `Access-Control-Allow-Origin`      | `*` (or allow-list of partner domains) |
+| `Access-Control-Allow-Credentials` | `false`                                |
+| `Access-Control-Allow-Methods`     | `GET`                                  |
 
 No cookies, no Authorization headers are sent or received on this surface.
 
@@ -82,12 +83,12 @@ No cookies, no Authorization headers are sent or received on this surface.
 **Auth:** None  
 **Parameters:**
 
-| Param | Type | Required | Description |
-|-------|------|----------|-------------|
-| `stationId` | string | Yes | Station reference |
-| `dateFrom` | date | Yes | Range start |
-| `dateTo` | date | Yes | Range end |
-| `view` | enum: `day`, `week`, `month` | No | Calendar view mode |
+| Param       | Type                         | Required | Description        |
+| ----------- | ---------------------------- | -------- | ------------------ |
+| `stationId` | string                       | Yes      | Station reference  |
+| `dateFrom`  | date                         | Yes      | Range start        |
+| `dateTo`    | date                         | Yes      | Range end          |
+| `view`      | enum: `day`, `week`, `month` | No       | Calendar view mode |
 
 **Response:** `CalendarResponse` — per-day combined projection with tide, weather, wind, wave, moon, sun, and hijri data.
 
@@ -168,9 +169,9 @@ No cookies, no Authorization headers are sent or received on this surface.
 ```typescript
 interface Freshness {
   status: 'fresh' | 'stale' | 'unavailable';
-  fetchedAt: string;     // ISO 8601 datetime
-  validUntil: string;    // ISO 8601 datetime
-  source: string;        // e.g. "noaa-tide-api"
+  fetchedAt: string; // ISO 8601 datetime
+  validUntil: string; // ISO 8601 datetime
+  source: string; // e.g. "noaa-tide-api"
 }
 ```
 
@@ -183,9 +184,9 @@ interface TideResponse {
 }
 
 interface TideDataPoint {
-  date: string;          // ISO date
-  time: string;          // ISO datetime
-  height: number;        // meters
+  date: string; // ISO date
+  time: string; // ISO datetime
+  height: number; // meters
   type: 'HIGH' | 'LOW';
 }
 ```
@@ -200,10 +201,10 @@ interface WeatherResponse {
 
 interface WeatherDataPoint {
   date: string;
-  temperature: number;       // °C
-  conditions: string;        // e.g. "Cerah", "Hujan"
-  visibility: number;        // km
-  precipitation: number;     // mm
+  temperature: number; // °C
+  conditions: string; // e.g. "Cerah", "Hujan"
+  visibility: number | null; // km (null apabila sumber tidak menyediakan)
+  precipitation: number | null; // mm (null apabila sumber tidak menyediakan)
 }
 ```
 
@@ -217,11 +218,11 @@ interface WindWaveResponse {
 
 interface WindWaveDataPoint {
   date: string;
-  windSpeed: number;         // knots
-  windDirection: string;     // compass bearing
-  windGusts: number;         // knots
-  waveHeight: number;        // meters
-  wavePeriod: number;        // seconds
+  windSpeed: number; // knots
+  windDirection: string; // compass bearing
+  windGusts: number; // knots
+  waveHeight: number; // meters
+  wavePeriod: number; // seconds
 }
 ```
 
@@ -231,10 +232,10 @@ interface WindWaveDataPoint {
 interface MoonResponse {
   data: {
     date: string;
-    phaseName: string;       // e.g. "Bulan Baharu", "Bulan Penuh"
-    illumination: number;    // 0-100 percentage
+    phaseName: string; // e.g. "Bulan Baharu", "Bulan Penuh"
+    illumination: number; // 0-100 percentage
     moonrise: string | null; // ISO datetime
-    moonset: string | null;  // ISO datetime
+    moonset: string | null; // ISO datetime
   };
 }
 ```
@@ -245,8 +246,8 @@ interface MoonResponse {
 interface SunResponse {
   data: {
     date: string;
-    sunrise: string;         // ISO datetime
-    sunset: string;          // ISO datetime
+    sunrise: string; // ISO datetime
+    sunset: string; // ISO datetime
     daylightDuration: string; // ISO 8601 duration
   };
 }
@@ -257,12 +258,12 @@ interface SunResponse {
 ```typescript
 interface CalendarResponse {
   data: CalendarDayEntry[];
-  freshness: Freshness;     // aggregate worst-case freshness
+  freshness: Freshness; // aggregate worst-case freshness
 }
 
 interface CalendarDayEntry {
-  date: string;             // ISO date (Masihi)
-  hijriDate: string;        // Hijri date string
+  date: string; // ISO date (Masihi)
+  hijriDate: string; // Hijri date string
   tide?: TideDataPoint[];
   moon: {
     phaseName: string;
@@ -341,38 +342,38 @@ interface ErrorEnvelope {
 
 ### 4.1 Two-tier cache
 
-| Tier | Location | Purpose | TTL |
-|------|----------|---------|-----|
-| **L1 — CDN / edge** | CDN (Cloudflare, nginx) | Shared response caching | `max-age` = seconds to `validUntil` |
-| **L2 — Database** | PostgreSQL `<module>_cache` table | Source-of-truth cache for adapter pattern | Per-data-type (see below) |
+| Tier                | Location                          | Purpose                                   | TTL                                 |
+| ------------------- | --------------------------------- | ----------------------------------------- | ----------------------------------- |
+| **L1 — CDN / edge** | CDN (Cloudflare, nginx)           | Shared response caching                   | `max-age` = seconds to `validUntil` |
+| **L2 — Database**   | PostgreSQL `<module>_cache` table | Source-of-truth cache for adapter pattern | Per-data-type (see below)           |
 
 ### 4.2 Cache durations per data type
 
-| Data type | L2 TTL (validUntil) | L1 max-age | Refresh trigger |
-|-----------|---------------------|------------|-----------------|
-| Tide | 1 hour | 3600s | Cron (hourly) + manual refresh |
-| Weather | 3 hours | 10800s | Cron (every 3h) + manual refresh |
-| Wind | 1 hour | 3600s | Cron (hourly) |
-| Wave | 1 hour | 3600s | Cron (hourly) |
-| Moon phase | 24 hours | 86400s | N/A (computed, deterministic) |
-| Sun | 24 hours | 86400s | N/A (computed, deterministic) |
-| Hijri | 24 hours | 86400s | N/A (computed, deterministic) |
-| Calendar | min of children | dynamic | Derived from sourced children |
-| Dashboard | 5 minutes | 300s | Aggregates sourced + computed |
-| Alerts | 60 seconds | 60s | Event-driven (publish/unpublish) |
-| Stations | 5 minutes | 300s | Event-driven (create/archive) |
+| Data type  | L2 TTL (validUntil) | L1 max-age | Refresh trigger                  |
+| ---------- | ------------------- | ---------- | -------------------------------- |
+| Tide       | 1 hour              | 3600s      | Cron (hourly) + manual refresh   |
+| Weather    | 3 hours             | 10800s     | Cron (every 3h) + manual refresh |
+| Wind       | 1 hour              | 3600s      | Cron (hourly)                    |
+| Wave       | 1 hour              | 3600s      | Cron (hourly)                    |
+| Moon phase | 24 hours            | 86400s     | N/A (computed, deterministic)    |
+| Sun        | 24 hours            | 86400s     | N/A (computed, deterministic)    |
+| Hijri      | 24 hours            | 86400s     | N/A (computed, deterministic)    |
+| Calendar   | min of children     | dynamic    | Derived from sourced children    |
+| Dashboard  | 5 minutes           | 300s       | Aggregates sourced + computed    |
+| Alerts     | 60 seconds          | 60s        | Event-driven (publish/unpublish) |
+| Stations   | 5 minutes           | 300s       | Event-driven (create/archive)    |
 
 > TTLs are configurable per data type via the Settings module (NFR-DAT-001).
 
 ### 4.3 Cache invalidation
 
-| Scenario | Action |
-|----------|--------|
-| Cron refresh succeeds | L2 row upserted with new `validUntil`; L1 `max-age` updates on next request |
-| Cron refresh fails | L2 row left in place (now `stale`); L1 serves `stale` with `stale-while-revalidate` |
-| Manual refresh (admin) | L2 row upserted immediately; `Cache-Control` updated on next read |
-| Station archived | L1 cache purged for `/stations` and `/stations/{id}`; stale entries expire naturally |
-| Alert published/unpublished | L1 cache purged for `/alerts`; 60s TTL refreshes naturally |
+| Scenario                    | Action                                                                               |
+| --------------------------- | ------------------------------------------------------------------------------------ |
+| Cron refresh succeeds       | L2 row upserted with new `validUntil`; L1 `max-age` updates on next request          |
+| Cron refresh fails          | L2 row left in place (now `stale`); L1 serves `stale` with `stale-while-revalidate`  |
+| Manual refresh (admin)      | L2 row upserted immediately; `Cache-Control` updated on next read                    |
+| Station archived            | L1 cache purged for `/stations` and `/stations/{id}`; stale entries expire naturally |
+| Alert published/unpublished | L1 cache purged for `/alerts`; 60s TTL refreshes naturally                           |
 
 ### 4.4 Stale handling (ADR-0008)
 
@@ -385,6 +386,7 @@ Request → Check L2 cache
 ```
 
 **Response headers on stale:**
+
 ```
 Cache-Control: public, max-age=0, stale-while-revalidate=60
 X-Data-Freshness: stale
@@ -394,6 +396,7 @@ Warning: 199 - "Stale data served; external provider unavailable"
 ### 4.5 Computable data (no cache table)
 
 Moon phase, sunrise/sunset, and Hijri date are **computed locally** (ADR-0008 §1). They have:
+
 - No `*_cache` database table
 - No `freshness` envelope in the response
 - CDN cache only (`max-age=86400` — 24h, deterministic per date)
@@ -405,13 +408,13 @@ Moon phase, sunrise/sunset, and Hijri date are **computed locally** (ADR-0008 §
 
 ### 5.1 Standard error codes
 
-| HTTP | Code | When | Example |
-|------|------|------|---------|
-| 400 | `VALIDATION_ERROR` | Invalid query params | `stationId` missing, date format wrong |
-| 404 | `NOT_FOUND` | Resource does not exist | Station ID not found |
-| 429 | `RATE_LIMITED` | IP rate limit exceeded | Too many requests from one IP |
-| 500 | `INTERNAL_ERROR` | Unhandled server error | Unexpected exception |
-| 503 | `PROVIDER_UNAVAILABLE` | External provider down AND no cache | Tide API unreachable, no cached data |
+| HTTP | Code                   | When                                | Example                                |
+| ---- | ---------------------- | ----------------------------------- | -------------------------------------- |
+| 400  | `VALIDATION_ERROR`     | Invalid query params                | `stationId` missing, date format wrong |
+| 404  | `NOT_FOUND`            | Resource does not exist             | Station ID not found                   |
+| 429  | `RATE_LIMITED`         | IP rate limit exceeded              | Too many requests from one IP          |
+| 500  | `INTERNAL_ERROR`       | Unhandled server error              | Unexpected exception                   |
+| 503  | `PROVIDER_UNAVAILABLE` | External provider down AND no cache | Tide API unreachable, no cached data   |
 
 ### 5.2 Error envelope shape
 
@@ -460,6 +463,7 @@ If **stale** cache exists, the endpoint returns 200 with `freshness.status = "st
 ```
 
 Response headers:
+
 ```
 Retry-After: 60
 X-RateLimit-Limit: 100
@@ -473,15 +477,16 @@ X-RateLimit-Reset: 1691234567
 
 Per API_VERSIONING.md §3:
 
-| Change type | Bump | Public surface action |
-|-------------|------|-----------------------|
-| Backward-incompatible | major → `/api/public/v2` | New ADR + Architect approval; 6-month deprecation window |
-| Backward-compatible additive | minor | In-place; changelog entry |
-| Bug fix | patch | In-place; changelog entry |
+| Change type                  | Bump                     | Public surface action                                    |
+| ---------------------------- | ------------------------ | -------------------------------------------------------- |
+| Backward-incompatible        | major → `/api/public/v2` | New ADR + Architect approval; 6-month deprecation window |
+| Backward-compatible additive | minor                    | In-place; changelog entry                                |
+| Bug fix                      | patch                    | In-place; changelog entry                                |
 
 The public surface is currently implicit `v1` (`/api/public` = `/api/public/v1`). A future `/api/public/v2` prefix would be introduced only on a major breaking change.
 
 **Deprecation headers:**
+
 ```
 Deprecation: true
 Sunset: Sun, 31 Aug 2027 00:00:00 GMT
@@ -525,7 +530,11 @@ interface TideProvider {
 
 ```typescript
 interface TideQueryPort {
-  query(stationId: string, dateFrom: Date, dateTo: Date): Promise<{
+  query(
+    stationId: string,
+    dateFrom: Date,
+    dateTo: Date,
+  ): Promise<{
     data: TideDataPoint[];
     freshness: Freshness;
   }>;
@@ -548,6 +557,7 @@ PublicController → QueryPort → CacheService
 ### 7.4 Provider swap
 
 Swapping a provider (e.g., NOAA tide → commercial provider) requires:
+
 1. New `infrastructure/<new-provider>-tide-provider.ts` implementing `TideProvider`
 2. DI binding change in the module
 3. No domain or application layer change
@@ -639,6 +649,7 @@ The Public Portal homepage ("Pusat Operasi") needs a single API call to populate
 ### 9.3 Module ownership
 
 The Dashboard module owns no tables. It is a **read projection** that calls:
+
 - Tide query port
 - Weather query port
 - Wind/Wave query port
@@ -653,6 +664,6 @@ This follows the same fan-out pattern as the Marine Calendar read projection (SE
 
 ## 10. Change log
 
-| Version | Date | Notes |
-|---------|------|-------|
-| 2.0.0 | 2026-08-05 | Initial Public API architecture (Sprint 3.0) — adds `/wind-wave` combined endpoint, `/dashboard` public endpoint, expanded DTOs, caching strategy, provider adapter pattern, stale handling, error codes, versioning policy |
+| Version | Date       | Notes                                                                                                                                                                                                                       |
+| ------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2.0.0   | 2026-08-05 | Initial Public API architecture (Sprint 3.0) — adds `/wind-wave` combined endpoint, `/dashboard` public endpoint, expanded DTOs, caching strategy, provider adapter pattern, stale handling, error codes, versioning policy |

@@ -27,8 +27,8 @@ export class PlaceholderWeatherProvider implements WeatherProviderPort {
       date: date || new Date().toISOString().slice(0, 10),
       temperature: 0,
       conditions: '—',
-      visibility: 0,
-      precipitation: 0,
+      visibility: null,
+      precipitation: null,
     };
   }
 }

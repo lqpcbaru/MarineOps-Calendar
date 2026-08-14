@@ -37,7 +37,7 @@ function RingkasanHariIni({ data }: { data: WeatherDataPoint[] }) {
         <MarineConditionCard
           icon="👁️"
           title="Jarak Penglihatan"
-          value={current ? `${current.visibility} km` : '—'}
+          value={current && current.visibility !== null ? `${current.visibility} km` : '—'}
         />
       </MarineSummaryGrid>
     </section>
@@ -67,8 +67,8 @@ function RamalanCuaca({ data }: { data: WeatherDataPoint[] }) {
                 <AppTable.Td>{p.date}</AppTable.Td>
                 <AppTable.Td>{p.conditions}</AppTable.Td>
                 <AppTable.Td>{p.temperature}</AppTable.Td>
-                <AppTable.Td>{p.visibility}</AppTable.Td>
-                <AppTable.Td>{p.precipitation}</AppTable.Td>
+                <AppTable.Td>{p.visibility !== null ? p.visibility : '—'}</AppTable.Td>
+                <AppTable.Td>{p.precipitation !== null ? p.precipitation : '—'}</AppTable.Td>
               </AppTable.Row>
             ))}
           </AppTable.Body>

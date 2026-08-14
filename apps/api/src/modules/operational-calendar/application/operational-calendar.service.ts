@@ -1,5 +1,14 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type { DailyOperationalRecord, CalendarResponse, Freshness, WeatherSummary, TideSummary, WindWaveSummary, MoonSummary, SunSummary } from '../domain';
+import type {
+  DailyOperationalRecord,
+  CalendarResponse,
+  Freshness,
+  WeatherSummary,
+  TideSummary,
+  WindWaveSummary,
+  MoonSummary,
+  SunSummary,
+} from '../domain';
 import { WeatherService } from '../../weather/application/weather.service';
 import { TideService } from '../../tide/application/tide.service';
 import { WindWaveService } from '../../wind-wave/application/wind-wave.service';
@@ -7,6 +16,7 @@ import { MoonService } from '../../moon/application/moon.service';
 import { SunService } from '../../sun/application/sun.service';
 import { CacheService } from '../../../shared/cache/cache.service';
 import { buildCacheKey } from '../../../shared/cache/cache-policy';
+import { localToday, iterateCalendarDates } from '../../../shared-kernel/date-validation';
 import { STATIONS_QUERY_PORT } from '../../stations/api/stations.module';
 import type { StationsQueryPort } from '../../stations/application/ports/stations-query.port';
 
@@ -22,9 +32,13 @@ export class OperationalCalendarService {
     @Inject('CACHE_SERVICE') private readonly cache: CacheService<DailyOperationalRecord[]>,
   ) {}
 
-  async getCalendar(stationId: string, dateFrom?: string, dateTo?: string): Promise<CalendarResponse> {
+  async getCalendar(
+    stationId: string,
+    dateFrom?: string,
+    dateTo?: string,
+  ): Promise<CalendarResponse> {
     const now = new Date();
-    const from = dateFrom || now.toISOString().slice(0, 10);
+    const from = dateFrom || localToday();
     const to = dateTo || from;
     const cacheKey = buildCacheKey('operational', 'calendar', stationId, from);
 
@@ -45,29 +59,30 @@ export class OperationalCalendarService {
     return { data: result.data, freshness };
   }
 
-  private async buildRecords(stationId: string, dateFrom: string, dateTo: string): Promise<DailyOperationalRecord[]> {
+  private async buildRecords(
+    stationId: string,
+    dateFrom: string,
+    dateTo: string,
+  ): Promise<DailyOperationalRecord[]> {
     const station = await this.stationPort.findPublicById(stationId);
     const stationName = station?.name ?? stationId;
     const stationCode = station?.code ?? stationId;
     const regionName = station?.regionName ?? null;
 
-    const from = new Date(dateFrom);
-    const to = new Date(dateTo);
-    const days = Math.max(1, Math.ceil((to.getTime() - from.getTime()) / 86_400_000) + 1);
+    // Iterate calendar dates (inclusive) without UTC/millisecond drift.
+    const dates = iterateCalendarDates(dateFrom, dateTo);
 
     const records: DailyOperationalRecord[] = [];
 
-    for (let i = 0; i < days; i++) {
-      const d = new Date(from.getTime() + i * 86_400_000);
-      const dateStr = d.toISOString().slice(0, 10);
-
-      const [weatherResult, tideResult, windWaveResult, moonResult, sunResult] = await Promise.allSettled([
-        this.weatherService.getWeather(stationId, dateStr, dateStr),
-        this.tideService.getTide(stationId, dateStr, dateStr),
-        this.windWaveService.getWindWave(stationId, dateStr, dateStr),
-        this.moonService.getMoonPhase(stationId, dateStr),
-        this.sunService.getSunData(stationId, dateStr),
-      ]);
+    for (const dateStr of dates) {
+      const [weatherResult, tideResult, windWaveResult, moonResult, sunResult] =
+        await Promise.allSettled([
+          this.weatherService.getWeather(stationId, dateStr, dateStr),
+          this.tideService.getTide(stationId, dateStr, dateStr),
+          this.windWaveService.getWindWave(stationId, dateStr, dateStr),
+          this.moonService.getMoonPhase(stationId, dateStr),
+          this.sunService.getSunData(stationId, dateStr),
+        ]);
 
       records.push({
         stationId,
@@ -96,9 +111,21 @@ export class OperationalCalendarService {
 
   private extractWeather(result: PromiseSettledResult<unknown>): WeatherSummary | null {
     if (result.status !== 'fulfilled') return null;
-    const r = result.value as { data?: { conditions?: string; temperature?: number; visibility?: number; precipitation?: number }[] };
+    const r = result.value as {
+      data?: {
+        conditions?: string;
+        temperature?: number;
+        visibility?: number | null;
+        precipitation?: number | null;
+      }[];
+    };
     if (!r.data?.[0]) return null;
-    return { conditions: r.data[0].conditions ?? '—', temperature: r.data[0].temperature ?? 0, visibility: r.data[0].visibility ?? 0, precipitation: r.data[0].precipitation ?? 0 };
+    return {
+      conditions: r.data[0].conditions ?? '—',
+      temperature: r.data[0].temperature ?? 0,
+      visibility: r.data[0].visibility ?? null,
+      precipitation: r.data[0].precipitation ?? null,
+    };
   }
 
   private extractTide(result: PromiseSettledResult<unknown>): TideSummary | null {
@@ -116,22 +143,54 @@ export class OperationalCalendarService {
 
   private extractWindWave(result: PromiseSettledResult<unknown>): WindWaveSummary | null {
     if (result.status !== 'fulfilled') return null;
-    const r = result.value as { data?: { windSpeed?: number; windDirection?: string; windGusts?: number; waveHeight?: number; wavePeriod?: number }[] };
+    const r = result.value as {
+      data?: {
+        windSpeed?: number;
+        windDirection?: string;
+        windGusts?: number;
+        waveHeight?: number;
+        wavePeriod?: number;
+      }[];
+    };
     if (!r.data?.[0]) return null;
-    return { windSpeed: r.data[0].windSpeed ?? 0, windDirection: r.data[0].windDirection ?? '—', windGusts: r.data[0].windGusts ?? 0, waveHeight: r.data[0].waveHeight ?? 0, wavePeriod: r.data[0].wavePeriod ?? 0 };
+    return {
+      windSpeed: r.data[0].windSpeed ?? 0,
+      windDirection: r.data[0].windDirection ?? '—',
+      windGusts: r.data[0].windGusts ?? 0,
+      waveHeight: r.data[0].waveHeight ?? 0,
+      wavePeriod: r.data[0].wavePeriod ?? 0,
+    };
   }
 
   private extractMoon(result: PromiseSettledResult<unknown>): MoonSummary | null {
     if (result.status !== 'fulfilled') return null;
-    const r = result.value as { data?: { phaseName?: string; illumination?: number; moonrise?: string | null; moonset?: string | null } };
+    const r = result.value as {
+      data?: {
+        phaseName?: string;
+        illumination?: number;
+        moonrise?: string | null;
+        moonset?: string | null;
+      };
+    };
     if (!r.data) return null;
-    return { phaseName: r.data.phaseName ?? '—', illumination: r.data.illumination ?? 0, moonrise: r.data.moonrise ?? null, moonset: r.data.moonset ?? null };
+    return {
+      phaseName: r.data.phaseName ?? '—',
+      illumination: r.data.illumination ?? 0,
+      moonrise: r.data.moonrise ?? null,
+      moonset: r.data.moonset ?? null,
+    };
   }
 
   private extractSun(result: PromiseSettledResult<unknown>): SunSummary | null {
     if (result.status !== 'fulfilled') return null;
-    const r = result.value as { data?: { sunrise?: string; sunset?: string; daylightDuration?: string } };
+    const r = result.value as {
+      data?: { sunrise?: string; sunset?: string; daylightDuration?: string };
+    };
     if (!r.data) return null;
-    return { sunrise: r.data.sunrise ?? '—', sunset: r.data.sunset ?? '—', dayLength: r.data.daylightDuration ?? '—' };
+    return {
+      sunrise: r.data.sunrise ?? '—',
+      sunset: r.data.sunset ?? '—',
+      dayLength: r.data.daylightDuration ?? '—',
+    };
   }
 }

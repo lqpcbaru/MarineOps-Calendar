@@ -3,10 +3,10 @@ import type { MetRawForecastItem } from './met-raw-dto';
 
 const CONDITION_MAP: Record<string, string> = {
   'Tiada hujan': 'CLEAR',
-  'Cerah': 'CLEAR',
-  'Mendung': 'CLOUDY',
+  Cerah: 'CLEAR',
+  Mendung: 'CLOUDY',
   'Hujan di beberapa tempat': 'RAIN',
-  'Hujan': 'RAIN',
+  Hujan: 'RAIN',
   'Hujan lebat': 'HEAVY_RAIN',
   'Ribut petir di beberapa tempat': 'THUNDERSTORM',
   'Ribut petir': 'THUNDERSTORM',
@@ -14,14 +14,14 @@ const CONDITION_MAP: Record<string, string> = {
 };
 
 const WIND_MAP: Record<string, string> = {
-  'U': 'N',
-  'TL': 'NE',
-  'T': 'E',
-  'TG': 'SE',
-  'S': 'S',
-  'BD': 'SW',
-  'B': 'W',
-  'BL': 'NW',
+  U: 'N',
+  TL: 'NE',
+  T: 'E',
+  TG: 'SE',
+  S: 'S',
+  BD: 'SW',
+  B: 'W',
+  BL: 'NW',
 };
 
 export function mapCondition(bmCondition: string): string {
@@ -89,8 +89,8 @@ export function mapForecastItem(raw: MetRawForecastItem): WeatherDataPoint {
     date: parseMetDate(raw.date),
     temperature: raw.maxTemperature ?? raw.minTemperature ?? 0,
     conditions: mapCondition(raw.weatherCondition || raw.morningForecast),
-    visibility: 0,
-    precipitation: 0,
+    visibility: null,
+    precipitation: null,
   };
 }
 

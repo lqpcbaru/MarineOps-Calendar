@@ -2,8 +2,8 @@ export interface WeatherDataPoint {
   date: string;
   temperature: number;
   conditions: string;
-  visibility: number;
-  precipitation: number;
+  visibility: number | null;
+  precipitation: number | null;
 }
 
 export interface WeatherResponse {
