@@ -4,7 +4,7 @@ import type { OperationRegionRecord, StationListResult } from '../../modules/sta
 import type { ListStationsQuery } from '../../modules/stations/application/dtos';
 import { Public } from '../../modules/authentication/api/public.decorator';
 
-@Controller('stations')
+@Controller('public/stations')
 @Public()
 export class PublicStationsController {
   constructor(private readonly getStation: GetStationUseCase) {}

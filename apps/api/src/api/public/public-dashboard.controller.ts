@@ -3,7 +3,7 @@ import { DashboardService } from '../../modules/dashboard/application/dashboard.
 import type { DashboardResponse } from '../../modules/dashboard/domain';
 import { Public } from '../../modules/authentication/api/public.decorator';
 
-@Controller('dashboard')
+@Controller('public/dashboard')
 @Public()
 export class PublicDashboardController {
   constructor(private readonly dashboardService: DashboardService) {}

@@ -3,7 +3,7 @@ import { AisService } from '../../modules/ais/application/ais.service';
 import type { AisSearchResult, AisProfileResult, AisEventsResult } from '../../modules/ais/domain';
 import { Public } from '../../modules/authentication/api/public.decorator';
 
-@Controller('ais/vessels')
+@Controller('public/ais/vessels')
 @Public()
 export class PublicAisController {
   constructor(private readonly aisService: AisService) {}

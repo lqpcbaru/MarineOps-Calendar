@@ -7,7 +7,7 @@ import request from 'supertest';
 /* Inline test controller returning valid PublicDashboardResponse shape.
    This validates the contract defined in PUBLIC_API.md and OPENAPI.md.
    The real controller is validated by unit tests in dashboard.service.spec.ts. */
-@Controller('dashboard')
+@Controller('public/dashboard')
 class ContractDashboardController {
   @Get()
   async getDashboard(@Query('stationId') stationId?: string) {
@@ -15,9 +15,33 @@ class ContractDashboardController {
       date: '2026-08-06',
       hijriDate: '—',
       station: { id: stationId || '—', name: '—', code: '—' },
-      tide: { next: null, freshness: { status: 'fresh', fetchedAt: '2026-08-06T00:00:00Z', validUntil: '2026-08-06T00:05:00Z', source: 'placeholder' } },
-      weather: { current: null, freshness: { status: 'fresh', fetchedAt: '2026-08-06T00:00:00Z', validUntil: '2026-08-06T03:00:00Z', source: 'placeholder' } },
-      windWave: { current: null, freshness: { status: 'fresh', fetchedAt: '2026-08-06T00:00:00Z', validUntil: '2026-08-06T01:00:00Z', source: 'placeholder' } },
+      tide: {
+        next: null,
+        freshness: {
+          status: 'fresh',
+          fetchedAt: '2026-08-06T00:00:00Z',
+          validUntil: '2026-08-06T00:05:00Z',
+          source: 'placeholder',
+        },
+      },
+      weather: {
+        current: null,
+        freshness: {
+          status: 'fresh',
+          fetchedAt: '2026-08-06T00:00:00Z',
+          validUntil: '2026-08-06T03:00:00Z',
+          source: 'placeholder',
+        },
+      },
+      windWave: {
+        current: null,
+        freshness: {
+          status: 'fresh',
+          fetchedAt: '2026-08-06T00:00:00Z',
+          validUntil: '2026-08-06T01:00:00Z',
+          source: 'placeholder',
+        },
+      },
       moon: { phaseName: '—', illumination: 0 },
       sun: { sunrise: '—', sunset: '—' },
       activeAlerts: { count: 0, latest: null },
@@ -34,6 +58,7 @@ describe('Public API Contract — GET /api/public/dashboard', () => {
       controllers: [ContractDashboardController],
     }).compile();
     app = moduleFixture.createNestApplication();
+    app.setGlobalPrefix('api');
     await app.init();
   }, 30000);
 
@@ -42,7 +67,7 @@ describe('Public API Contract — GET /api/public/dashboard', () => {
   });
 
   it('returns 200 with PublicDashboardResponse shape per PUBLIC_API.md §3.8', async () => {
-    const res = await request(app.getHttpServer()).get('/dashboard');
+    const res = await request(app.getHttpServer()).get('/api/public/dashboard');
     expect(res.status).toBe(200);
     const b = res.body;
     expect(typeof b.date).toBe('string');
@@ -74,13 +99,13 @@ describe('Public API Contract — GET /api/public/dashboard', () => {
   });
 
   it('accepts optional stationId query parameter', async () => {
-    const res = await request(app.getHttpServer()).get('/dashboard?stationId=st-001');
+    const res = await request(app.getHttpServer()).get('/api/public/dashboard?stationId=st-001');
     expect(res.status).toBe(200);
     expect(res.body.station.id).toBe('st-001');
   });
 
   it('returns 200 without query parameters', async () => {
-    const res = await request(app.getHttpServer()).get('/dashboard');
+    const res = await request(app.getHttpServer()).get('/api/public/dashboard');
     expect(res.status).toBe(200);
   });
 });

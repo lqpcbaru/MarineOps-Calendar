@@ -3,7 +3,7 @@ import { WindWaveService } from '../../modules/wind-wave/application/wind-wave.s
 import type { WindWaveResponse } from '../../modules/wind-wave/domain';
 import { Public } from '../../modules/authentication/api/public.decorator';
 
-@Controller('wind-wave')
+@Controller('public/wind-wave')
 @Public()
 export class PublicWindWaveController {
   constructor(private readonly windWaveService: WindWaveService) {}

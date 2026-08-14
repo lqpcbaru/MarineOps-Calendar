@@ -3,7 +3,7 @@ import { SunService } from '../../modules/sun/application/sun.service';
 import type { SunResponse } from '../../modules/sun/domain';
 import { Public } from '../../modules/authentication/api/public.decorator';
 
-@Controller('sun')
+@Controller('public/sun')
 @Public()
 export class PublicSunController {
   constructor(private readonly sunService: SunService) {}

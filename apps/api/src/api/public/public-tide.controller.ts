@@ -3,7 +3,7 @@ import { TideService } from '../../modules/tide/application/tide.service';
 import type { TideResponse } from '../../modules/tide/domain';
 import { Public } from '../../modules/authentication/api/public.decorator';
 
-@Controller('tide')
+@Controller('public/tide')
 @Public()
 export class PublicTideController {
   constructor(private readonly tideService: TideService) {}

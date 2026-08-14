@@ -26,7 +26,7 @@ import { ValidationError } from '../../shared-kernel';
 import { CurrentPrincipal } from '../../modules/authentication/api/current-principal.decorator';
 import type { AuthPrincipal } from '../../modules/authentication/domain';
 
-@Controller('auth')
+@Controller('v1/auth')
 export class AuthController {
   constructor(
     private readonly loginUseCase: LoginUseCase,

@@ -4,7 +4,7 @@ import { Test, type TestingModule } from '@nestjs/testing';
 import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 
-@Controller('weather')
+@Controller('public/weather')
 class ContractWeatherController {
   @Get()
   async getWeather(
@@ -44,6 +44,7 @@ describe('Public API Contract — GET /api/public/weather', () => {
       controllers: [ContractWeatherController],
     }).compile();
     app = moduleFixture.createNestApplication();
+    app.setGlobalPrefix('api');
     await app.init();
   }, 30000);
 
@@ -52,7 +53,7 @@ describe('Public API Contract — GET /api/public/weather', () => {
   });
 
   it('returns 200 with WeatherResponse shape per PUBLIC_API.md §3.3', async () => {
-    const res = await request(app.getHttpServer()).get('/weather');
+    const res = await request(app.getHttpServer()).get('/api/public/weather');
     expect(res.status).toBe(200);
     const b = res.body;
     expect(Array.isArray(b.data)).toBe(true);
@@ -74,14 +75,14 @@ describe('Public API Contract — GET /api/public/weather', () => {
 
   it('accepts optional stationId, dateFrom, dateTo', async () => {
     const res = await request(app.getHttpServer()).get(
-      '/weather?stationId=st-001&dateFrom=2026-08-01&dateTo=2026-08-07',
+      '/api/public/weather?stationId=st-001&dateFrom=2026-08-01&dateTo=2026-08-07',
     );
     expect(res.status).toBe(200);
   });
 
   it('returns data array matching date range length', async () => {
     const res = await request(app.getHttpServer()).get(
-      '/weather?dateFrom=2026-08-01&dateTo=2026-08-03',
+      '/api/public/weather?dateFrom=2026-08-01&dateTo=2026-08-03',
     );
     expect(res.status).toBe(200);
     expect(res.body.data).toHaveLength(3);

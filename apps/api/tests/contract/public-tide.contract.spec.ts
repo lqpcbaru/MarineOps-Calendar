@@ -4,13 +4,10 @@ import { Test, type TestingModule } from '@nestjs/testing';
 import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 
-@Controller('tide')
+@Controller('public/tide')
 class ContractTideController {
   @Get()
-  async getTide(
-    @Query('dateFrom') dateFrom?: string,
-    @Query('dateTo') dateTo?: string,
-  ) {
+  async getTide(@Query('dateFrom') dateFrom?: string, @Query('dateTo') dateTo?: string) {
     const from = new Date(dateFrom || '2026-08-06');
     const to = new Date(dateTo || dateFrom || '2026-08-06');
     const days = Math.max(1, Math.ceil((to.getTime() - from.getTime()) / 86_400_000) + 1);
@@ -21,7 +18,15 @@ class ContractTideController {
       data.push({ date: ds, time: `${ds}T06:00:00Z`, height: 0, type: 'HIGH' });
       data.push({ date: ds, time: `${ds}T12:00:00Z`, height: 0, type: 'LOW' });
     }
-    return { data, freshness: { status: 'fresh', fetchedAt: new Date().toISOString(), validUntil: new Date(Date.now() + 3_600_000).toISOString(), source: 'placeholder' } };
+    return {
+      data,
+      freshness: {
+        status: 'fresh',
+        fetchedAt: new Date().toISOString(),
+        validUntil: new Date(Date.now() + 3_600_000).toISOString(),
+        source: 'placeholder',
+      },
+    };
   }
 }
 
@@ -33,13 +38,16 @@ describe('Public API Contract — GET /api/public/tide', () => {
       controllers: [ContractTideController],
     }).compile();
     app = moduleFixture.createNestApplication();
+    app.setGlobalPrefix('api');
     await app.init();
   }, 30000);
 
-  afterAll(async () => { await app?.close(); });
+  afterAll(async () => {
+    await app?.close();
+  });
 
   it('returns 200 with TideResponse shape per PUBLIC_API.md §3.2', async () => {
-    const res = await request(app.getHttpServer()).get('/tide');
+    const res = await request(app.getHttpServer()).get('/api/public/tide');
     expect(res.status).toBe(200);
     const b = res.body;
     expect(Array.isArray(b.data)).toBe(true);
@@ -55,12 +63,16 @@ describe('Public API Contract — GET /api/public/tide', () => {
   });
 
   it('accepts optional stationId, dateFrom, dateTo', async () => {
-    const res = await request(app.getHttpServer()).get('/tide?stationId=st-001&dateFrom=2026-08-01&dateTo=2026-08-07');
+    const res = await request(app.getHttpServer()).get(
+      '/api/public/tide?stationId=st-001&dateFrom=2026-08-01&dateTo=2026-08-07',
+    );
     expect(res.status).toBe(200);
   });
 
   it('returns 2 data points per day (HIGH + LOW)', async () => {
-    const res = await request(app.getHttpServer()).get('/tide?dateFrom=2026-08-01&dateTo=2026-08-01');
+    const res = await request(app.getHttpServer()).get(
+      '/api/public/tide?dateFrom=2026-08-01&dateTo=2026-08-01',
+    );
     expect(res.status).toBe(200);
     expect(res.body.data).toHaveLength(2);
   });

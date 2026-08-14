@@ -4,11 +4,19 @@ import { Test, type TestingModule } from '@nestjs/testing';
 import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 
-@Controller('sun')
+@Controller('public/sun')
 class ContractSunController {
   @Get()
   async getSunData(@Query('date') date?: string) {
-    return { data: { date: date || '2026-08-06', sunrise: '—', sunset: '—', solarNoon: '—', daylightDuration: '—' } };
+    return {
+      data: {
+        date: date || '2026-08-06',
+        sunrise: '—',
+        sunset: '—',
+        solarNoon: '—',
+        daylightDuration: '—',
+      },
+    };
   }
 }
 
@@ -20,13 +28,16 @@ describe('Public API Contract — GET /api/public/sun', () => {
       controllers: [ContractSunController],
     }).compile();
     app = moduleFixture.createNestApplication();
+    app.setGlobalPrefix('api');
     await app.init();
   }, 30000);
 
-  afterAll(async () => { await app?.close(); });
+  afterAll(async () => {
+    await app?.close();
+  });
 
   it('returns 200 with SunResponse shape per PUBLIC_API.md §3.6', async () => {
-    const res = await request(app.getHttpServer()).get('/sun');
+    const res = await request(app.getHttpServer()).get('/api/public/sun');
     expect(res.status).toBe(200);
     const b = res.body;
     expect(b.data).toBeDefined();
@@ -39,12 +50,14 @@ describe('Public API Contract — GET /api/public/sun', () => {
   });
 
   it('accepts optional stationId and date', async () => {
-    const res = await request(app.getHttpServer()).get('/sun?stationId=st-001&date=2026-08-10');
+    const res = await request(app.getHttpServer()).get(
+      '/api/public/sun?stationId=st-001&date=2026-08-10',
+    );
     expect(res.status).toBe(200);
   });
 
   it('returns valid sun data for a specific date', async () => {
-    const res = await request(app.getHttpServer()).get('/sun?date=2026-08-05');
+    const res = await request(app.getHttpServer()).get('/api/public/sun?date=2026-08-05');
     expect(res.status).toBe(200);
     expect(res.body.data.date).toBe('2026-08-05');
   });

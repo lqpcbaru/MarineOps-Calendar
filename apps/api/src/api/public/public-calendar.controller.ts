@@ -3,7 +3,7 @@ import { OperationalCalendarService } from '../../modules/operational-calendar/a
 import type { CalendarResponse } from '../../modules/operational-calendar/domain';
 import { Public } from '../../modules/authentication/api/public.decorator';
 
-@Controller('calendar')
+@Controller('public/calendar')
 @Public()
 export class PublicCalendarController {
   constructor(private readonly calendarService: OperationalCalendarService) {}

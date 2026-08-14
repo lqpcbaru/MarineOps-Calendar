@@ -7,7 +7,7 @@ import {
   RequirePermissions,
 } from '../../modules/authentication/api/permissions.guard';
 
-@Controller('audit')
+@Controller('v1/audit')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 export class AuditController {
   constructor(private readonly getAudit: GetAuditUseCase) {}

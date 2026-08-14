@@ -21,7 +21,7 @@ import {
   RequirePermissions,
 } from '../../modules/authentication/api/permissions.guard';
 
-@Controller('roles')
+@Controller('v1/roles')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 export class RolesController {
   constructor(

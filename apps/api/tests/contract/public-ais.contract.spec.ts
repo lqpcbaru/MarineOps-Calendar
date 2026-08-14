@@ -4,7 +4,7 @@ import { Test, type TestingModule } from '@nestjs/testing';
 import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 
-@Controller('ais/vessels')
+@Controller('public/ais/vessels')
 class TestAisController {
   @Get('search')
   async search(@Query('q') _q: string) {
@@ -86,6 +86,7 @@ describe('AIS Pipeline — Contract Validation', () => {
       controllers: [TestAisController],
     }).compile();
     app = moduleFixture.createNestApplication();
+    app.setGlobalPrefix('api');
     await app.init();
   }, 30000);
 
@@ -94,7 +95,7 @@ describe('AIS Pipeline — Contract Validation', () => {
   });
 
   it('GET /ais/vessels/search returns AisSearchResult shape', async () => {
-    const res = await request(app.getHttpServer()).get('/ais/vessels/search?q=test');
+    const res = await request(app.getHttpServer()).get('/api/public/ais/vessels/search?q=test');
     expect(res.status).toBe(200);
     const b = res.body;
     expect(Array.isArray(b.vessels)).toBe(true);
@@ -106,14 +107,14 @@ describe('AIS Pipeline — Contract Validation', () => {
   });
 
   it('GET /ais/vessels/:vesselId returns AisProfileResult shape', async () => {
-    const res = await request(app.getHttpServer()).get('/ais/vessels/v-1');
+    const res = await request(app.getHttpServer()).get('/api/public/ais/vessels/v-1');
     expect(res.status).toBe(200);
     expect(res.body.profile.identity.name).toBe('Mock Vessel');
     expect(res.body.freshness.status).toBe('fresh');
   });
 
   it('GET /ais/vessels/:vesselId/events returns AisEventsResult shape', async () => {
-    const res = await request(app.getHttpServer()).get('/ais/vessels/v-1/events');
+    const res = await request(app.getHttpServer()).get('/api/public/ais/vessels/v-1/events');
     expect(res.status).toBe(200);
     expect(res.body.events[0].type).toBe('FISHING');
     expect(res.body.freshness.status).toBe('fresh');

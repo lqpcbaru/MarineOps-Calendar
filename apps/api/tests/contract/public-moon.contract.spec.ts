@@ -4,11 +4,20 @@ import { Test, type TestingModule } from '@nestjs/testing';
 import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 
-@Controller('moon')
+@Controller('public/moon')
 class ContractMoonController {
   @Get()
   async getMoonPhase(@Query('date') date?: string) {
-    return { data: { date: date || '2026-08-06', phaseName: '—', illumination: 0, ageDays: 0, moonrise: null, moonset: null } };
+    return {
+      data: {
+        date: date || '2026-08-06',
+        phaseName: '—',
+        illumination: 0,
+        ageDays: 0,
+        moonrise: null,
+        moonset: null,
+      },
+    };
   }
 }
 
@@ -20,13 +29,16 @@ describe('Public API Contract — GET /api/public/moon', () => {
       controllers: [ContractMoonController],
     }).compile();
     app = moduleFixture.createNestApplication();
+    app.setGlobalPrefix('api');
     await app.init();
   }, 30000);
 
-  afterAll(async () => { await app?.close(); });
+  afterAll(async () => {
+    await app?.close();
+  });
 
   it('returns 200 with MoonResponse shape per PUBLIC_API.md §3.5', async () => {
-    const res = await request(app.getHttpServer()).get('/moon');
+    const res = await request(app.getHttpServer()).get('/api/public/moon');
     expect(res.status).toBe(200);
     const b = res.body;
     expect(b.data).toBeDefined();
@@ -40,12 +52,14 @@ describe('Public API Contract — GET /api/public/moon', () => {
   });
 
   it('accepts optional stationId and date', async () => {
-    const res = await request(app.getHttpServer()).get('/moon?stationId=st-001&date=2026-08-10');
+    const res = await request(app.getHttpServer()).get(
+      '/api/public/moon?stationId=st-001&date=2026-08-10',
+    );
     expect(res.status).toBe(200);
   });
 
   it('returns valid moon data for a specific date', async () => {
-    const res = await request(app.getHttpServer()).get('/moon?date=2026-08-05');
+    const res = await request(app.getHttpServer()).get('/api/public/moon?date=2026-08-05');
     expect(res.status).toBe(200);
     expect(res.body.data.date).toBe('2026-08-05');
   });

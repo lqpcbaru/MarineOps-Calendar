@@ -3,7 +3,7 @@ import { RecommendationService } from '../../modules/recommendation/application/
 import type { RecommendationResponse } from '../../modules/recommendation/domain';
 import { Public } from '../../modules/authentication/api/public.decorator';
 
-@Controller('recommendation')
+@Controller('public/recommendation')
 @Public()
 export class PublicRecommendationController {
   constructor(private readonly recommendationService: RecommendationService) {}

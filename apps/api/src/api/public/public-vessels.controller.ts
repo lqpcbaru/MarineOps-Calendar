@@ -1,9 +1,13 @@
 import { Controller, Get, Param, Query } from '@nestjs/common';
 import { VesselIntelligenceService } from '../../modules/vessel-intelligence/application/vessel-intelligence.service';
-import type { VesselSearchResult, VesselProfile, VesselEventsResult } from '../../modules/vessel-intelligence/domain';
+import type {
+  VesselSearchResult,
+  VesselProfile,
+  VesselEventsResult,
+} from '../../modules/vessel-intelligence/domain';
 import { Public } from '../../modules/authentication/api/public.decorator';
 
-@Controller('vessels')
+@Controller('public/vessels')
 @Public()
 export class PublicVesselsController {
   constructor(private readonly vesselService: VesselIntelligenceService) {}

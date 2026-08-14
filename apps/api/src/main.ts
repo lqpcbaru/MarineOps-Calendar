@@ -1,4 +1,5 @@
 import { NestFactory } from '@nestjs/core';
+import { RequestMethod } from '@nestjs/common';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import compression from 'compression';
@@ -39,7 +40,13 @@ async function bootstrap() {
     credentials: true,
   });
 
-  app.setGlobalPrefix('api/v1');
+  // Routing:
+  //   /api/public/*  → public controllers (anonymous, read-only)
+  //   /api/v1/*      → admin controllers (JWT + RBAC)
+  //   /health/*      → health endpoints (excluded from the "api" prefix)
+  app.setGlobalPrefix('api', {
+    exclude: [{ path: 'health', method: RequestMethod.GET }],
+  });
   app.enableShutdownHooks();
 
   const port = parseInt(process.env.PORT || '3000', 10);

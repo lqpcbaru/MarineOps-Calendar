@@ -3,7 +3,7 @@ import { WeatherService } from '../../modules/weather/application/weather.servic
 import type { WeatherResponse } from '../../modules/weather/domain';
 import { Public } from '../../modules/authentication/api/public.decorator';
 
-@Controller('weather')
+@Controller('public/weather')
 @Public()
 export class PublicWeatherController {
   constructor(private readonly weatherService: WeatherService) {}
@@ -14,10 +14,6 @@ export class PublicWeatherController {
     @Query('dateFrom') dateFrom?: string,
     @Query('dateTo') dateTo?: string,
   ): Promise<WeatherResponse> {
-    return this.weatherService.getWeather(
-      stationId || '—',
-      dateFrom,
-      dateTo,
-    );
+    return this.weatherService.getWeather(stationId || '—', dateFrom, dateTo);
   }
 }

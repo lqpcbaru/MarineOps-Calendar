@@ -3,7 +3,7 @@ import { MoonService } from '../../modules/moon/application/moon.service';
 import type { MoonResponse } from '../../modules/moon/domain';
 import { Public } from '../../modules/authentication/api/public.decorator';
 
-@Controller('moon')
+@Controller('public/moon')
 @Public()
 export class PublicMoonController {
   constructor(private readonly moonService: MoonService) {}
