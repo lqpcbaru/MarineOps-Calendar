@@ -4,15 +4,20 @@ import type { TideProviderPort, TideDataPoint } from '../domain';
 import { CacheService } from '../../../shared/cache/cache.service';
 import { InMemoryCacheStore } from '../../../shared/cache/in-memory-cache.store';
 import { createCachePolicy } from '../../../shared/cache/cache-policy';
+import { localToday } from '../../../shared-kernel/date-validation';
 import type { StationsQueryPort } from '../../stations/application/ports/stations-query.port';
 
 function createCache(): CacheService<TideDataPoint[]> {
-  return new CacheService(new InMemoryCacheStore(), createCachePolicy({ ttlMs: 60 * 60 * 1000, staleTtlMs: 240 * 60 * 1000 }));
+  return new CacheService(
+    new InMemoryCacheStore(),
+    createCachePolicy({ ttlMs: 60 * 60 * 1000, staleTtlMs: 240 * 60 * 1000 }),
+  );
 }
 
 function createStationPort(): StationsQueryPort {
   return {
-    findById: async () => null, findPublicById: async () => null,
+    findById: async () => null,
+    findPublicById: async () => null,
     list: async () => ({ stations: [], total: 0, page: 1, pageSize: 20 }),
     listPublic: async () => ({ stations: [], total: 0, page: 1, pageSize: 20 }),
     listRegions: async () => [],
@@ -51,8 +56,25 @@ describe('TideService', () => {
     expect(result.cacheUpdated).toBe(true);
   });
 
+  it('refreshStation uses Malaysia operational date (localToday) not UTC', async () => {
+    let capturedDateFrom: string | undefined;
+    const spy: TideProviderPort = {
+      async getTide(_stationId, dateFrom) {
+        capturedDateFrom = dateFrom;
+        return [{ date: '2026-08-05', time: '', height: 1, type: 'HIGH' }];
+      },
+    };
+    const service = new TideService(spy, createCache(), createStationPort());
+    await service.refreshStation('st-001');
+    expect(capturedDateFrom).toBe(localToday());
+  });
+
   it('refreshStation returns FAILURE on provider error', async () => {
-    const failing: TideProviderPort = { async getTide() { throw new Error('down'); } };
+    const failing: TideProviderPort = {
+      async getTide() {
+        throw new Error('down');
+      },
+    };
     const service = new TideService(failing, createCache(), createStationPort());
     const result = await service.refreshStation('st-001');
     expect(result.status).toBe('FAILURE');
@@ -60,14 +82,41 @@ describe('TideService', () => {
 
   it('refreshAllStations skips archived', async () => {
     const stationPort: StationsQueryPort = {
-      findById: async () => null, findPublicById: async () => null,
+      findById: async () => null,
+      findPublicById: async () => null,
       list: async () => ({ stations: [], total: 0, page: 1, pageSize: 20 }),
       listPublic: async () => ({
         stations: [
-          { id: 'st-1', code: 'A', name: 'Active', latitude: 1, longitude: 1, timezone: 'UTC', regionId: null, status: 'ACTIVE', metadata: null, createdAt: new Date(), updatedAt: new Date() },
-          { id: 'st-2', code: 'B', name: 'Archived', latitude: 1, longitude: 1, timezone: 'UTC', regionId: null, status: 'ARCHIVED', metadata: null, createdAt: new Date(), updatedAt: new Date() },
+          {
+            id: 'st-1',
+            code: 'A',
+            name: 'Active',
+            latitude: 1,
+            longitude: 1,
+            timezone: 'UTC',
+            regionId: null,
+            status: 'ACTIVE',
+            metadata: null,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+          {
+            id: 'st-2',
+            code: 'B',
+            name: 'Archived',
+            latitude: 1,
+            longitude: 1,
+            timezone: 'UTC',
+            regionId: null,
+            status: 'ARCHIVED',
+            metadata: null,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
         ],
-        total: 2, page: 1, pageSize: 20,
+        total: 2,
+        page: 1,
+        pageSize: 20,
       }),
       listRegions: async () => [],
     };
@@ -80,7 +129,10 @@ describe('TideService', () => {
   it('cache is reused on second getTide call', async () => {
     let providerCalls = 0;
     const counting: TideProviderPort = {
-      async getTide() { providerCalls++; return [{ date: '', time: '', height: 0, type: 'HIGH' }]; },
+      async getTide() {
+        providerCalls++;
+        return [{ date: '', time: '', height: 0, type: 'HIGH' }];
+      },
     };
     const service = new TideService(counting, createCache(), createStationPort());
     await service.getTide('st-001');

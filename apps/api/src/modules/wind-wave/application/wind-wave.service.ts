@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { WindWaveResponse, Freshness, WindWaveDataPoint } from '../domain';
 import type { WindWaveProviderPort } from '../domain';
-import { validateDateString } from '../../../shared-kernel/date-validation';
+import { validateDateString, localToday } from '../../../shared-kernel/date-validation';
 import { CacheService } from '../../../shared/cache/cache.service';
 import { buildCacheKey } from '../../../shared/cache/cache-policy';
 import { STATIONS_QUERY_PORT } from '../../stations/api/stations.module';
@@ -60,22 +60,30 @@ export class WindWaveService {
     const startedAt = new Date();
     const start = Date.now();
     try {
-      const today = new Date().toISOString().slice(0, 10);
+      const today = localToday();
       const data = await this.provider.getWindWave(stationId, today, today);
       const cacheKey = buildCacheKey('marineforecast', 'windwave', stationId, today);
       await this.cache.set(cacheKey, data, 'marineforecast', stationId);
       return {
-        stationId, provider: 'marineforecast',
-        startedAt: startedAt.toISOString(), completedAt: new Date().toISOString(),
-        durationMs: Date.now() - start, status: 'SUCCESS',
-        recordsUpdated: data.length, cacheUpdated: true,
+        stationId,
+        provider: 'marineforecast',
+        startedAt: startedAt.toISOString(),
+        completedAt: new Date().toISOString(),
+        durationMs: Date.now() - start,
+        status: 'SUCCESS',
+        recordsUpdated: data.length,
+        cacheUpdated: true,
       };
     } catch (error) {
       return {
-        stationId, provider: 'marineforecast',
-        startedAt: startedAt.toISOString(), completedAt: new Date().toISOString(),
-        durationMs: Date.now() - start, status: 'FAILURE',
-        recordsUpdated: 0, cacheUpdated: false,
+        stationId,
+        provider: 'marineforecast',
+        startedAt: startedAt.toISOString(),
+        completedAt: new Date().toISOString(),
+        durationMs: Date.now() - start,
+        status: 'FAILURE',
+        recordsUpdated: 0,
+        cacheUpdated: false,
         error: error instanceof Error ? error.message : 'unknown',
       };
     }

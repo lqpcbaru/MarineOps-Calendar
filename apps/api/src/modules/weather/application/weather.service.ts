@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { WeatherResponse, Freshness, WeatherDataPoint } from '../domain';
 import type { WeatherProviderPort } from '../domain';
-import { validateDateString } from '../../../shared-kernel/date-validation';
+import { validateDateString, localToday } from '../../../shared-kernel/date-validation';
 import { CacheService } from '../../../shared/cache/cache.service';
 import { buildCacheKey } from '../../../shared/cache/cache-policy';
 import { STATIONS_QUERY_PORT } from '../../stations/api/stations.module';
@@ -61,7 +61,7 @@ export class WeatherService {
     const start = Date.now();
 
     try {
-      const today = new Date().toISOString().slice(0, 10);
+      const today = localToday();
       const data = await this.provider.getForecast(stationId, today, today);
       const cacheKey = buildCacheKey('metmalaysia', 'weather', stationId, today);
       await this.cache.set(cacheKey, data, 'metmalaysia', stationId);

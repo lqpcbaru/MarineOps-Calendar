@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { SunResponse, SunDataPoint } from '../domain';
 import type { SunProviderPort } from '../domain';
-import { validateDateString } from '../../../shared-kernel/date-validation';
+import { validateDateString, localToday } from '../../../shared-kernel/date-validation';
 import { CacheService } from '../../../shared/cache/cache.service';
 import { buildCacheKey } from '../../../shared/cache/cache-policy';
 import { STATIONS_QUERY_PORT } from '../../stations/api/stations.module';
@@ -47,22 +47,30 @@ export class SunService {
     const startedAt = new Date();
     const start = Date.now();
     try {
-      const today = new Date().toISOString().slice(0, 10);
+      const today = localToday();
       const data = await this.provider.getSunData(stationId, today);
       const cacheKey = buildCacheKey('astronomical', 'sun', stationId, today);
       await this.cache.set(cacheKey, data, 'astronomical', stationId);
       return {
-        stationId, provider: 'astronomical',
-        startedAt: startedAt.toISOString(), completedAt: new Date().toISOString(),
-        durationMs: Date.now() - start, status: 'SUCCESS',
-        recordsUpdated: 1, cacheUpdated: true,
+        stationId,
+        provider: 'astronomical',
+        startedAt: startedAt.toISOString(),
+        completedAt: new Date().toISOString(),
+        durationMs: Date.now() - start,
+        status: 'SUCCESS',
+        recordsUpdated: 1,
+        cacheUpdated: true,
       };
     } catch (error) {
       return {
-        stationId, provider: 'astronomical',
-        startedAt: startedAt.toISOString(), completedAt: new Date().toISOString(),
-        durationMs: Date.now() - start, status: 'FAILURE',
-        recordsUpdated: 0, cacheUpdated: false,
+        stationId,
+        provider: 'astronomical',
+        startedAt: startedAt.toISOString(),
+        completedAt: new Date().toISOString(),
+        durationMs: Date.now() - start,
+        status: 'FAILURE',
+        recordsUpdated: 0,
+        cacheUpdated: false,
         error: error instanceof Error ? error.message : 'unknown',
       };
     }
