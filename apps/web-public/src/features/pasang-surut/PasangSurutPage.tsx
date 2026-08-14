@@ -119,7 +119,7 @@ export function PasangSurutPage() {
           subtitle="Maklumat pasang surut air laut mengikut stesen dan tarikh."
         />
         <ErrorState
-          title="Ralat"
+          title="Ralat Memuatkan Pasang Surut"
           message={error instanceof Error ? error.message : 'Gagal mendapatkan data.'}
         />
       </div>

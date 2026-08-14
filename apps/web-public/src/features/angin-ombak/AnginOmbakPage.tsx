@@ -104,7 +104,7 @@ export function AnginOmbakPage() {
       <div className="mx-auto max-w-6xl px-4 py-6">
         <PageHeader title="Angin & Ombak" subtitle="Maklumat keadaan angin dan ombak." />
         <ErrorState
-          title="Ralat"
+          title="Ralat Memuatkan Angin & Ombak"
           message={error instanceof Error ? error.message : 'Gagal mendapatkan data.'}
         />
       </div>

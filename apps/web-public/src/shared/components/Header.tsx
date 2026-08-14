@@ -12,6 +12,7 @@ const mobileNavItems = [
   { to: '/kalendar-operasi', label: 'Kalendar Operasi' },
   { to: '/stesen', label: 'Stesen' },
   { to: '/amaran-marin', label: 'Amaran Marin' },
+  { to: '/perisikan-kapal', label: 'Perisikan Kapal' },
   { to: '/mengenai', label: 'Mengenai' },
 ] as const;
 
@@ -24,7 +25,11 @@ export function Header() {
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
           <div className="flex items-center gap-3">
-            <Link to="/" className="flex items-center gap-2" aria-label="MarineOps Hub — Laman Utama">
+            <Link
+              to="/"
+              className="flex items-center gap-2"
+              aria-label="MarineOps Hub — Laman Utama"
+            >
               <svg
                 className="h-8 w-8 text-ocean-400"
                 viewBox="0 0 32 32"
@@ -62,7 +67,11 @@ export function Header() {
               {mobileOpen ? (
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
               ) : (
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"
+                />
               )}
             </svg>
           </button>
@@ -71,7 +80,11 @@ export function Header() {
 
       {/* Mobile Navigation */}
       {mobileOpen && (
-        <nav id="mobile-menu" aria-label="Navigasi mudah alih" className="border-t border-marine-700 md:hidden">
+        <nav
+          id="mobile-menu"
+          aria-label="Navigasi mudah alih"
+          className="border-t border-marine-700 md:hidden"
+        >
           <ul className="space-y-1 px-4 py-3">
             {mobileNavItems.map((item) => (
               <li key={item.to}>

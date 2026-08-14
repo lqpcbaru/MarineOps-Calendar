@@ -94,7 +94,7 @@ export function FasaBulanPage() {
       <div className="mx-auto max-w-6xl px-4 py-6">
         <PageHeader title="Fasa Bulan" subtitle="Maklumat fasa bulan." />
         <ErrorState
-          title="Ralat"
+          title="Ralat Memuatkan Fasa Bulan"
           message={error instanceof Error ? error.message : 'Gagal mendapatkan data.'}
         />
       </div>

@@ -84,7 +84,7 @@ export function MatahariPage() {
       <div className="mx-auto max-w-6xl px-4 py-6">
         <PageHeader title="Matahari" subtitle="Maklumat waktu matahari." />
         <ErrorState
-          title="Ralat"
+          title="Ralat Memuatkan Matahari"
           message={error instanceof Error ? error.message : 'Gagal mendapatkan data.'}
         />
       </div>
@@ -117,9 +117,10 @@ export function MatahariPage() {
         <InfoPanel title="Mengapa Waktu Matahari Penting">
           <p>Waktu matahari menentukan tempoh cahaya siang yang tersedia untuk operasi di laut.</p>
         </InfoPanel>
-        <InfoPanel title="Perancangan Rondaan">
+        <InfoPanel title="Tempoh Cahaya Siang">
           <p>
-            Rondaan siang sesuai untuk pemantauan umum. Rondaan malam sesuai untuk operasi khas.
+            Tempoh cahaya siang menentukan jumlah waktu siang yang tersedia sepanjang hari. Maklumat
+            ini boleh dirujuk semasa merancang aktiviti di laut.
           </p>
         </InfoPanel>
       </section>

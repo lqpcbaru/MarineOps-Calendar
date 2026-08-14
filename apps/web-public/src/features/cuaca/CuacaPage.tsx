@@ -103,7 +103,7 @@ export function CuacaPage() {
           subtitle="Keadaan cuaca semasa dan ramalan ringkas untuk operasi laut."
         />
         <ErrorState
-          title="Ralat"
+          title="Ralat Memuatkan Cuaca"
           message={error instanceof Error ? error.message : 'Gagal mendapatkan data.'}
         />
       </div>
