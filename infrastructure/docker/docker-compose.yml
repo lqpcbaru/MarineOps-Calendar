@@ -1,14 +1,29 @@
 version: '3.9'
 
+# ── Local development compose ─────────────────────────────────
+# This file is for LOCAL DEVELOPMENT ONLY. It must never be used
+# verbatim for production. Production secrets are injected from a
+# secret manager / environment and never committed here.
+#
+# Credentials are read from the shell environment (or a git-ignored
+# .env file next to this compose file). Docker Compose fails fast on
+# unset required variables via `${VAR:?message}` interpolation.
+#
+# Example (local):
+#   POSTGRES_PASSWORD=localpass \
+#   JWT_ACCESS_SECRET=localdevsecret \
+#   JWT_REFRESH_SECRET=localdevsecret \
+#   docker compose -f infrastructure/docker/docker-compose.yml up
+
 services:
   postgres:
     image: postgres:16-alpine
     container_name: marineops-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: marineops
-      POSTGRES_PASSWORD: changeme
-      POSTGRES_DB: marineops_dev
+      POSTGRES_USER: ${POSTGRES_USER:-marineops}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required (set a local password)}
+      POSTGRES_DB: ${POSTGRES_DB:-marineops_dev}
     ports:
       - '5432:5432'
     volumes:
@@ -50,12 +65,12 @@ services:
       NODE_ENV: production
       PORT: 3000
       APP_NAME: MarineOps
-      APP_URL: http://localhost:3000
-      DATABASE_URL: postgresql://marineops:changeme@postgres:5432/marineops_dev
+      APP_URL: ${APP_URL:-http://localhost:3000}
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
       REDIS_URL: redis://redis:6379
       REDIS_ENABLED: 'true'
-      JWT_ACCESS_SECRET: change-me-in-production
-      JWT_REFRESH_SECRET: change-me-in-production
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?JWT_ACCESS_SECRET is required}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?JWT_REFRESH_SECRET is required}
       JWT_ACCESS_TTL_MINUTES: '15'
       JWT_REFRESH_TTL_DAYS: '7'
       LOG_LEVEL: info

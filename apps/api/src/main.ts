@@ -25,8 +25,17 @@ async function bootstrap() {
     }),
   );
 
+  // CORS origin is authoritative from APP_URL. In development we allow a
+  // localhost fallback; in production APP_URL is required and we fail fast
+  // rather than silently trusting a development origin.
+  const isProduction = process.env.NODE_ENV === 'production';
+  const appUrl = process.env.APP_URL;
+  if (isProduction && !appUrl) {
+    throw new Error('APP_URL is required in production (CORS origin)');
+  }
+
   app.enableCors({
-    origin: process.env.APP_URL || 'http://localhost:5173',
+    origin: appUrl || 'http://localhost:5173',
     credentials: true,
   });
 
