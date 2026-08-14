@@ -9,7 +9,12 @@ export interface WindWaveDataPoint {
 
 export interface WindWaveResponse {
   data: WindWaveDataPoint[];
-  freshness: { status: string; fetchedAt: string; validUntil: string; source: string };
+  freshness: {
+    status: 'fresh' | 'stale' | 'unavailable';
+    fetchedAt: string;
+    validUntil: string;
+    source: string;
+  };
 }
 
 export async function getWindWave(

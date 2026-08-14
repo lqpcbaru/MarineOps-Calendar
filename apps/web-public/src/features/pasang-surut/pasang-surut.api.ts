@@ -7,7 +7,12 @@ export interface TideDataPoint {
 
 export interface TideResponse {
   data: TideDataPoint[];
-  freshness: { status: string; fetchedAt: string; validUntil: string; source: string };
+  freshness: {
+    status: 'fresh' | 'stale' | 'unavailable';
+    fetchedAt: string;
+    validUntil: string;
+    source: string;
+  };
 }
 
 export async function getTide(

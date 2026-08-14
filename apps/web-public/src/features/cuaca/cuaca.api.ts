@@ -8,7 +8,12 @@ export interface WeatherDataPoint {
 
 export interface WeatherResponse {
   data: WeatherDataPoint[];
-  freshness: { status: string; fetchedAt: string; validUntil: string; source: string };
+  freshness: {
+    status: 'fresh' | 'stale' | 'unavailable';
+    fetchedAt: string;
+    validUntil: string;
+    source: string;
+  };
 }
 
 export async function getWeather(

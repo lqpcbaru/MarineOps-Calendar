@@ -30,13 +30,23 @@ export interface DailyOperationalRecord {
     moonset: string | null;
   } | null;
   sun: { sunrise: string; sunset: string; dayLength: string } | null;
-  freshness: { status: string; fetchedAt: string; validUntil: string; source: string };
+  freshness: {
+    status: 'fresh' | 'stale' | 'unavailable';
+    fetchedAt: string;
+    validUntil: string;
+    source: string;
+  };
   generatedAt: string;
 }
 
 export interface CalendarResponse {
   data: DailyOperationalRecord[];
-  freshness: { status: string; fetchedAt: string; validUntil: string; source: string };
+  freshness: {
+    status: 'fresh' | 'stale' | 'unavailable';
+    fetchedAt: string;
+    validUntil: string;
+    source: string;
+  };
 }
 
 export async function getCalendar(

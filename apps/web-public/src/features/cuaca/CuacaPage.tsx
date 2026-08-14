@@ -27,14 +27,13 @@ function RingkasanHariIni({ data }: { data: WeatherDataPoint[] }) {
   return (
     <section aria-label="Ringkasan cuaca hari ini" className="mb-8">
       <SectionTitle>Ringkasan Hari Ini</SectionTitle>
-      <MarineSummaryGrid columns={4}>
+      <MarineSummaryGrid columns={3}>
         <MarineConditionCard icon="🌤️" title="Keadaan Cuaca" value={current?.conditions ?? '—'} />
         <MarineConditionCard
           icon="🌡️"
           title="Suhu"
           value={current ? `${current.temperature}°C` : '—'}
         />
-        <MarineConditionCard icon="💧" title="Kelembapan" value="—" />
         <MarineConditionCard
           icon="👁️"
           title="Jarak Penglihatan"
