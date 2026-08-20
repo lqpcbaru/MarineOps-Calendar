@@ -45,7 +45,7 @@ async function bootstrap() {
   //   /api/v1/*      → admin controllers (JWT + RBAC)
   //   /health/*      → health endpoints (excluded from the "api" prefix)
   app.setGlobalPrefix('api', {
-    exclude: [{ path: 'health', method: RequestMethod.GET }],
+    exclude: [{ path: 'health/(.*)', method: RequestMethod.ALL }],
   });
   app.enableShutdownHooks();
 

@@ -1,0 +1,30 @@
+# Docker build context exclusions
+# Prevent local node_modules (pnpm virtual-store junctions) and build
+# artifacts from being copied into the image and corrupting the pnpm
+# workspace dependency layout.
+
+**/node_modules
+**/dist
+.git
+.gitignore
+.env
+.env.*
+!.env.example
+
+# Prisma local SQLite/dev artifacts
+**/*.db
+**/*.db-journal
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Editor/OS
+.vscode
+.idea
+.DS_Store
+Thumbs.db
+
+# Misc
+FETCH_HEAD
