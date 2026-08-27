@@ -19,9 +19,11 @@ Global Fishing Watch provides AIS-derived vessel data:
 
 | GFW Capability | MarineOps Endpoint                         | Cache TTL |
 | -------------- | ------------------------------------------ | --------- |
-| Vessel Search  | `GET /api/public/ais/vessels/search?q=...` | 30 min    |
-| Vessel Profile | `GET /api/public/ais/vessels/:id`          | 30 min    |
-| Vessel Events  | `GET /api/public/ais/vessels/:id/events`   | 15 min    |
+| Vessel Search  | `GET /api/public/vessels/search?q=...`     | 30 min    |
+| Vessel Profile | `GET /api/public/vessels/:vesselId`        | 30 min    |
+| Vessel Events  | `GET /api/public/vessels/:vesselId/events` | 15 min    |
+
+`PublicVesselsController` is the only public route exposing GFW-derived data — it wraps `AisService` via `VesselIntelligenceService`. An earlier, separate `PublicAisController` exposed the same underlying data a second time under `/api/public/ais/vessels/*`; it had no frontend consumer and was removed.
 
 ## 3. Authentication
 
@@ -51,7 +53,10 @@ GFW rate limits are configurable via provider policy. Current defaults:
 ## 7. Architecture
 
 ```
-PublicAisController (@Public)
+PublicVesselsController (@Public)
+       │
+       ▼
+VesselIntelligenceService
        │
        ▼
 AisService (cache-first)

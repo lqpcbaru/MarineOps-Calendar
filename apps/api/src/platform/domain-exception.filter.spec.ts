@@ -61,7 +61,7 @@ describe('DomainExceptionFilter', () => {
 
     filter.catch(new ValidationError('invalid'), host);
 
-    const [[body]] = json.mock.calls;
+    const body = json.mock.calls[0]?.[0];
     expect(body).not.toHaveProperty('correlationId');
   });
 });
