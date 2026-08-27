@@ -27,10 +27,11 @@ MarineOps Hub uses **one PostgreSQL database**. Every table is **owned by exactl
 │  MarineWeather owns:      weather_cache                                │
 │  Wind owns:               wind_cache                                   │
 │  Wave owns:               wave_cache                                   │
-│  Audit owns:              audit_events                                 │
+│  Audit owns:              audit_log                                    │
 │  Settings owns:           settings                                     │
 │  Moon/Sun/Hijri:          (no tables — pure computation)               │
 │  Dashboard/Calendar:      (no tables — read projections)               │
+│  Stations also owns:      operation_regions, station_provider_mappings │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -106,8 +107,17 @@ Freshness = `now < validUntil`. Past `validUntil` = stale. Cache entries are ups
 | `weather_cache`    | MarineWeather  | MarineWeather               | MarineWeather (public+admin), Calendar       |
 | `wind_cache`       | Wind           | Wind                        | Wind (public+admin), Calendar                |
 | `wave_cache`       | Wave           | Wave                        | Wave (public+admin), Calendar                |
-| `audit_events`     | Audit          | Audit (via event consumers) | Audit (admin)                                |
+| `audit_log`        | Audit          | Audit (via event consumers) | Audit (admin)                                |
 | `settings`         | Settings       | Settings (admin)            | Adapter modules (via port)                   |
+
+**Implemented but not in this table's original scope** (Stations module, ADR-0012 — see [STATION_ERD](../data/STATION_ERD.md) for the authoritative spec):
+
+| Table                       | Owning module | Written by       | Read by                                               |
+| --------------------------- | ------------- | ---------------- | ----------------------------------------------------- |
+| `operation_regions`         | Stations      | Stations (admin) | Stations (public+admin), Calendar, Dashboard          |
+| `station_provider_mappings` | Stations      | Stations (admin) | Tide, MarineWeather, Wind, Wave (provider resolution) |
+
+Note: the table above named this `audit_events`; the actual implemented table (per `schema.prisma`) is `audit_log` — corrected here to match. `role_permissions` as a standalone table was never built; `Role.permissionCodes` is a `String[]` column directly on `roles` instead. The cache tables (`tide_cache`, `weather_cache`, `wind_cache`, `wave_cache`), `calendar_entries`, `alerts`, and `settings` remain unimplemented — still-planned scope, not a defect.
 
 ---
 
@@ -150,6 +160,7 @@ For a module like Stations that serves both surfaces:
 
 ## 6. Change log
 
-| Version | Date       | Notes                                                                    |
-| ------- | ---------- | ------------------------------------------------------------------------ |
-| 2.0.0   | 2026-07-31 | Hub database ownership rules — adds public/admin read-sharing (ADR-0011) |
+| Version | Date       | Notes                                                                                                                                                                                                                 |
+| ------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2.0.0   | 2026-07-31 | Hub database ownership rules — adds public/admin read-sharing (ADR-0011)                                                                                                                                              |
+| 2.0.1   | 2026-08-27 | Corrected `audit_events` → `audit_log` to match `schema.prisma`; added `operation_regions`/`station_provider_mappings` (Stations, ADR-0012), implemented but never added here. No planned-but-unbuilt tables removed. |

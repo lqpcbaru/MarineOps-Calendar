@@ -73,6 +73,16 @@ This document is the **canonical route table** for both portals (frontend) and b
 | GET    | `/api/public/stations` | Stations       | Public station list/detail    |
 | GET    | `/api/public/about`    | About          | Static content                |
 
+**Implemented but not originally in this table** (added per DoD §4 — these exist in `apps/api/src/api/public/` today):
+
+| Method | Path                                   | Module              | Returns                                                                                            |
+| ------ | -------------------------------------- | ------------------- | -------------------------------------------------------------------------------------------------- |
+| GET    | `/api/public/wind-wave`                | WindWave            | Combined wind + wave data + freshness — shipped instead of the separate `/wind`/`/wave` rows above |
+| GET    | `/api/public/vessels/search`           | Vessel Intelligence | GFW-derived vessel search (see [VESSEL_INTELLIGENCE_API](../api/VESSEL_INTELLIGENCE_API.md))       |
+| GET    | `/api/public/vessels/:vesselId`        | Vessel Intelligence | Vessel profile                                                                                     |
+| GET    | `/api/public/vessels/:vesselId/events` | Vessel Intelligence | Vessel event history                                                                               |
+| GET    | `/api/public/recommendation`           | Recommendation      | Operational recommendation for a station/date                                                      |
+
 **Rules:**
 
 - All public controllers live under `src/api/public/` and are `@Public()`.
@@ -151,6 +161,7 @@ This document is the **canonical route table** for both portals (frontend) and b
 
 ## 5. Change log
 
-| Version | Date       | Notes                                              |
-| ------- | ---------- | -------------------------------------------------- |
-| 2.0.0   | 2026-07-31 | Hub route table — public vs admin split (ADR-0011) |
+| Version | Date       | Notes                                                                                                                                                                                                                                                      |
+| ------- | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2.0.0   | 2026-07-31 | Hub route table — public vs admin split (ADR-0011)                                                                                                                                                                                                         |
+| 2.0.1   | 2026-08-27 | Added `/api/public/wind-wave`, `/api/public/vessels/*`, `/api/public/recommendation` — implemented in prior sprints but never added here (DoD §4 catch-up). No routes removed; the rest of this table remains the v2.0.0 target, most of it still unbuilt. |
