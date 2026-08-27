@@ -21,28 +21,32 @@ export class DomainExceptionFilter implements ExceptionFilter {
     const response = ctx.getResponse<{
       status: (code: number) => { json: (body: unknown) => void };
     }>();
+    const request = ctx.getRequest<{ correlationId?: string }>();
+    const correlationId = request?.correlationId;
 
     if (exception instanceof HttpException) {
       const status = exception.getStatus();
       const body = exception.getResponse();
-      response.status(status).json(this.envelope(exception, body));
+      response.status(status).json(this.envelope(exception, body, correlationId));
       return;
     }
 
     if (exception instanceof DomainError) {
       const status = this.httpStatusFor(exception.code);
-      response.status(status).json(this.envelope(exception, undefined));
+      response.status(status).json(this.envelope(exception, undefined, correlationId));
       return;
     }
 
     this.logger.error(
       exception instanceof Error ? exception.message : 'Unexpected error',
       exception instanceof Error ? exception.stack : undefined,
+      correlationId ? `correlationId=${correlationId}` : undefined,
     );
     const status = HttpStatus.INTERNAL_SERVER_ERROR;
     response.status(status).json({
       code: 'INTERNAL_ERROR',
       message: 'Internal server error',
+      ...(correlationId ? { correlationId } : {}),
     });
   }
 
@@ -92,13 +96,20 @@ export class DomainExceptionFilter implements ExceptionFilter {
     }
   }
 
-  private envelope(exception: Error, details: unknown): Record<string, unknown> {
+  private envelope(
+    exception: Error,
+    details: unknown,
+    correlationId?: string,
+  ): Record<string, unknown> {
     const base: Record<string, unknown> = {
       code: exception instanceof DomainError ? exception.code : 'ERROR',
       message: exception.message,
     };
     if (details !== undefined && typeof details === 'object' && details !== null) {
       base['details'] = details;
+    }
+    if (correlationId) {
+      base['correlationId'] = correlationId;
     }
     return base;
   }

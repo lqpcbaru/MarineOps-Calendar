@@ -6,6 +6,7 @@ import compression from 'compression';
 import rateLimit from 'express-rate-limit';
 import { AppModule } from './app.module';
 import { LoggingService } from './platform/logging.service';
+import { correlationIdMiddleware } from './platform/correlation-id.middleware';
 
 async function bootstrap() {
   const logger = new LoggingService('Bootstrap');
@@ -13,6 +14,7 @@ async function bootstrap() {
     logger: ['log', 'error', 'warn'],
   });
 
+  app.use(correlationIdMiddleware);
   app.use(cookieParser());
   app.use(helmet());
   app.use(compression());
