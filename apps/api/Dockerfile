@@ -31,10 +31,12 @@ FROM node:22-alpine AS runner
 WORKDIR /app
 RUN corepack enable
 
-# Copy the self-contained production deployment output
-COPY --from=builder /prod/api ./
+# Copy the self-contained production deployment output, owned by the
+# non-root `node` user built into the official node:alpine image.
+COPY --from=builder --chown=node:node /prod/api ./
 
 ENV NODE_ENV=production
+USER node
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
   CMD wget -qO- http://localhost:3000/health/live || exit 1
