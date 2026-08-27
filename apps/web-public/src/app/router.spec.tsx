@@ -1,8 +1,15 @@
 import '@testing-library/jest-dom';
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
-import { RouterProvider, createMemoryHistory } from '@tanstack/react-router';
+import {
+  RouterProvider,
+  createMemoryHistory,
+  createRootRoute,
+  createRoute,
+  createRouter,
+} from '@tanstack/react-router';
 import { router } from './router';
+import { RouteErrorPage } from '../shared/components/RouteErrorPage';
 
 /**
  * Router-level integration test — the only place this repo verifies
@@ -46,5 +53,35 @@ describe('router', () => {
     await waitFor(() => {
       expect(screen.queryByText('Halaman Tidak Dijumpai')).not.toBeInTheDocument();
     });
+  });
+});
+
+describe('RouteErrorPage wiring', () => {
+  it('catches a component that throws during render instead of unmounting the tree', async () => {
+    // A minimal isolated router — the real app's pages don't currently
+    // throw, so this verifies the errorComponent wiring pattern itself:
+    // an uncaught render error is caught and RouteErrorPage renders,
+    // rather than React unmounting to a blank page.
+    function Boom(): never {
+      throw new Error('boom from a broken page');
+    }
+
+    const testRootRoute = createRootRoute({ errorComponent: RouteErrorPage });
+    const testIndexRoute = createRoute({
+      getParentRoute: () => testRootRoute,
+      path: '/',
+      component: Boom,
+    });
+    const testRouter = createRouter({
+      routeTree: testRootRoute.addChildren([testIndexRoute]),
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    });
+
+    render(<RouterProvider router={testRouter} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Sesuatu Telah Tidak Kena')).toBeInTheDocument();
+    });
+    expect(screen.getByText('boom from a broken page')).toBeInTheDocument();
   });
 });

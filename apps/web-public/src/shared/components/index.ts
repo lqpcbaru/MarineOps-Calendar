@@ -5,6 +5,7 @@ export { Footer } from './Footer';
 export { Navigation } from './Navigation';
 export { PageContainer } from './PageContainer';
 export { NotFoundPage } from './NotFoundPage';
+export { RouteErrorPage } from './RouteErrorPage';
 
 /* ── UI components (Design System) ── */
 export { AppCard } from './ui/AppCard';
