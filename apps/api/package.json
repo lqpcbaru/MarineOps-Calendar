@@ -46,6 +46,7 @@
     "@nestjs/cli": "^11.0.5",
     "@nestjs/schematics": "^11.0.5",
     "@nestjs/testing": "^11.0.11",
+    "@swc/core": "^1.16.1",
     "@types/compression": "^1.8.1",
     "@types/cookie-parser": "^1.4.10",
     "@types/express": "^5.0.0",
@@ -56,6 +57,7 @@
     "prisma": "^6.4.1",
     "supertest": "^7.2.2",
     "tsx": "^4.23.1",
+    "unplugin-swc": "^1.5.11",
     "vitest": "^3.0.9"
   },
   "prisma": {

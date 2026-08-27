@@ -53,6 +53,10 @@ jobs:
           DATABASE_URL: postgresql://marineops:test@localhost:5432/marineops_test
           JWT_ACCESS_SECRET: ci-test-secret
           JWT_REFRESH_SECRET: ci-test-refresh-secret
+      - run: pnpm run test:e2e
+        env:
+          JWT_ACCESS_SECRET: ci-test-secret
+          JWT_REFRESH_SECRET: ci-test-refresh-secret
 
   build:
     name: Build
