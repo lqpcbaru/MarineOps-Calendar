@@ -80,7 +80,7 @@ All timestamps stored as UTC. Convert at the presentation edge to the user/org t
 
 ### Rule 9 — Migrations via Prisma only
 
-Schema changes go through Prisma migrations, versioned under `apps/api/migrations/`. No manual prod schema edits (ENGINEERING_STANDARDS §5).
+Schema changes go through Prisma migrations, versioned under `apps/api/prisma/migrations/`. No manual prod schema edits (ENGINEERING_STANDARDS §5).
 
 ### Rule 10 — Cache tables follow the ADR-0008 convention
 

@@ -421,8 +421,29 @@ async function seedProviderMappings(stationMap: Map<string, string>) {
   );
 }
 
+/**
+ * Resolves the seed admin password before any writes happen (fail fast).
+ * SEED_ADMIN_PASSWORD is required outside development — no production
+ * default is permitted. In development only, an unset var falls back to
+ * a fixed local-only password so `pnpm db:seed` keeps working out of the box.
+ */
+function resolveAdminPassword(): string {
+  const nodeEnv = process.env['NODE_ENV'] || 'development';
+  const password = process.env['SEED_ADMIN_PASSWORD'];
+  if (password) return password;
+
+  if (nodeEnv !== 'development') {
+    throw new Error(
+      `SEED_ADMIN_PASSWORD is required when NODE_ENV=${nodeEnv}. Refusing to seed an admin user without an explicit password outside development.`,
+    );
+  }
+  return 'admin-password-123';
+}
+
 async function main() {
   console.info('Seeding MarineOps Hub database...');
+
+  const adminPassword = resolveAdminPassword();
 
   /* Existing roles + admin user seed */
   const adminRole = await prisma.role.upsert({
@@ -496,7 +517,7 @@ async function main() {
     },
   });
 
-  const passwordHash = await argon2.hash('admin-password-123');
+  const passwordHash = await argon2.hash(adminPassword);
   await prisma.user.upsert({
     where: { email: 'admin@marineops.local' },
     update: {},
