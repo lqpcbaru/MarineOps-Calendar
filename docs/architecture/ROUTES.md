@@ -115,8 +115,21 @@ This document is the **canonical route table** for both portals (frontend) and b
 
 - All admin controllers live under `src/api/admin/`.
 - Global `JwtAuthGuard` protects everything not `@Public()`.
-- `PermissionsGuard` enforces `@RequirePermissions(...)` per route.
-- `AuthorizeUseCase` re-checks inside the use-case (authoritative).
+- `PermissionsGuard` enforces `@RequirePermissions(...)` per route — this is
+  currently the **only** enforcement layer. `AuthorizeUseCase`
+  (`requireAll`/`requireAny`) exists, is unit-tested, and is registered in
+  `AuthenticationModule`, but as of 2026-08-27 no write use-case actually
+  calls it — none currently accept an `AuthPrincipal` parameter to check
+  against. Route-level guarding is applied consistently across every admin
+  controller (verified directly, and covered by
+  `tests/e2e/auth-and-admin-guards.e2e-spec.ts`), so this isn't an open
+  vulnerability today, but it means there's no second layer if a future
+  controller ships without the right `@RequirePermissions()`. Wiring
+  `AuthorizeUseCase` into the write use-cases is a real, well-scoped future
+  change (each use-case's `execute()` would need an `AuthPrincipal` param
+  and its controller call-site updated to pass `@CurrentPrincipal()`) —
+  not done here to avoid a speculative cross-cutting refactor across ~10
+  files with no corresponding controller-side driver.
 
 ### 2.3 Platform routes (root, not prefixed)
 
@@ -165,3 +178,4 @@ This document is the **canonical route table** for both portals (frontend) and b
 | ------- | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 2.0.0   | 2026-07-31 | Hub route table — public vs admin split (ADR-0011)                                                                                                                                                                                                         |
 | 2.0.1   | 2026-08-27 | Added `/api/public/wind-wave`, `/api/public/vessels/*`, `/api/public/recommendation` — implemented in prior sprints but never added here (DoD §4 catch-up). No routes removed; the rest of this table remains the v2.0.0 target, most of it still unbuilt. |
+| 2.0.2   | 2026-08-27 | Corrected the admin-surface rules: `AuthorizeUseCase` is implemented but not currently called by any write use-case — `PermissionsGuard` is the sole enforcement layer today, verified directly against the code.                                          |
