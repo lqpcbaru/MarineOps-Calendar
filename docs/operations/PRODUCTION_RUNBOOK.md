@@ -1,7 +1,7 @@
 # MarineOps Hub — Production Runbook
 
-**Version:** 2.1.0  
-**Date:** 2026-08-07
+**Version:** 2.1.1  
+**Date:** 2026-08-27
 
 ---
 
@@ -94,13 +94,48 @@ psql $DATABASE_URL < backup_20260807.sql
 pnpm run db:migrate
 ```
 
+### Rollback
+
+Prisma's `migrate deploy` is forward-only — it does not generate or apply
+down-migrations. Plan releases accordingly:
+
+**Application rollback (no schema change involved):**
+
+1. Redeploy the previous known-good API image tag (the CI `docker` job tags
+   images by release ref — `docker tag marineops-api:<previous-ref> ...` /
+   redeploy that tag through your orchestrator).
+2. No database action needed if the previous release's schema is still
+   compatible with the current database (true whenever the bad release
+   didn't ship a migration).
+
+**Rollback involving a bad migration:**
+
+1. Stop routing traffic to the new release (or scale it to zero) first —
+   don't leave the old and new API versions both writing against a schema
+   only one of them understands.
+2. Restore the database from the pre-deploy backup (`pg_dump` above,
+   taken _before_ running `pnpm db:migrate` for the release), then redeploy
+   the previous API image tag. This loses any writes made between the
+   backup and the rollback — acceptable for the rollback window, not for
+   routine operation.
+3. There is no automated "undo" for an already-applied migration; treat
+   forward migrations as effectively permanent once deployed to a shared
+   environment, and prefer additive/backward-compatible schema changes
+   (add columns nullable/with defaults, avoid renaming/dropping columns
+   still read by the previous release) to make rollback-without-DB-restore
+   possible whenever feasible.
+4. Verify with `GET /health/ready` and a smoke check against
+   `/api/public/dashboard` before restoring traffic.
+
 ### Release Checklist
 
-- [ ] All tests pass (`pnpm test`)
+- [ ] All tests pass (`pnpm test`, `pnpm test:e2e`)
 - [ ] Lint clean (`pnpm lint`)
 - [ ] TypeScript compiles (`pnpm typecheck`)
 - [ ] Build succeeds (`pnpm build`)
+- [ ] Database backed up (`pg_dump`, before migrating — see Rollback above)
 - [ ] Database migrated (`pnpm db:migrate`)
+- [ ] `SEED_ADMIN_PASSWORD` set in the target environment before seeding — `pnpm db:seed` fails fast without it outside `NODE_ENV=development`
 - [ ] Seed data applied (`pnpm db:seed`)
 - [ ] Docker image builds
 - [ ] Health endpoints respond
@@ -108,3 +143,4 @@ pnpm run db:migrate
 - [ ] No secrets in logs
 - [ ] Rate limiting active
 - [ ] Graceful shutdown working
+- [ ] Previous release's image tag recorded and reachable for rollback
