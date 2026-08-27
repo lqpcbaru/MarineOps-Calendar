@@ -1,5 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { RequestMethod } from '@nestjs/common';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import compression from 'compression';
@@ -10,9 +11,16 @@ import { correlationIdMiddleware } from './platform/correlation-id.middleware';
 
 async function bootstrap() {
   const logger = new LoggingService('Bootstrap');
-  const app = await NestFactory.create(AppModule, {
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     logger: ['log', 'error', 'warn'],
   });
+
+  // DEPLOYMENT.md's documented topology is exactly one reverse proxy
+  // (nginx/Caddy) in front of the API container. Without this, Express's
+  // req.ip resolves to the proxy's own address for every request — the
+  // rate limiter below would key on that single IP and throttle all
+  // production traffic together instead of per-client.
+  app.set('trust proxy', 1);
 
   app.use(correlationIdMiddleware);
   app.use(cookieParser());
