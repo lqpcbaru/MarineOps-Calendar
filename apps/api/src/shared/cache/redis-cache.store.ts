@@ -1,6 +1,17 @@
 import type { CacheEntry } from './cache-entry';
 import type { CacheStorePort } from './cache-store.port';
 
+/**
+ * NOT YET IMPLEMENTED — this does not talk to Redis. `_redisUrl` is
+ * accepted but unused; storage is a plain in-memory Map, identical in
+ * behaviour to InMemoryCacheStore. No redis/ioredis client dependency
+ * exists in package.json. Every cache-consuming module currently
+ * hardcodes InMemoryCacheStore directly (none reference this class), so
+ * REDIS_ENABLED/REDIS_URL have no effect anywhere in the app today.
+ * Do not wire this in as if it provides real shared/distributed caching
+ * — in a horizontally-scaled deployment each replica would still cache
+ * independently. Needs a real client (e.g. ioredis) before use.
+ */
 export class RedisCacheStore<T = unknown> implements CacheStorePort<T> {
   private readonly prefix = 'marineops:cache:';
   private fallback = new Map<string, CacheEntry<T>>();
