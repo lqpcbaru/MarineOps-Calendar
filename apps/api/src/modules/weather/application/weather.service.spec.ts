@@ -207,7 +207,8 @@ describe('WeatherService', () => {
     const cache = createCache();
     const service = new WeatherService(provider, cache, createStationPort());
 
-    const key = 'metmalaysia:weather:st-001:' + new Date().toISOString().slice(0, 10);
+    const today = new Date().toISOString().slice(0, 10);
+    const key = 'metmalaysia:weather:st-001:' + today + '_' + today;
     await cache.set(
       key,
       [

@@ -40,7 +40,7 @@ export class OperationalCalendarService {
     const now = new Date();
     const from = dateFrom || localToday();
     const to = dateTo || from;
-    const cacheKey = buildCacheKey('operational', 'calendar', stationId, from);
+    const cacheKey = buildCacheKey('operational', 'calendar', stationId, `${from}_${to}`);
 
     const result = await this.cache.getOrFetch(
       cacheKey,

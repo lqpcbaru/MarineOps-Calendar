@@ -37,7 +37,7 @@ export class WindWaveService {
     const now = new Date();
     const from = validateDateString(dateFrom, 'dateFrom');
     const to = validateDateString(dateTo || from, 'dateTo');
-    const cacheKey = buildCacheKey('marineforecast', 'windwave', stationId, from);
+    const cacheKey = buildCacheKey('marineforecast', 'windwave', stationId, `${from}_${to}`);
 
     const result = await this.cache.getOrFetch(
       cacheKey,

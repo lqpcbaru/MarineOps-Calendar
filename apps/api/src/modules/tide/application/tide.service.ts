@@ -33,7 +33,7 @@ export class TideService {
     const now = new Date();
     const from = validateDateString(dateFrom, 'dateFrom');
     const to = validateDateString(dateTo || from, 'dateTo');
-    const cacheKey = buildCacheKey('jupem', 'tide', stationId, from);
+    const cacheKey = buildCacheKey('jupem', 'tide', stationId, `${from}_${to}`);
 
     const result = await this.cache.getOrFetch(
       cacheKey,
