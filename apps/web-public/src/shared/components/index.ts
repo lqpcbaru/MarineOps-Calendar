@@ -4,6 +4,7 @@ export { Header } from './Header';
 export { Footer } from './Footer';
 export { Navigation } from './Navigation';
 export { PageContainer } from './PageContainer';
+export { NotFoundPage } from './NotFoundPage';
 
 /* ── UI components (Design System) ── */
 export { AppCard } from './ui/AppCard';

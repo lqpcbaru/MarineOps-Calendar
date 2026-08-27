@@ -1,5 +1,6 @@
 import { createRootRoute, createRoute, createRouter } from '@tanstack/react-router';
 import { Layout } from '../shared/components/Layout';
+import { NotFoundPage } from '../shared/components/NotFoundPage';
 import { HomePage } from '../features/home/HomePage';
 import { PasangSurutPage } from '../features/pasang-surut/PasangSurutPage';
 import { CuacaPage } from '../features/cuaca/CuacaPage';
@@ -14,6 +15,7 @@ import { VesselsPage } from '../features/vessels/VesselsPage';
 
 const rootRoute = createRootRoute({
   component: Layout,
+  notFoundComponent: NotFoundPage,
 });
 
 const indexRoute = createRoute({

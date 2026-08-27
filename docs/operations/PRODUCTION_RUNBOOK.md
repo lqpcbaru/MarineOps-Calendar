@@ -1,6 +1,6 @@
 # MarineOps Hub — Production Runbook
 
-**Version:** 2.1.1  
+**Version:** 2.1.2  
 **Date:** 2026-08-27
 
 ---
@@ -73,6 +73,20 @@ Browser → web host / reverse proxy → /api → NestJS API
 - Serve `dist/` as static content.
 - The browser calls **relative `/api` paths**; the reverse proxy must route `/api/*` to the API server (same origin or a proxied path). No `VITE_API_URL` is used in production builds.
 - Set the API `APP_URL` to the public web origin for CORS.
+- **SPA fallback is required.** This is a client-side-routed single-page app —
+  `apps/web-public/dist` contains one `index.html` plus hashed assets under
+  `/assets/`; every route (`/cuaca`, `/stesen`, etc.) is resolved by
+  TanStack Router in the browser, not by separate files on disk. The static
+  host/reverse proxy **must** serve `index.html` for any request path that
+  doesn't match a real file, or a direct page load / refresh / bookmark on
+  any route other than `/` will 404 at the server before React ever runs
+  (clicking links from `/` works regardless, since that's client-side
+  navigation — this only breaks fresh loads of a deep path). Verified
+  locally with `vite preview` (which has this fallback built in); confirm
+  the actual production host has the equivalent configured — e.g. nginx
+  `try_files $uri /index.html;`, or the SPA-fallback/rewrite option most
+  static hosts (Netlify, Vercel, S3+CloudFront, etc.) expose under a
+  different name.
 
 ### Health Checks
 
