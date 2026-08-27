@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { TideService, TIDE_PROVIDER } from '../application/tide.service';
-import { PlaceholderTideProvider } from '../infrastructure/placeholder-tide.provider';
 import { JupemTideProvider } from '../infrastructure/jupem/jupem-tide.provider';
 import { StationsModule } from '../../stations/api/stations.module';
 import { CacheService } from '../../../shared/cache/cache.service';
@@ -12,13 +11,13 @@ import { createCachePolicy } from '../../../shared/cache/cache-policy';
   providers: [
     TideService,
     { provide: TIDE_PROVIDER, useClass: JupemTideProvider },
-    PlaceholderTideProvider,
     {
       provide: 'CACHE_SERVICE',
-      useFactory: () => new CacheService(
-        new InMemoryCacheStore(),
-        createCachePolicy({ ttlMs: 60 * 60 * 1000, staleTtlMs: 240 * 60 * 1000 }),
-      ),
+      useFactory: () =>
+        new CacheService(
+          new InMemoryCacheStore(),
+          createCachePolicy({ ttlMs: 60 * 60 * 1000, staleTtlMs: 240 * 60 * 1000 }),
+        ),
     },
   ],
   exports: [TideService, TIDE_PROVIDER],
