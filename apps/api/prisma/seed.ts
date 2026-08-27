@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 import * as argon2 from 'argon2';
 
 const prisma = new PrismaClient();
@@ -363,7 +363,7 @@ async function seedStations(regionMap: Map<string, string>): Promise<Map<string,
         longitude: def.longitude,
         timezone: def.timezone,
         regionId,
-        metadata: def.metadata ?? null,
+        metadata: (def.metadata as Prisma.InputJsonValue | undefined) ?? Prisma.JsonNull,
       },
       create: {
         code: def.code,
@@ -372,7 +372,7 @@ async function seedStations(regionMap: Map<string, string>): Promise<Map<string,
         longitude: def.longitude,
         timezone: def.timezone,
         regionId,
-        metadata: def.metadata ?? null,
+        metadata: (def.metadata as Prisma.InputJsonValue | undefined) ?? Prisma.JsonNull,
         status: 'ACTIVE',
       },
     });
@@ -400,7 +400,7 @@ async function seedProviderMappings(stationMap: Map<string, string>) {
         update: {
           providerName: pt.providerName,
           providerStationId: null,
-          config: null,
+          config: Prisma.JsonNull,
           isActive: true,
         },
         create: {
@@ -408,7 +408,7 @@ async function seedProviderMappings(stationMap: Map<string, string>) {
           dataType: pt.dataType,
           providerName: pt.providerName,
           providerStationId: null,
-          config: null,
+          config: Prisma.JsonNull,
           isActive: true,
         },
       });
