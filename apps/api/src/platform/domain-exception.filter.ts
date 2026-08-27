@@ -74,6 +74,19 @@ export class DomainExceptionFilter implements ExceptionFilter {
       case 'AUTH_USER_DISABLED':
       case 'AUTH_FORBIDDEN':
         return HttpStatus.FORBIDDEN;
+      // External provider failures (ADR-0008 §2 / provider-error.ts). A provider
+      // outage or misconfiguration is not an internal server fault: surface it as
+      // an upstream error so clients can distinguish it from a genuine 500.
+      case 'PROVIDER_UNAVAILABLE':
+      case 'PROVIDER_TIMEOUT':
+        return HttpStatus.SERVICE_UNAVAILABLE;
+      case 'PROVIDER_RATE_LIMITED':
+        return HttpStatus.TOO_MANY_REQUESTS;
+      case 'PROVIDER_AUTH_ERROR':
+      case 'PROVIDER_CONFIG_ERROR':
+      case 'PROVIDER_INVALID_RESPONSE':
+      case 'PROVIDER_SERVER_ERROR':
+        return HttpStatus.BAD_GATEWAY;
       default:
         return HttpStatus.INTERNAL_SERVER_ERROR;
     }
