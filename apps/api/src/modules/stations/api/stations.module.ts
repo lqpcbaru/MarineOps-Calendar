@@ -9,11 +9,13 @@ import { StationsQueryAdapter } from '../infrastructure/stations-query.adapter';
 import { ProviderMappingAdapter } from '../infrastructure/provider-mapping.adapter';
 import { LoggingService } from '../../../platform/logging.service';
 import { STATION_REPOSITORY, REGION_REPOSITORY } from '../application/di-tokens';
+import { AuditModule } from '../../audit/api/audit.module';
 
 export const STATIONS_QUERY_PORT = 'STATIONS_QUERY_PORT';
 export const PROVIDER_MAPPING_PORT = 'PROVIDER_MAPPING_PORT';
 
 @Module({
+  imports: [AuditModule],
   providers: [
     CreateStationUseCase,
     UpdateStationUseCase,
@@ -23,7 +25,15 @@ export const PROVIDER_MAPPING_PORT = 'PROVIDER_MAPPING_PORT';
     { provide: REGION_REPOSITORY, useClass: PrismaRegionRepository },
     { provide: STATIONS_QUERY_PORT, useClass: StationsQueryAdapter },
     { provide: PROVIDER_MAPPING_PORT, useClass: ProviderMappingAdapter },
-    { provide: 'STATION_EVENT_BUS', useValue: { publish: async (event: unknown) => { const logger = new LoggingService('StationEvents'); logger.log((event as { type: string }).type, { ...(event as Record<string, unknown>) }); } } },
+    {
+      provide: 'STATION_EVENT_BUS',
+      useValue: {
+        publish: async (event: unknown) => {
+          const logger = new LoggingService('StationEvents');
+          logger.log((event as { type: string }).type, { ...(event as Record<string, unknown>) });
+        },
+      },
+    },
   ],
   exports: [
     CreateStationUseCase,

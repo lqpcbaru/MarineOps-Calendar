@@ -7,15 +7,20 @@ import { STATION_REPOSITORY } from './di-tokens';
 import type { CreateStationCommand } from './dtos';
 import { createStationSchema } from './dtos';
 import { ValidationError } from '../../../shared-kernel';
+import { RecordAuditUseCase } from '../../audit/application/record-audit.use-case';
 
 @Injectable()
 export class CreateStationUseCase {
   constructor(
     @Inject(STATION_REPOSITORY) private readonly stationRepo: StationRepository,
     @Inject('STATION_EVENT_BUS') private readonly events: StationEventBus,
+    private readonly recordAudit: RecordAuditUseCase,
   ) {}
 
-  async execute(command: CreateStationCommand): Promise<StationRecord> {
+  async execute(
+    command: CreateStationCommand,
+    actorId: string | null = null,
+  ): Promise<StationRecord> {
     const valid = createStationSchema.safeParse(command);
     if (!valid.success) throw new ValidationError('Data stesen tidak sah');
 
@@ -38,6 +43,14 @@ export class CreateStationUseCase {
       stationCode: station.code,
       stationName: station.name,
       at: new Date(),
+    });
+
+    await this.recordAudit.execute({
+      actorId,
+      action: 'station.create',
+      entityType: 'station',
+      entityId: station.id,
+      payload: { code: station.code, name: station.name },
     });
 
     return station;

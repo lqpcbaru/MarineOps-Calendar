@@ -41,6 +41,9 @@ import {
   REGION_REPOSITORY,
 } from '../../src/modules/stations/application/di-tokens';
 
+import { AUDIT_REPOSITORY } from '../../src/modules/audit/application/di-tokens';
+import { InMemoryAuditRepository } from '../../src/modules/audit/application/test-doubles';
+
 import { DomainExceptionFilter } from '../../src/platform/domain-exception.filter';
 
 const fakeWeatherProvider: WeatherProviderPort = {
@@ -196,6 +199,8 @@ describe('Public sourced-data controllers (e2e, faked providers)', () => {
       .useValue(stationStubs.stationsQueryPort)
       .overrideProvider(PROVIDER_MAPPING_PORT)
       .useValue(stationStubs.providerMappingPort)
+      .overrideProvider(AUDIT_REPOSITORY)
+      .useValue(new InMemoryAuditRepository())
       .compile();
 
     app = moduleFixture.createNestApplication();
@@ -299,6 +304,8 @@ describe('Public sourced-data controllers (e2e, faked providers)', () => {
       .useValue(stationStubs.stationsQueryPort)
       .overrideProvider(PROVIDER_MAPPING_PORT)
       .useValue(stationStubs.providerMappingPort)
+      .overrideProvider(AUDIT_REPOSITORY)
+      .useValue(new InMemoryAuditRepository())
       .compile();
 
     const isolatedApp = isolatedModule.createNestApplication();

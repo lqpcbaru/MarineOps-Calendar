@@ -23,6 +23,9 @@ import type {
   OperationRegionRecord,
 } from '../../src/modules/stations/domain';
 
+import { AUDIT_REPOSITORY } from '../../src/modules/audit/application/di-tokens';
+import { InMemoryAuditRepository } from '../../src/modules/audit/application/test-doubles';
+
 import { DomainExceptionFilter } from '../../src/platform/domain-exception.filter';
 
 class ReadOnlyStationRepository implements StationRepository {
@@ -140,6 +143,8 @@ describe('PublicStationsController (e2e, in-memory infrastructure)', () => {
       })
       .overrideProvider(PROVIDER_MAPPING_PORT)
       .useValue({ getByStation: async () => [], getByStationAndType: async () => null })
+      .overrideProvider(AUDIT_REPOSITORY)
+      .useValue(new InMemoryAuditRepository())
       .compile();
 
     app = moduleFixture.createNestApplication();
