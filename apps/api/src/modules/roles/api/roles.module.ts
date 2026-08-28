@@ -5,8 +5,10 @@ import { UpdateRoleUseCase } from '../application/update-role.use-case';
 import { DeleteRoleUseCase } from '../application/delete-role.use-case';
 import { PrismaRoleRepository } from '../infrastructure/prisma-role.repository';
 import { ROLE_REPOSITORY } from '../application/di-tokens';
+import { AuditModule } from '../../audit/api/audit.module';
 
 @Module({
+  imports: [AuditModule],
   providers: [
     GetRolesUseCase,
     CreateRoleUseCase,
