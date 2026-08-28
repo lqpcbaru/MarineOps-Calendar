@@ -35,7 +35,10 @@ export class JupemTideProvider implements TideProviderPort {
     });
 
     this.httpClient = new ProviderHttpClient(config);
-    this.retry = new RetryPolicy({ maxRetries: config.maxRetries, baseDelayMs: config.retryDelayMs });
+    this.retry = new RetryPolicy({
+      maxRetries: config.maxRetries,
+      baseDelayMs: config.retryDelayMs,
+    });
     this.logger = new ProviderLogger('JUPEM');
     this.metrics = new ProviderMetrics();
     this.health = new ProviderHealth(this.metrics);
@@ -47,16 +50,22 @@ export class JupemTideProvider implements TideProviderPort {
 
     try {
       const area = await this.resolveArea(stationId, 'tide');
-      const data = await this.retry.execute(async () => {
-        const response = await this.httpClient.get<JupemRawTideResponse>(
-          '/v1/tide',
-          { stesen: area, tarikhMula: dateFrom, tarikhTamat: dateTo },
-        );
-        if (!response.data || !Array.isArray(response.data)) {
-          throw new ProviderInvalidResponseError('JUPEM', 'missing data array');
-        }
-        return response;
-      }, 'JUPEM', this.logger, this.metrics);
+      const data = await this.retry.execute(
+        async () => {
+          const response = await this.httpClient.get<JupemRawTideResponse>('/v1/tide', {
+            stesen: area,
+            tarikhMula: dateFrom,
+            tarikhTamat: dateTo,
+          });
+          if (!response.data || !Array.isArray(response.data)) {
+            throw new ProviderInvalidResponseError('JUPEM', 'missing data array');
+          }
+          return response;
+        },
+        'JUPEM',
+        this.logger,
+        this.metrics,
+      );
 
       const points = mapTideResponse(data.data);
 
@@ -70,17 +79,31 @@ export class JupemTideProvider implements TideProviderPort {
     }
   }
 
-  getMetrics() { return this.metrics; }
-  getHealth() { return this.health; }
+  getMetrics() {
+    return this.metrics;
+  }
+  getHealth() {
+    return this.health;
+  }
 
   private async resolveArea(stationId: string, dataType: string): Promise<string> {
     const mapping = await this.mappingPort.getByStationAndType(stationId, dataType);
     if (!mapping || !mapping.isActive) {
       throw new ProviderInvalidResponseError('JUPEM', `tiada pemetaan untuk stesen ${stationId}`);
     }
-    return (mapping.config as Record<string, unknown> | null)?.stationCode as string
-      || mapping.providerStationId
-      || stationId;
+    // stationId is our internal UUID — it can never coincidentally be a real
+    // JUPEM station code, so a mapping with no real code configured is
+    // exactly as unusable as no mapping at all. Never fall back to it.
+    const area =
+      ((mapping.config as Record<string, unknown> | null)?.stationCode as string) ||
+      mapping.providerStationId;
+    if (!area) {
+      throw new ProviderInvalidResponseError(
+        'JUPEM',
+        `pemetaan untuk stesen ${stationId} tidak mempunyai kod stesen`,
+      );
+    }
+    return area;
   }
 
   private classifyError(error: unknown): Error {

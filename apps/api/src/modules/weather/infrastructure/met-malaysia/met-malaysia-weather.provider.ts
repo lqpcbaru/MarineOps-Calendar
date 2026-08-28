@@ -141,10 +141,18 @@ export class MetMalaysiaWeatherProvider implements WeatherProviderPort {
         `tiada pemetaan untuk stesen ${stationId}`,
       );
     }
+    // stationId is our internal UUID — it can never coincidentally be a real
+    // MET Malaysia area code, so a mapping with no real area configured is
+    // exactly as unusable as no mapping at all. Never fall back to it.
     const area =
       ((mapping.config as Record<string, unknown> | null)?.marineArea as string) ||
-      mapping.providerStationId ||
-      stationId;
+      mapping.providerStationId;
+    if (!area) {
+      throw new ProviderInvalidResponseError(
+        'MetMalaysia',
+        `pemetaan untuk stesen ${stationId} tidak mempunyai kod kawasan`,
+      );
+    }
     return area;
   }
 
