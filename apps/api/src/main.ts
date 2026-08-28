@@ -9,6 +9,7 @@ import { AppModule } from './app.module';
 import { LoggingService } from './platform/logging.service';
 import { correlationIdMiddleware } from './platform/correlation-id.middleware';
 import { createLoginRateLimiter } from './platform/login-rate-limit';
+import { buildStartupSummary, buildStartupWarnings } from './platform/startup-summary';
 
 async function bootstrap() {
   const logger = new LoggingService('Bootstrap');
@@ -64,7 +65,18 @@ async function bootstrap() {
 
   const port = parseInt(process.env.PORT || '3000', 10);
   await app.listen(port);
-  logger.log(`MarineOps Hub API started on port ${port}`);
+
+  // Emit the *derived* configuration, not just the port. Several
+  // security-relevant behaviours (Secure cookie flag, CORS origin,
+  // whether providers can authenticate at all) are inferred from env
+  // rather than set explicitly, and a misconfigured deployment still
+  // boots successfully — this makes the effective state greppable in the
+  // first lines of the log. Contains no secret values, only booleans.
+  const summary = buildStartupSummary();
+  logger.log(`MarineOps Hub API started on port ${port}`, { ...summary });
+  for (const warning of buildStartupWarnings(summary)) {
+    logger.warn(warning);
+  }
 }
 
 bootstrap();
