@@ -101,7 +101,7 @@ describe('PublicStationsController (e2e, in-memory infrastructure)', () => {
     regionId: 'region-1',
     regionName: 'Selangor',
     status: 'ACTIVE',
-    metadata: null,
+    metadata: { internalNote: 'harbourmaster direct line redacted-for-test' },
     createdAt: new Date('2026-08-01T00:00:00Z'),
     updatedAt: new Date('2026-08-01T00:00:00Z'),
   };
@@ -162,6 +162,25 @@ describe('PublicStationsController (e2e, in-memory infrastructure)', () => {
     expect(res.status).toBe(200);
     expect(res.body.stations).toHaveLength(1);
     expect(res.body.stations[0].code).toBe('PKG-01');
+  });
+
+  it('GET /public/stations never leaks metadata, status, or timestamps', async () => {
+    const res = await request(app.getHttpServer()).get('/api/public/stations');
+    expect(res.status).toBe(200);
+    const station = res.body.stations[0];
+    expect(station).toEqual({
+      id: 'station-1',
+      code: 'PKG-01',
+      name: 'Pelabuhan Klang',
+      latitude: 3.0033,
+      longitude: 101.3925,
+      timezone: 'Asia/Kuala_Lumpur',
+      regionId: 'region-1',
+      regionName: 'Selangor',
+    });
+    // Belt-and-suspenders: the seeded internal note must not appear anywhere
+    // in the serialized body, in case it leaked under some other key.
+    expect(JSON.stringify(res.body)).not.toContain('harbourmaster');
   });
 
   it('GET /public/stations/regions returns active regions', async () => {
