@@ -20,6 +20,7 @@ import type {
   UpdateStationCommand,
   ListStationsQuery,
 } from '../../modules/stations/application/dtos';
+import type { StationRecord } from '../../modules/stations/domain';
 import { JwtAuthGuard } from '../../modules/authentication/api/jwt-auth.guard';
 import {
   PermissionsGuard,
@@ -39,67 +40,29 @@ export class AdminStationsController {
   @Get()
   @RequirePermissions('station.read')
   async list(@Query() query: ListStationsQuery) {
-    return this.getStation.listAdmin(query);
+    const result = await this.getStation.listAdmin(query);
+    return { ...result, stations: result.stations.map(toPublicStation) };
   }
 
   @Get(':id')
   @RequirePermissions('station.read')
   async getById(@Param('id') id: string) {
     const s = await this.getStation.findByIdAdmin(id);
-    return {
-      id: s.id,
-      code: s.code,
-      name: s.name,
-      latitude: s.latitude,
-      longitude: s.longitude,
-      timezone: s.timezone,
-      regionId: s.regionId,
-      regionName: s.regionName,
-      status: s.status,
-      metadata: s.metadata,
-      createdAt: s.createdAt.toISOString(),
-      updatedAt: s.updatedAt.toISOString(),
-    };
+    return toPublicStation(s);
   }
 
   @Post()
   @RequirePermissions('station.write')
   async create(@Body() body: CreateStationCommand) {
     const s = await this.createStation.execute(body);
-    return {
-      id: s.id,
-      code: s.code,
-      name: s.name,
-      latitude: s.latitude,
-      longitude: s.longitude,
-      timezone: s.timezone,
-      regionId: s.regionId,
-      regionName: s.regionName,
-      status: s.status,
-      metadata: s.metadata,
-      createdAt: s.createdAt.toISOString(),
-      updatedAt: s.updatedAt.toISOString(),
-    };
+    return toPublicStation(s);
   }
 
   @Patch(':id')
   @RequirePermissions('station.write')
   async update(@Param('id') id: string, @Body() body: UpdateStationCommand) {
     const s = await this.updateStation.execute(id, body);
-    return {
-      id: s.id,
-      code: s.code,
-      name: s.name,
-      latitude: s.latitude,
-      longitude: s.longitude,
-      timezone: s.timezone,
-      regionId: s.regionId,
-      regionName: s.regionName,
-      status: s.status,
-      metadata: s.metadata,
-      createdAt: s.createdAt.toISOString(),
-      updatedAt: s.updatedAt.toISOString(),
-    };
+    return toPublicStation(s);
   }
 
   @Delete(':id')
@@ -108,4 +71,22 @@ export class AdminStationsController {
   async archive(@Param('id') id: string) {
     await this.archiveStation.execute(id);
   }
+}
+
+/** Explicit response shape — never forward a StationRecord to the wire as-is. */
+function toPublicStation(s: StationRecord) {
+  return {
+    id: s.id,
+    code: s.code,
+    name: s.name,
+    latitude: s.latitude,
+    longitude: s.longitude,
+    timezone: s.timezone,
+    regionId: s.regionId,
+    regionName: s.regionName,
+    status: s.status,
+    metadata: s.metadata,
+    createdAt: s.createdAt.toISOString(),
+    updatedAt: s.updatedAt.toISOString(),
+  };
 }

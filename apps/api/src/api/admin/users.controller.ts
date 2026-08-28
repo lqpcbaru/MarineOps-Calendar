@@ -20,6 +20,7 @@ import type {
   UpdateUserCommand,
   ListUsersQuery,
 } from '../../modules/users/application/dtos';
+import type { UserRecord } from '../../modules/users/domain';
 import { JwtAuthGuard } from '../../modules/authentication/api/jwt-auth.guard';
 import {
   PermissionsGuard,
@@ -39,58 +40,29 @@ export class UsersController {
   @Get()
   @RequirePermissions('user.manage')
   async list(@Query() query: ListUsersQuery) {
-    return this.getUsers.list(query);
+    const result = await this.getUsers.list(query);
+    return { ...result, users: result.users.map(toPublicUser) };
   }
 
   @Get(':id')
   @RequirePermissions('user.manage')
   async getById(@Param('id') id: string) {
     const user = await this.getUsers.findById(id);
-    return {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      status: user.status,
-      timezone: user.timezone,
-      locale: user.locale,
-      roleIds: user.roleIds,
-      createdAt: user.createdAt.toISOString(),
-      updatedAt: user.updatedAt.toISOString(),
-    };
+    return toPublicUser(user);
   }
 
   @Post()
   @RequirePermissions('user.manage')
   async create(@Body() body: CreateUserCommand) {
     const user = await this.createUser.execute(body);
-    return {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      status: user.status,
-      timezone: user.timezone,
-      locale: user.locale,
-      roleIds: user.roleIds,
-      createdAt: user.createdAt.toISOString(),
-      updatedAt: user.updatedAt.toISOString(),
-    };
+    return toPublicUser(user);
   }
 
   @Patch(':id')
   @RequirePermissions('user.manage')
   async update(@Param('id') id: string, @Body() body: UpdateUserCommand) {
     const user = await this.updateUser.execute(id, body);
-    return {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      status: user.status,
-      timezone: user.timezone,
-      locale: user.locale,
-      roleIds: user.roleIds,
-      createdAt: user.createdAt.toISOString(),
-      updatedAt: user.updatedAt.toISOString(),
-    };
+    return toPublicUser(user);
   }
 
   @Delete(':id')
@@ -99,4 +71,19 @@ export class UsersController {
   async disable(@Param('id') id: string) {
     await this.disableUser.execute(id);
   }
+}
+
+/** Strips passwordHash — UserRecord is an internal shape and must never cross the HTTP boundary as-is. */
+function toPublicUser(user: UserRecord) {
+  return {
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    status: user.status,
+    timezone: user.timezone,
+    locale: user.locale,
+    roleIds: user.roleIds,
+    createdAt: user.createdAt.toISOString(),
+    updatedAt: user.updatedAt.toISOString(),
+  };
 }

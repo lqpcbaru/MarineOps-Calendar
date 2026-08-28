@@ -185,6 +185,19 @@ describe('Auth flow + admin RBAC guards (e2e, in-memory infrastructure)', () => 
       expect(res.body.users[0].email).toBe('admin@marineops.local');
     });
 
+    it('never leaks passwordHash in the list response', async () => {
+      const token = await loginAs(admin.email);
+      const res = await request(app.getHttpServer())
+        .get('/api/v1/users')
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.users[0]).not.toHaveProperty('passwordHash');
+      // Belt-and-suspenders: the seeded admin's hash value must not appear
+      // anywhere in the serialized body, in case it leaked under some other key.
+      expect(JSON.stringify(res.body)).not.toContain('fake:irrelevant');
+    });
+
     it('rejects an invalid/garbage bearer token with 401', async () => {
       const res = await request(app.getHttpServer())
         .get('/api/v1/users')
