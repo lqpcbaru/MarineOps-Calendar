@@ -1,0 +1,21 @@
+version: 2
+updates:
+  # Root pnpm workspace — covers apps/*, packages/*, tools/* via the
+  # pnpm-workspace.yaml root directive.
+  - package-ecosystem: 'npm'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+    open-pull-requests-limit: 10
+
+  # apps/api/Dockerfile's node:22-alpine base images.
+  - package-ecosystem: 'docker'
+    directory: '/apps/api'
+    schedule:
+      interval: 'weekly'
+
+  # .github/workflows/ci.yml action versions (checkout, setup-node, etc).
+  - package-ecosystem: 'github-actions'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
