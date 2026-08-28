@@ -8,6 +8,7 @@ import rateLimit from 'express-rate-limit';
 import { AppModule } from './app.module';
 import { LoggingService } from './platform/logging.service';
 import { correlationIdMiddleware } from './platform/correlation-id.middleware';
+import { createLoginRateLimiter } from './platform/login-rate-limit';
 
 async function bootstrap() {
   const logger = new LoggingService('Bootstrap');
@@ -35,6 +36,8 @@ async function bootstrap() {
       legacyHeaders: false,
     }),
   );
+
+  app.use('/api/v1/auth/login', createLoginRateLimiter());
 
   // CORS origin is authoritative from APP_URL. In development we allow a
   // localhost fallback; in production APP_URL is required and we fail fast

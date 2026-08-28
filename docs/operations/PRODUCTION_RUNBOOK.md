@@ -21,25 +21,26 @@ Services:
 
 ### Environment Variables
 
-| Variable                 | Required   | Default                  | Description                                       |
-| ------------------------ | ---------- | ------------------------ | ------------------------------------------------- |
-| `NODE_ENV`               | Yes        | `production`             | Environment: development/test/staging/production  |
-| `PORT`                   | No         | `3000`                   | API port                                          |
-| `APP_NAME`               | No         | `MarineOps`              | Application name                                  |
-| `APP_URL`                | Yes (prod) | —                        | Public web origin used for CORS (see below)       |
-| `DATABASE_URL`           | Yes        | —                        | PostgreSQL connection string                      |
-| `REDIS_URL`              | No         | `redis://localhost:6379` | Redis connection string                           |
-| `REDIS_ENABLED`          | No         | `false`                  | Enable Redis cache                                |
-| `JWT_ACCESS_SECRET`      | Yes        | —                        | HS256 signing secret (min 32 chars)               |
-| `JWT_REFRESH_SECRET`     | Yes        | —                        | Refresh token secret                              |
-| `JWT_ACCESS_TTL_MINUTES` | No         | `15`                     | Access token TTL                                  |
-| `JWT_REFRESH_TTL_DAYS`   | No         | `7`                      | Refresh token TTL                                 |
-| `LOG_LEVEL`              | No         | `info`                   | Log level (debug/info/warn/error)                 |
-| `LOG_FORMAT`             | No         | `json`                   | Log format                                        |
-| `RATE_LIMIT_MAX`         | No         | `100`                    | Max requests per minute                           |
-| `METMALAYSIA_API_KEY`    | No         | —                        | MET Malaysia API key (server-side only)           |
-| `GFW_API_TOKEN`          | No         | —                        | Global Fishing Watch API token (server-side only) |
-| `JUPEM_API_KEY`          | No         | —                        | JUPEM API key                                     |
+| Variable                 | Required   | Default                  | Description                                              |
+| ------------------------ | ---------- | ------------------------ | -------------------------------------------------------- |
+| `NODE_ENV`               | Yes        | `production`             | Environment: development/test/staging/production         |
+| `PORT`                   | No         | `3000`                   | API port                                                 |
+| `APP_NAME`               | No         | `MarineOps`              | Application name                                         |
+| `APP_URL`                | Yes (prod) | —                        | Public web origin used for CORS (see below)              |
+| `DATABASE_URL`           | Yes        | —                        | PostgreSQL connection string                             |
+| `REDIS_URL`              | No         | `redis://localhost:6379` | Redis connection string                                  |
+| `REDIS_ENABLED`          | No         | `false`                  | Enable Redis cache                                       |
+| `JWT_ACCESS_SECRET`      | Yes        | —                        | HS256 signing secret (min 32 chars)                      |
+| `JWT_REFRESH_SECRET`     | Yes        | —                        | Refresh token secret                                     |
+| `JWT_ACCESS_TTL_MINUTES` | No         | `15`                     | Access token TTL                                         |
+| `JWT_REFRESH_TTL_DAYS`   | No         | `7`                      | Refresh token TTL                                        |
+| `LOG_LEVEL`              | No         | `info`                   | Log level (debug/info/warn/error)                        |
+| `LOG_FORMAT`             | No         | `json`                   | Log format                                               |
+| `RATE_LIMIT_MAX`         | No         | `100`                    | Max requests per minute (general API)                    |
+| `LOGIN_RATE_LIMIT_MAX`   | No         | `10`                     | Max `POST /api/v1/auth/login` attempts per IP per 15 min |
+| `METMALAYSIA_API_KEY`    | No         | —                        | MET Malaysia API key (server-side only)                  |
+| `GFW_API_TOKEN`          | No         | —                        | Global Fishing Watch API token (server-side only)        |
+| `JUPEM_API_KEY`          | No         | —                        | JUPEM API key                                            |
 
 > **Secret handling:** All secrets (`JWT_*`, `DATABASE_URL`, `GFW_API_TOKEN`, `METMALAYSIA_API_KEY`) must be supplied through the deployment secret manager / environment. Never commit real secrets to the repository. No default production credentials exist.
 
