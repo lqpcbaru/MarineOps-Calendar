@@ -88,9 +88,57 @@ jobs:
     runs-on: ubuntu-latest
     needs: test
     if: github.event_name == 'release'
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: marineops
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: marineops_test
+        ports: ['5432:5432']
+        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
     steps:
       - uses: actions/checkout@v4
       - name: Build Docker image
         run: docker build -f apps/api/Dockerfile -t marineops-api:${{ github.ref_name }} .
       - name: Tag as latest
         run: docker tag marineops-api:${{ github.ref_name }} marineops-api:latest
+      # A clean `docker build` only proves the image compiles — it says
+      # nothing about whether the container actually starts (a missing env
+      # var, a bad CMD path, or a non-root permission issue would all still
+      # pass the build step and only surface at runtime). Run it for real
+      # against a live Postgres and check both health endpoints respond.
+      - name: Smoke test — container starts and serves health endpoints
+        run: |
+          docker run -d --name smoke-test --network host \
+            -e DATABASE_URL=postgresql://marineops:test@localhost:5432/marineops_test \
+            -e JWT_ACCESS_SECRET=smoke-test-secret \
+            -e JWT_REFRESH_SECRET=smoke-test-refresh-secret \
+            -e APP_URL=http://localhost:3000 \
+            marineops-api:latest
+
+          ready=false
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:3000/health/live > /dev/null; then
+              ready=true
+              break
+            fi
+            sleep 2
+          done
+
+          if [ "$ready" != "true" ]; then
+            echo "Container never became live — logs:"
+            docker logs smoke-test
+            exit 1
+          fi
+
+          if ! curl -sf http://localhost:3000/health/ready > /dev/null; then
+            echo "Readiness check failed (DB connectivity) — logs:"
+            docker logs smoke-test
+            exit 1
+          fi
+
+          echo "Smoke test passed: container starts, connects to the database, and serves both health endpoints."
+      - name: Clean up smoke test container
+        if: always()
+        run: docker rm -f smoke-test || true
