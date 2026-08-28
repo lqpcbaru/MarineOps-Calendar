@@ -11,10 +11,10 @@
   "scripts": {
     "dev": "pnpm --parallel -r dev",
     "dev:api": "pnpm --filter @marineops/api dev",
-    "dev:web": "pnpm --filter @marineops/web dev",
+    "dev:web": "pnpm --filter @marineops/web-public dev",
     "build": "pnpm -r build",
     "build:api": "pnpm --filter @marineops/api build",
-    "build:web": "pnpm --filter @marineops/web build",
+    "build:web": "pnpm --filter @marineops/web-public build",
     "lint": "pnpm -r lint",
     "lint:fix": "pnpm -r lint:fix",
     "format": "prettier --write .",
