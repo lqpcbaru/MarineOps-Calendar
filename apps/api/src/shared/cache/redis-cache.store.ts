@@ -1,44 +1,116 @@
+import type { Redis } from 'ioredis';
 import type { CacheEntry } from './cache-entry';
 import type { CacheStorePort } from './cache-store.port';
+import { getSharedRedisClient } from './redis-client';
+import { LoggingService } from '../../platform/logging.service';
+
+const DEFAULT_TTL_SECONDS = 7 * 24 * 60 * 60; // covers every current module's staleTtlMs
 
 /**
- * NOT YET IMPLEMENTED — this does not talk to Redis. `_redisUrl` is
- * accepted but unused; storage is a plain in-memory Map, identical in
- * behaviour to InMemoryCacheStore. No redis/ioredis client dependency
- * exists in package.json. Every cache-consuming module currently
- * hardcodes InMemoryCacheStore directly (none reference this class), so
- * REDIS_ENABLED/REDIS_URL have no effect anywhere in the app today.
- * Do not wire this in as if it provides real shared/distributed caching
- * — in a horizontally-scaled deployment each replica would still cache
- * independently. Needs a real client (e.g. ioredis) before use.
+ * Real Redis-backed cache, shared across horizontally-scaled API replicas
+ * (unlike InMemoryCacheStore, which is per-process and lost on every
+ * restart). Redis is treated as best-effort: any connection or
+ * (de)serialization failure is logged and degrades to a cache miss/no-op
+ * rather than throwing — CacheService must keep working (falling through to
+ * the provider) even when Redis is unavailable.
  */
 export class RedisCacheStore<T = unknown> implements CacheStorePort<T> {
   private readonly prefix = 'marineops:cache:';
-  private fallback = new Map<string, CacheEntry<T>>();
+  private readonly redis: Redis;
+  private readonly logger = new LoggingService('RedisCacheStore');
 
-  constructor(private readonly _redisUrl: string) {}
+  constructor(
+    redisUrl: string,
+    private readonly ttlSeconds: number = DEFAULT_TTL_SECONDS,
+    client?: Redis,
+  ) {
+    this.redis = client ?? getSharedRedisClient(redisUrl);
+  }
 
   async get(key: string): Promise<CacheEntry<T> | null> {
-    return this.fallback.get(key) ?? null;
+    try {
+      const raw = await this.redis.get(this.prefix + key);
+      if (!raw) return null;
+      return this.deserialize(raw);
+    } catch (error) {
+      this.logger.error(
+        'get failed, treating as cache miss',
+        error instanceof Error ? error : undefined,
+        { key },
+      );
+      return null;
+    }
   }
 
   async set(key: string, entry: CacheEntry<T>): Promise<void> {
-    this.fallback.set(key, entry);
+    try {
+      await this.redis.set(this.prefix + key, JSON.stringify(entry), 'EX', this.ttlSeconds);
+    } catch (error) {
+      this.logger.error(
+        'set failed, entry not cached',
+        error instanceof Error ? error : undefined,
+        { key },
+      );
+    }
   }
 
   async delete(key: string): Promise<boolean> {
-    return this.fallback.delete(key);
+    try {
+      const removed = await this.redis.del(this.prefix + key);
+      return removed > 0;
+    } catch (error) {
+      this.logger.error('delete failed', error instanceof Error ? error : undefined, { key });
+      return false;
+    }
   }
 
   async clear(): Promise<void> {
-    this.fallback.clear();
+    try {
+      const keys = await this.scanKeys();
+      if (keys.length > 0) await this.redis.del(...keys);
+    } catch (error) {
+      this.logger.error('clear failed', error instanceof Error ? error : undefined);
+    }
   }
 
   async exists(key: string): Promise<boolean> {
-    return this.fallback.has(key);
+    try {
+      const count = await this.redis.exists(this.prefix + key);
+      return count > 0;
+    } catch (error) {
+      this.logger.error('exists check failed', error instanceof Error ? error : undefined, { key });
+      return false;
+    }
   }
 
   async keys(): Promise<string[]> {
-    return [...this.fallback.keys()];
+    try {
+      const keys = await this.scanKeys();
+      return keys.map((k) => k.slice(this.prefix.length));
+    } catch (error) {
+      this.logger.error('keys scan failed', error instanceof Error ? error : undefined);
+      return [];
+    }
+  }
+
+  /** SCAN, never KEYS — KEYS blocks the whole Redis instance on large datasets. */
+  private async scanKeys(): Promise<string[]> {
+    const found: string[] = [];
+    let cursor = '0';
+    do {
+      const [next, batch] = await this.redis.scan(cursor, 'MATCH', `${this.prefix}*`, 'COUNT', 100);
+      found.push(...batch);
+      cursor = next;
+    } while (cursor !== '0');
+    return found;
+  }
+
+  private deserialize(raw: string): CacheEntry<T> {
+    const parsed = JSON.parse(raw) as CacheEntry<T> & { createdAt: string; expiresAt: string };
+    return {
+      ...parsed,
+      createdAt: new Date(parsed.createdAt),
+      expiresAt: new Date(parsed.expiresAt),
+    };
   }
 }
