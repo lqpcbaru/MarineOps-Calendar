@@ -72,12 +72,12 @@ jobs:
       - run: pnpm run build
       # No registry/hosting target is configured yet (tracked separately) —
       # until then, this is the only way to retrieve a build from CI at all.
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: api-dist
           path: apps/api/dist
           retention-days: 14
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: web-public-dist
           path: apps/web-public/dist
