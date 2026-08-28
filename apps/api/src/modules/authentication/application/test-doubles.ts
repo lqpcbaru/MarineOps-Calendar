@@ -46,12 +46,24 @@ export class InMemoryRefreshTokenRepository implements RefreshTokenRepository {
     let count = 0;
     for (const token of this.byId.values()) {
       if (token.familyId === familyId && !token.isRevoked()) {
-        this.byId.set(token.id, token.revoke(now));
-        this.byHash.set(token.tokenHash, token.revoke(now));
+        const revoked = token.revoke(now);
+        this.byId.set(token.id, revoked);
+        this.byHash.set(token.tokenHash, revoked);
         count++;
       }
     }
     return count;
+  }
+
+  async revokeIfActive(id: string, replacedBy: string, now: Date = new Date()): Promise<boolean> {
+    const token = this.byId.get(id);
+    if (!token || token.isRevoked()) {
+      return false;
+    }
+    const revoked = token.revoke(now).markReplacedBy(replacedBy);
+    this.byId.set(id, revoked);
+    this.byHash.set(token.tokenHash, revoked);
+    return true;
   }
 }
 

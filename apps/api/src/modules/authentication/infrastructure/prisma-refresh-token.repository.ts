@@ -52,6 +52,18 @@ export class PrismaRefreshTokenRepository implements RefreshTokenRepository {
     return result.count;
   }
 
+  async revokeIfActive(id: string, replacedBy: string, now: Date = new Date()): Promise<boolean> {
+    // The `revokedAt: null` predicate makes this a single atomic
+    // conditional UPDATE — Postgres guarantees only one concurrent
+    // transaction can match a not-yet-revoked row, so at most one caller
+    // ever gets count === 1 for the same token.
+    const result = await this.prisma.refreshToken.updateMany({
+      where: { id, revokedAt: null },
+      data: { revokedAt: now, replacedBy },
+    });
+    return result.count === 1;
+  }
+
   private toState(row: {
     id: string;
     userId: string;

@@ -118,6 +118,37 @@ describe('RefreshUseCase', () => {
     ).rejects.toBeInstanceOf(RefreshTokenExpiredError);
   });
 
+  it('allows only one winner when two requests race to refresh the same token', async () => {
+    const { login, refresh, refreshRepo, events } = build();
+    const loginResult = await login.execute({
+      email: 'planner@marineops.local',
+      password: 'correct-horse-battery',
+    });
+
+    // Two concurrent refresh calls presenting the SAME still-valid token —
+    // e.g. a client retry or two tabs racing. Without an atomic conditional
+    // revoke, both could read the token as active before either persists,
+    // and both would succeed, leaving two active sibling tokens.
+    const results = await Promise.allSettled([
+      refresh.execute({ refreshToken: loginResult.refreshToken }),
+      refresh.execute({ refreshToken: loginResult.refreshToken }),
+    ]);
+
+    // The core invariant: the atomic conditional revoke means at most one
+    // concurrent caller can ever claim the same token — never both.
+    const fulfilled = results.filter((r) => r.status === 'fulfilled');
+    const rejected = results.filter((r) => r.status === 'rejected');
+    expect(fulfilled).toHaveLength(1);
+    expect(rejected).toHaveLength(1);
+    expect((rejected[0] as PromiseRejectedResult).reason).toBeInstanceOf(RefreshTokenReusedError);
+    expect(events.events.some((e) => e.type === 'RefreshTokenReused')).toBe(true);
+
+    // The original token is unambiguously revoked either way.
+    const originalHash = await new FakeTokenService().hashRefreshToken(loginResult.refreshToken);
+    const originalRecord = await refreshRepo.findByHash(originalHash);
+    expect(originalRecord?.isRevoked()).toBe(true);
+  });
+
   it('revokes the family when the user has been disabled since login', async () => {
     const { login, refresh, users } = build();
     const loginResult = await login.execute({

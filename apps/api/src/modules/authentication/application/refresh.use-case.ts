@@ -33,8 +33,11 @@ import {
  * 2. If no record → REFRESH_NOT_FOUND.
  * 3. If record is revoked/replaced → REUSE_DETECTED → revoke entire family.
  * 4. If expired → REFRESH_EXPIRED.
- * 5. Otherwise: revoke this token, mint a NEW refresh token in the SAME family,
- *    persist, and emit RefreshTokenRotated.
+ * 5. Otherwise: atomically claim the token for rotation (conditional revoke —
+ *    see revokeIfActive), mint a NEW refresh token in the SAME family,
+ *    persist, and emit RefreshTokenRotated. If the atomic claim loses a race
+ *    against a concurrent refresh call presenting the same token, it's
+ *    treated the same as REUSE_DETECTED.
  *
  * The new refresh token shares the familyId of the original so the chain
  * stays traceable. Any future reuse of a revoked token in the chain invalidates
@@ -68,14 +71,7 @@ export class RefreshUseCase {
 
     // Reuse of a revoked/replaced token → invalidate the family (theft signal).
     if (existing.isRevoked()) {
-      await this.refreshRepo.revokeFamily(existing.familyId, now);
-      await this.events.publish({
-        type: 'RefreshTokenReused',
-        userId: existing.userId,
-        familyId: existing.familyId,
-        at: now,
-      });
-      throw new RefreshTokenReusedError();
+      return this.handleReuse(existing.userId, existing.familyId, now);
     }
 
     if (existing.isExpired(now)) {
@@ -86,12 +82,22 @@ export class RefreshUseCase {
     const userRecord = await this.findUserOrInvalidate(existing.userId, existing.familyId, now);
     const principal = this.users.toPrincipal(userRecord);
 
-    // Revoke the presented token and record its replacement.
-    const revoked = existing.revoke(now);
+    // Atomically claim this token for rotation. A conditional check here
+    // (rather than a blind save of a locally-computed `revoked` state) is
+    // what prevents two concurrent refresh calls presenting the same token
+    // from both succeeding: only the request that wins the race gets
+    // `true` back. The loser hits this exact branch as if it had presented
+    // an already-revoked token, since that's genuinely what happened by
+    // the time its write landed.
+    const newTokenId = createId() as DomainId;
+    const claimed = await this.refreshRepo.revokeIfActive(existing.id, newTokenId, now);
+    if (!claimed) {
+      return this.handleReuse(existing.userId, existing.familyId, now);
+    }
+
     const newAccessToken = await this.tokens.mintAccessToken(principal, now);
     const newRefresh = await this.tokens.generateRefreshToken(existing.userId, now);
 
-    const newTokenId = createId() as DomainId;
     const newAggregate = RefreshToken.create({
       id: newTokenId,
       userId: existing.userId,
@@ -101,7 +107,6 @@ export class RefreshUseCase {
       createdAt: now,
     });
 
-    await this.refreshRepo.save(revoked.markReplacedBy(newTokenId));
     await this.refreshRepo.save(newAggregate);
 
     await this.events.publish({
@@ -130,5 +135,17 @@ export class RefreshUseCase {
       throw new RefreshTokenExpiredError();
     }
     return record;
+  }
+
+  /** Reuse of a revoked/replaced token → invalidate the family (theft signal). */
+  private async handleReuse(userId: string, familyId: string, now: Date): Promise<never> {
+    await this.refreshRepo.revokeFamily(familyId, now);
+    await this.events.publish({
+      type: 'RefreshTokenReused',
+      userId,
+      familyId,
+      at: now,
+    });
+    throw new RefreshTokenReusedError();
   }
 }
