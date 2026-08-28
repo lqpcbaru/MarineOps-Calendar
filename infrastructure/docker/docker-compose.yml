@@ -74,6 +74,7 @@ services:
       LOG_LEVEL: info
       LOG_FORMAT: json
       RATE_LIMIT_MAX: '100'
+      LOGIN_RATE_LIMIT_MAX: '10'
 
 volumes:
   postgres_data:
