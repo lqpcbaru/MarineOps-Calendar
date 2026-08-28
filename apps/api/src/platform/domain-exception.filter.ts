@@ -6,6 +6,7 @@ import {
   HttpStatus,
   Logger,
 } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { DomainError } from '../shared-kernel';
 
 /**
@@ -34,6 +35,22 @@ export class DomainExceptionFilter implements ExceptionFilter {
     if (exception instanceof DomainError) {
       const status = this.httpStatusFor(exception.code);
       response.status(status).json(this.envelope(exception, undefined, correlationId));
+      return;
+    }
+
+    // A unique-constraint violation that reaches here (rather than a
+    // domain-specific *ExistsError) means an application-level
+    // check-then-create raced with a concurrent request and lost — the
+    // database correctly rejected the duplicate. Surface it as the 409
+    // conflict it actually is, not an opaque 500.
+    if (exception instanceof Prisma.PrismaClientKnownRequestError && exception.code === 'P2002') {
+      const target = exception.meta?.['target'];
+      const fields = Array.isArray(target) ? target.join(', ') : undefined;
+      response.status(HttpStatus.CONFLICT).json({
+        code: 'CONFLICT',
+        message: fields ? `Nilai untuk '${fields}' sudah wujud` : 'Rekod ini sudah wujud',
+        ...(correlationId ? { correlationId } : {}),
+      });
       return;
     }
 
