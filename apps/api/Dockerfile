@@ -1,4 +1,4 @@
-FROM node:22-alpine AS builder
+FROM node:25-alpine AS builder
 WORKDIR /app
 
 # Copy workspace manifests and full source before install so pnpm can
@@ -27,7 +27,7 @@ RUN cd /prod/api && \
   /app/apps/api/node_modules/.bin/prisma generate --schema ./prisma/schema.prisma
 
 
-FROM node:22-alpine AS runner
+FROM node:25-alpine AS runner
 WORKDIR /app
 RUN corepack enable
 
