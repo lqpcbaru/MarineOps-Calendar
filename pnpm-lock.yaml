@@ -76,6 +76,9 @@ importers:
       jsonwebtoken:
         specifier: ^9.0.3
         version: 9.0.3
+      prisma:
+        specifier: ^6.4.1
+        version: 6.19.3(magicast@0.3.5)(typescript@5.9.3)
       reflect-metadata:
         specifier: ^0.2.2
         version: 0.2.2
@@ -122,9 +125,6 @@ importers:
       express:
         specifier: ^5.2.1
         version: 5.2.1
-      prisma:
-        specifier: ^6.4.1
-        version: 6.19.3(magicast@0.3.5)(typescript@5.9.3)
       supertest:
         specifier: ^7.2.2
         version: 7.2.2
