@@ -1,10 +1,13 @@
 import type { ProviderConfig } from './provider-config';
 import {
+  ProviderError,
   ProviderTimeoutError,
   ProviderServerError,
   ProviderAuthenticationError,
   ProviderRateLimitError,
   ProviderConfigurationError,
+  ProviderInvalidResponseError,
+  ProviderUnavailableError,
 } from './provider-error';
 
 export class ProviderHttpClient {
@@ -28,10 +31,14 @@ export class ProviderHttpClient {
       });
 
       if (response.ok) {
-        return response.json() as Promise<T>;
+        // Must be awaited here (not `return response.json()`) so a parse
+        // failure is caught by this try/catch rather than escaping it —
+        // returning the bare promise would let it reject after this
+        // function's own try/catch has already exited.
+        return (await response.json()) as T;
       }
 
-      void await response.text().catch(() => '');
+      void (await response.text().catch(() => ''));
 
       switch (response.status) {
         case 401:
@@ -48,10 +55,25 @@ export class ProviderHttpClient {
           throw new ProviderServerError(this.config.providerName, response.status);
       }
     } catch (error) {
+      // Errors we've already classified below (401/403/404/429/5xx, or a
+      // config error from resolveApiKey) — propagate as-is.
+      if (error instanceof ProviderError) {
+        throw error;
+      }
       if (error instanceof DOMException && error.name === 'AbortError') {
         throw new ProviderTimeoutError(this.config.providerName, this.config.timeoutMs);
       }
-      throw error;
+      if (error instanceof SyntaxError) {
+        throw new ProviderInvalidResponseError(this.config.providerName, 'malformed JSON response');
+      }
+      // Anything else here is a raw network failure (DNS, connection
+      // refused, TLS) that fetch() rejects with rather than an HTTP error
+      // response — classify it so it surfaces as a 503 upstream failure
+      // instead of an opaque internal 500.
+      throw new ProviderUnavailableError(
+        this.config.providerName,
+        error instanceof Error ? error : undefined,
+      );
     } finally {
       clearTimeout(timer);
     }
@@ -70,7 +92,10 @@ export class ProviderHttpClient {
   private resolveApiKey(): string | null {
     const key = process.env[this.config.apiKeyEnvVar];
     if (!key) {
-      throw new ProviderConfigurationError(this.config.providerName, `API key '${this.config.apiKeyEnvVar}' tidak dijumpai dalam environment`);
+      throw new ProviderConfigurationError(
+        this.config.providerName,
+        `API key '${this.config.apiKeyEnvVar}' tidak dijumpai dalam environment`,
+      );
     }
     return key;
   }
