@@ -65,18 +65,6 @@ async function bootstrap() {
   const port = parseInt(process.env.PORT || '3000', 10);
   await app.listen(port);
   logger.log(`MarineOps Hub API started on port ${port}`);
-
-  process.on('SIGTERM', async () => {
-    logger.log('SIGTERM received. Shutting down gracefully...');
-    await app.close();
-    process.exit(0);
-  });
-
-  process.on('SIGINT', async () => {
-    logger.log('SIGINT received. Shutting down gracefully...');
-    await app.close();
-    process.exit(0);
-  });
 }
 
 bootstrap();
