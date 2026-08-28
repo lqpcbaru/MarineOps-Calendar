@@ -23,7 +23,7 @@ function build() {
   const events = new CapturingEventBus();
   const clock = new FixedClock(now);
   const useCase = new LoginUseCase(identity, hasher, tokens, refreshRepo, events, clock);
-  return { useCase, users, tokens, refreshRepo, events };
+  return { useCase, users, hasher, tokens, refreshRepo, events };
 }
 
 describe('LoginUseCase', () => {
@@ -57,6 +57,14 @@ describe('LoginUseCase', () => {
     await expect(
       useCase.execute({ email: 'nobody@marineops.local', password: 'whatever-password' }),
     ).rejects.toBeInstanceOf(InvalidCredentialsError);
+  });
+
+  it('runs password verification even for an unknown email (timing-safe against enumeration)', async () => {
+    const { useCase, hasher } = build();
+    await expect(
+      useCase.execute({ email: 'nobody@marineops.local', password: 'whatever-password' }),
+    ).rejects.toBeInstanceOf(InvalidCredentialsError);
+    expect(hasher.verifyCallCount).toBe(1);
   });
 
   it('rejects wrong password', async () => {

@@ -27,6 +27,15 @@ import {
 } from './di-tokens';
 
 /**
+ * A valid argon2id hash with no corresponding real password. Verifying
+ * against this when the user doesn't exist keeps the login use case's
+ * response time indistinguishable from a wrong-password rejection, so an
+ * attacker can't enumerate registered emails via timing.
+ */
+const DUMMY_PASSWORD_HASH =
+  '$argon2id$v=19$m=19456,p=1,t=2$EY+Ie6Z8G1KE6NnB/uXirg$sCSOVjk56pLVG2AAEHsBQjQUw/12+vMlJ38ZIEKX6G4';
+
+/**
  * FR-AUTH-001 — authenticate with email and password.
  *
  * Flow (ADR-0010):
@@ -56,12 +65,12 @@ export class LoginUseCase {
     const { email, password } = valid.data;
 
     const user = await this.users.findByEmail(email);
-    if (!user) {
-      throw new InvalidCredentialsError();
-    }
 
-    const ok = await this.hasher.verify(password, user.passwordHash);
-    if (!ok) {
+    // Always run the full argon2id verification, even for an unknown email,
+    // against a dummy hash — so response timing can't be used to enumerate
+    // which emails are registered.
+    const ok = await this.hasher.verify(password, user?.passwordHash ?? DUMMY_PASSWORD_HASH);
+    if (!user || !ok) {
       throw new InvalidCredentialsError();
     }
 

@@ -109,10 +109,13 @@ export class FakeTokenService implements TokenService {
 
 /** Plaintext password hasher (tests only — never use in production). */
 export class FakePasswordHasher implements PasswordHasher {
+  verifyCallCount = 0;
+
   async hash(plaintext: string): Promise<string> {
     return `fake:${plaintext}`;
   }
   async verify(plaintext: string, encoded: string): Promise<boolean> {
+    this.verifyCallCount += 1;
     return encoded === `fake:${plaintext}`;
   }
 }
