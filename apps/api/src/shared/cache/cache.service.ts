@@ -40,16 +40,16 @@ export class CacheService<T = unknown> {
       return entry;
     }
 
+    // Past staleTtl the entry is unusable — drop it rather than leaving it
+    // resident. Returning null without deleting meant expired entries
+    // accumulated forever in the in-process store, since nothing else ever
+    // removes them.
     this.metrics.recordExpired();
+    await this.store.delete(key);
     return null;
   }
 
-  async set(
-    key: string,
-    data: T,
-    provider: string,
-    stationId: string,
-  ): Promise<CacheEntry<T>> {
+  async set(key: string, data: T, provider: string, stationId: string): Promise<CacheEntry<T>> {
     const now = new Date();
     const entry: CacheEntry<T> = {
       key,
