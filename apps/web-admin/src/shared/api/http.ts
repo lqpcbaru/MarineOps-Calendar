@@ -59,12 +59,24 @@ async function toApiError(res: Response, fallbackMessage: string): Promise<ApiEr
  */
 let refreshInFlight: Promise<boolean> | null = null;
 
+/**
+ * A refresh that never settles would leave `refreshInFlight` pending
+ * forever, and since every later 401 awaits that same promise, one stalled
+ * connection would wedge the session permanently — no refresh, no redirect
+ * to /login, just a UI that stops responding to auth failures. The abort
+ * turns that into an ordinary failed refresh.
+ */
+const REFRESH_TIMEOUT_MS = 10_000;
+
 async function refreshAccessToken(): Promise<boolean> {
   refreshInFlight ??= (async () => {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), REFRESH_TIMEOUT_MS);
     try {
       const res = await fetch(`${AUTH_BASE}/refresh`, {
         method: 'POST',
         credentials: 'same-origin',
+        signal: controller.signal,
       });
       if (!res.ok) return false;
       const body = (await res.json()) as { accessToken?: unknown };
@@ -74,6 +86,7 @@ async function refreshAccessToken(): Promise<boolean> {
     } catch {
       return false;
     } finally {
+      clearTimeout(timeout);
       // Cleared on the next tick so concurrent callers all observe the same
       // settled promise before a fresh attempt becomes possible.
       queueMicrotask(() => {
@@ -83,6 +96,14 @@ async function refreshAccessToken(): Promise<boolean> {
   })();
 
   return refreshInFlight;
+}
+
+/**
+ * Test-only: drops any in-flight refresh so module state cannot leak between
+ * tests (mirrors resetSharedRedisClientForTests in the API).
+ */
+export function resetRefreshStateForTests(): void {
+  refreshInFlight = null;
 }
 
 export interface ApiRequestOptions {

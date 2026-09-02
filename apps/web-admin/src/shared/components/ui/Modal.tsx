@@ -16,10 +16,18 @@ export interface ModalProps {
 export function Modal({ open, title, onClose, children }: ModalProps) {
   const panelRef = useRef<HTMLDivElement>(null);
 
+  // Focus is moved ONLY when the dialog opens. This effect must not depend
+  // on `onClose`: callers pass an inline handler whose identity changes on
+  // every render, so including it re-ran this on every keystroke and yanked
+  // focus from the field back to the panel — making it impossible to type
+  // more than one character into any admin form.
   useEffect(() => {
     if (!open) return;
     panelRef.current?.focus();
+  }, [open]);
 
+  useEffect(() => {
+    if (!open) return;
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === 'Escape') onClose();
     }
