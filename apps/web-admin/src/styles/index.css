@@ -1,0 +1,187 @@
+@import 'tailwindcss';
+
+/*
+ * Token set is deliberately identical to apps/web-public so the two portals
+ * read as one product. Component classes below are admin-specific (dense
+ * tables, forms, dialogs) — the public portal's marketing-ish surfaces are
+ * not duplicated here.
+ */
+@theme {
+  /* Marine Dark Theme — Color System */
+  --color-marine-950: #060b14;
+  --color-marine-900: #0a0f1e;
+  --color-marine-800: #0f1629;
+  --color-marine-700: #162036;
+  --color-marine-600: #1e2d4a;
+  --color-marine-500: #2a4a7f;
+  --color-marine-400: #3d6bb3;
+  --color-marine-300: #5c8fd6;
+  --color-marine-200: #8ab4e8;
+  --color-marine-100: #c0d8f5;
+  --color-marine-50: #e8f1fc;
+
+  --color-ocean-400: #00b4d8;
+  --color-ocean-300: #48cae4;
+  --color-ocean-200: #90e0ef;
+  --color-ocean-100: #caf0f8;
+
+  --color-tide-400: #06d6a0;
+  --color-tide-300: #4ee4b8;
+
+  --color-warning-400: #ffd166;
+  --color-warning-300: #ffe08a;
+
+  --color-danger-400: #ef476f;
+
+  --color-surface: #0a0f1e;
+  --color-surface-raised: #111a2e;
+  --color-surface-overlay: #1a2540;
+
+  --color-text-primary: #e2e8f0;
+  --color-text-secondary: #94a3b8;
+  --color-text-muted: #64748b;
+  --color-text-accent: #00b4d8;
+
+  --color-status-safe: #06d6a0;
+  --color-status-caution: #ffd166;
+  --color-status-danger: #ef476f;
+
+  --font-sans: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --font-display: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+
+  --radius-card: 0.75rem;
+}
+
+@layer base {
+  body {
+    background-color: var(--color-surface);
+    color: var(--color-text-primary);
+    font-family: var(--font-sans);
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    letter-spacing: -0.015em;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-ocean-400);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer components {
+  .card {
+    background-color: var(--color-surface-raised);
+    border: 1px solid var(--color-marine-600);
+    border-radius: var(--radius-card);
+  }
+
+  .skip-link {
+    position: absolute;
+    left: -9999px;
+    top: 0;
+    z-index: 50;
+    background-color: var(--color-ocean-400);
+    color: var(--color-marine-950);
+    padding: 0.5rem 1rem;
+    border-radius: 0 0 0.5rem 0;
+    font-weight: 600;
+  }
+  .skip-link:focus {
+    left: 0;
+  }
+
+  /* Sidebar / top navigation */
+  .nav-link {
+    display: block;
+    border-radius: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--color-text-secondary);
+    transition:
+      background-color 120ms,
+      color 120ms;
+  }
+  .nav-link:hover {
+    background-color: var(--color-marine-700);
+    color: var(--color-text-primary);
+  }
+  .nav-link.active {
+    background-color: var(--color-marine-600);
+    color: var(--color-text-primary);
+  }
+
+  /* Form controls — used by every admin form. */
+  .field-label {
+    display: block;
+    margin-bottom: 0.25rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--color-text-secondary);
+  }
+
+  .field-input {
+    width: 100%;
+    min-height: 2.75rem;
+    border-radius: 0.5rem;
+    border: 1px solid var(--color-marine-600);
+    background-color: var(--color-marine-800);
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    color: var(--color-text-primary);
+  }
+  .field-input:focus {
+    border-color: var(--color-ocean-400);
+    outline: 2px solid var(--color-ocean-400);
+    outline-offset: 1px;
+  }
+  .field-input[aria-invalid='true'] {
+    border-color: var(--color-danger-400);
+  }
+  .field-input:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .field-error {
+    margin-top: 0.25rem;
+    font-size: 0.8125rem;
+    color: var(--color-danger-400);
+  }
+
+  /* Dense data table */
+  .admin-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+  }
+  .admin-table th {
+    text-align: left;
+    padding: 0.625rem 0.75rem;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    border-bottom: 1px solid var(--color-marine-600);
+    white-space: nowrap;
+  }
+  .admin-table td {
+    padding: 0.625rem 0.75rem;
+    border-bottom: 1px solid var(--color-marine-700);
+    vertical-align: middle;
+  }
+  .admin-table tbody tr:hover {
+    background-color: var(--color-marine-800);
+  }
+}
