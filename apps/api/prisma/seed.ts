@@ -408,12 +408,16 @@ async function seedProviderMappings(stationMap: Map<string, string>) {
             dataType: pt.dataType,
           },
         },
-        update: {
-          providerName: pt.providerName,
-          providerStationId: null,
-          config: Prisma.JsonNull,
-          isActive: false,
-        },
+        // Deliberately empty: only ever CREATE the placeholder row, never
+        // overwrite an existing one. providerStationId/config/isActive hold
+        // the real external area codes an operator configures by hand (the
+        // seed cannot know them — they come from MET Malaysia/JUPEM). An
+        // earlier version reset these fields on every run, so re-running
+        // what the runbook calls an idempotent seed silently wiped the
+        // provider configuration and took the sourced-data endpoints
+        // offline. Reference data (regions/stations) is still refreshed
+        // above; operator configuration is not.
+        update: {},
         create: {
           stationId,
           dataType: pt.dataType,
