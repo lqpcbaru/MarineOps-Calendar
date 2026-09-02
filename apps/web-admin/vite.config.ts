@@ -4,6 +4,11 @@ import tailwindcss from '@tailwindcss/vite';
 import { resolve } from 'path';
 
 export default defineConfig({
+  // DEPLOYMENT.md §2 routes /admin to this bundle, and web-public owns `/`.
+  // Both the asset URLs (here) and the router's basepath (src/app/router.tsx)
+  // must agree with infrastructure/docker/nginx.conf, or assets 404 under
+  // /admin/assets/ and deep links resolve against the wrong SPA.
+  base: '/admin/',
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: {

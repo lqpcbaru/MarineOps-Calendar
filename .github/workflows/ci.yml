@@ -82,6 +82,13 @@ jobs:
           name: web-public-dist
           path: apps/web-public/dist
           retention-days: 14
+      # Built with base=/admin/ so it can be served alongside web-public
+      # from one origin — see infrastructure/docker/nginx.conf.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web-admin-dist
+          path: apps/web-admin/dist
+          retention-days: 14
 
   docker:
     name: Docker Build & Publish

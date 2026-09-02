@@ -216,9 +216,45 @@ Browser → web host / reverse proxy → /api → NestJS API
 > on a managed static host instead, mirror its behaviour rather than
 > ignoring it.
 
-> **`/admin` is intentionally a 501 in that config.** `apps/web-admin` does
-> not exist in this release. Without an explicit rule, the SPA fallback
-> would serve the **public** portal at `/admin`.
+### Admin Portal (`apps/web-admin`)
+
+The Admin Portal is a **second, independent SPA** served from the same origin
+at `/admin/`, per DEPLOYMENT.md §2. Same origin is a requirement, not a
+convenience: the refresh token is an httpOnly cookie scoped to
+`path=/api/v1/auth`, so the browser only sends it when the portal and the API
+share an origin.
+
+```bash
+pnpm --filter @marineops/web-admin build    # output: apps/web-admin/dist
+```
+
+Deploy `apps/web-admin/dist` to the path the nginx config expects:
+
+| Bundle                 | Served from | nginx root/alias         |
+| ---------------------- | ----------- | ------------------------ |
+| `apps/web-public/dist` | `/`         | `/usr/share/nginx/html`  |
+| `apps/web-admin/dist`  | `/admin/`   | `/usr/share/nginx/admin` |
+
+> **Three things must agree** or the portal breaks in ways that are easy to
+> misdiagnose: `base: '/admin/'` in `apps/web-admin/vite.config.ts`, the
+> router's `basepath: '/admin'`, and the `/admin/` location block in
+> `infrastructure/docker/nginx.conf`. Change one, change all three. A
+> mismatch shows up as assets 404ing under `/admin/assets/`, or a deep link
+> resolving against the **public** SPA instead of the admin one.
+
+Admin documents are served `Cache-Control: no-store` (they are per-user);
+only the content-hashed `/admin/assets/` are cached immutably.
+
+**Routes** (ROUTES.md §1.2): `/admin/login`, `/admin/dashboard`,
+`/admin/users`, `/admin/roles`, `/admin/stations`, `/admin/audit`.
+`/calendar`, `/alerts` and `/settings` from that table are **not built** —
+no corresponding admin controller exists in the API, so those screens would
+have nothing to call.
+
+**Access:** an operator needs a role holding the relevant permission codes.
+The seeded `Admin` role holds all of them; `FisheriesOfficer` lacks
+`user.manage` and `role.manage` and will see a 403 page on those routes,
+which is correct — the server rejects those requests regardless of the UI.
 
 ### External provider configuration (required for sourced data)
 
@@ -342,7 +378,10 @@ only then publishes to GHCR. The items below are what CI cannot check.
 - [ ] `GET /health/live` and `GET /health/ready` both 200
 - [ ] `GET /api/public/dashboard` responds
 - [ ] A deep link (e.g. `/stesen`) loads on **hard refresh**, not just via in-app navigation
+- [ ] `/admin/` loads the Admin Portal (not the public portal) and its assets resolve under `/admin/assets/`
 - [ ] Admin login works and sets the `mops_rt` cookie with `Secure` + `HttpOnly`
+- [ ] An admin deep link (e.g. `/admin/stations`) survives a hard refresh — proves the session is restored from the refresh cookie, since the access token is memory-only by design
+- [ ] A role lacking a permission (e.g. `FisheriesOfficer` on `/admin/users`) sees the 403 page, and the API independently returns 403 for the same request
 - [ ] Rate limiting keys on the **client** IP, not the proxy's (hit the login limit from one client and confirm others are unaffected)
 - [ ] No secrets in logs
 - [ ] Graceful shutdown working (`SIGTERM` drains rather than killing in-flight requests)

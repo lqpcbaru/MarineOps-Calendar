@@ -125,7 +125,14 @@ const routeTree = rootRoute.addChildren([
   ]),
 ]);
 
-export const router = createRouter({ routeTree });
+/**
+ * `basepath` must match vite.config.ts's `base` and the /admin/ location in
+ * infrastructure/docker/nginx.conf. With it, a route declared as
+ * `/dashboard` is served at `/admin/dashboard`, and <Link to="/dashboard">
+ * emits the prefixed href — so route declarations stay portable if the
+ * mount point ever changes.
+ */
+export const router = createRouter({ routeTree, basepath: '/admin' });
 
 declare module '@tanstack/react-router' {
   interface Register {
