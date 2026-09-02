@@ -1,7 +1,12 @@
 # MarineOps Hub — Production Runbook
 
-**Version:** 2.1.2  
-**Date:** 2026-08-27
+**Version:** 2.2.0  
+**Date:** 2026-08-28
+
+> Every command, path and default in this document has been checked against
+> the repository. Where a documented procedure does **not** work (image-based
+> seeding) or has **not** been executed (`nginx -t`, a live Redis run), that
+> is stated explicitly rather than implied to work.
 
 ---
 
@@ -16,39 +21,151 @@ docker compose -f infrastructure/docker/docker-compose.yml up -d
 Services:
 
 - PostgreSQL 16 (port 5432)
-- Redis 7 (port 6379)
+- Redis 7 (port 6379) — started, but the API is configured with
+  `REDIS_ENABLED: 'false'`, so it caches in-process and does not connect.
+  Set `REDIS_ENABLED=true` to exercise the Redis path.
 - MarineOps API (port 3000)
+
+> This compose file is **local development only** — it says so at the top of
+> the file, and it publishes Postgres/Redis on host ports with no
+> authentication in front of them. Do not use it as a production topology;
+> use the published image plus `infrastructure/docker/nginx.conf`.
 
 ### Environment Variables
 
-| Variable                 | Required   | Default                  | Description                                              |
-| ------------------------ | ---------- | ------------------------ | -------------------------------------------------------- |
-| `NODE_ENV`               | Yes        | `production`             | Environment: development/test/staging/production         |
-| `PORT`                   | No         | `3000`                   | API port                                                 |
-| `APP_NAME`               | No         | `MarineOps`              | Application name                                         |
-| `APP_URL`                | Yes (prod) | —                        | Public web origin used for CORS (see below)              |
-| `DATABASE_URL`           | Yes        | —                        | PostgreSQL connection string                             |
-| `REDIS_URL`              | No         | `redis://localhost:6379` | Redis connection string                                  |
-| `REDIS_ENABLED`          | No         | `false`                  | Enable Redis cache                                       |
-| `JWT_ACCESS_SECRET`      | Yes        | —                        | HS256 signing secret (min 32 chars)                      |
-| `JWT_REFRESH_SECRET`     | Yes        | —                        | Refresh token secret                                     |
-| `JWT_ACCESS_TTL_MINUTES` | No         | `15`                     | Access token TTL                                         |
-| `JWT_REFRESH_TTL_DAYS`   | No         | `7`                      | Refresh token TTL                                        |
-| `LOG_LEVEL`              | No         | `info`                   | Log level (debug/info/warn/error)                        |
-| `LOG_FORMAT`             | No         | `json`                   | Log format                                               |
-| `RATE_LIMIT_MAX`         | No         | `100`                    | Max requests per minute (general API)                    |
-| `LOGIN_RATE_LIMIT_MAX`   | No         | `10`                     | Max `POST /api/v1/auth/login` attempts per IP per 15 min |
-| `METMALAYSIA_API_KEY`    | No         | —                        | MET Malaysia API key (server-side only)                  |
-| `GFW_API_TOKEN`          | No         | —                        | Global Fishing Watch API token (server-side only)        |
-| `JUPEM_API_KEY`          | No         | —                        | JUPEM API key                                            |
+This table is cross-checked against every `process.env` read in the code.
+"Default" is the value the **code** falls back to, not what a template file
+happens to set.
 
-> **Secret handling:** All secrets (`JWT_*`, `DATABASE_URL`, `GFW_API_TOKEN`, `METMALAYSIA_API_KEY`) must be supplied through the deployment secret manager / environment. Never commit real secrets to the repository. No default production credentials exist.
+| Variable                 | Required            | Code default             | Description                                                              |
+| ------------------------ | ------------------- | ------------------------ | ------------------------------------------------------------------------ |
+| `NODE_ENV`               | **Yes** (see below) | `development`            | `development` \| `test` \| `staging` \| `production`                     |
+| `PORT`                   | No                  | `3000`                   | API port                                                                 |
+| `APP_NAME`               | No                  | `MarineOps`              | Application name                                                         |
+| `APP_URL`                | Yes (prod)          | —                        | Public web origin used for CORS (see below)                              |
+| `DATABASE_URL`           | Yes                 | —                        | PostgreSQL connection string. Absent ⇒ **fails at startup**              |
+| `REDIS_URL`              | No                  | `redis://localhost:6379` | Only read when `REDIS_ENABLED=true`                                      |
+| `REDIS_ENABLED`          | No                  | `false`                  | `true` ⇒ shared Redis cache; otherwise per-process in-memory             |
+| `JWT_ACCESS_SECRET`      | Yes                 | —                        | HS256 signing secret. Absent ⇒ **fails at startup**                      |
+| `JWT_REFRESH_SECRET`     | Yes                 | —                        | Refresh token secret. Absent ⇒ **fails at startup**                      |
+| `JWT_ACCESS_TTL_MINUTES` | No                  | `15`                     | Access token TTL                                                         |
+| `JWT_REFRESH_TTL_DAYS`   | No                  | `7`                      | Refresh token TTL                                                        |
+| `LOG_LEVEL`              | No                  | `info`                   | Log level (debug/info/warn/error)                                        |
+| `LOG_FORMAT`             | No                  | `json`                   | Log format                                                               |
+| `RATE_LIMIT_MAX`         | No                  | `100`                    | Max requests per minute (general API)                                    |
+| `LOGIN_RATE_LIMIT_MAX`   | No                  | `10`                     | Max `POST /api/v1/auth/login` attempts per IP per 15 min                 |
+| `SEED_ADMIN_PASSWORD`    | Yes (to seed)       | dev-only fallback        | `pnpm db:seed` **refuses to run** without it when `NODE_ENV≠development` |
+| `METMALAYSIA_API_KEY`    | Per feature         | —                        | Weather **and** wind/wave. Absent ⇒ those endpoints error per request    |
+| `JUPEM_API_KEY`          | Per feature         | —                        | Tide. Absent ⇒ tide endpoints error per request                          |
+| `GFW_API_TOKEN`          | Per feature         | —                        | Vessels/AIS. Absent ⇒ vessel endpoints error per request                 |
+| `GFW_API_BASE_URL`       | No                  | GFW production gateway   | Override only to target a non-default GFW environment                    |
 
-> **CORS / `APP_URL`:** `APP_URL` is the authoritative CORS origin. In `NODE_ENV=production` the API **fails to start** if `APP_URL` is unset (it will not silently fall back to a development origin). In development, a `localhost` fallback is permitted.
+> **`S3_*` variables are NOT implemented.** `.env.example` still lists them
+> because object storage appears in the DEPLOYMENT.md topology as planned
+> capability, but no application code reads any `S3_*` variable. Do not
+> provision a bucket or credentials for this release.
 
-### Build & Start (API)
+> **`NODE_ENV` — read this.** The code defaults it to `development`, **not**
+> `production`. An API started without it boots successfully but issues the
+> refresh cookie **without the `Secure` flag** and silently falls back to a
+> `http://localhost:5173` CORS origin — an insecure deployment that looks
+> healthy. The Dockerfile sets `NODE_ENV=production` so image-based deploys
+> are safe by default; a bare `node dist/main.js` deploy is not. Since
+> `a6b75fe` the API logs its effective configuration and warns explicitly on
+> startup when it detects this state — check the first lines of the log
+> after any deploy.
+
+> **Secret handling:** All secrets (`JWT_*`, `DATABASE_URL`, `SEED_ADMIN_PASSWORD`, `GFW_API_TOKEN`, `METMALAYSIA_API_KEY`, `JUPEM_API_KEY`) must be supplied through the deployment secret manager / environment. Never commit real secrets to the repository. No default production credentials exist. Note the code does **not** enforce a minimum secret length — generate at least 32 random bytes yourself.
+
+> **CORS / `APP_URL`:** `APP_URL` is the authoritative CORS origin. In `NODE_ENV=production` the API **fails to start** if `APP_URL` is unset (it will not silently fall back to a development origin). Note this check keys on `production` exactly — `NODE_ENV=staging` does **not** enforce it, so set `APP_URL` explicitly in staging or CORS will point at localhost.
+
+### Deploying the published image (recommended)
+
+Publishing a GitHub **release** runs the `docker` CI job, which builds the
+image, smoke-tests that it starts and reaches the database, and only then
+pushes to GHCR. Three tags are published per release:
+
+| Tag                  | Use                                       |
+| -------------------- | ----------------------------------------- |
+| `<release-tag>`      | Human-facing, e.g. `v1.0.0`               |
+| `sha-<short-commit>` | **Immutable — pin rollbacks to this**     |
+| `latest`             | Moving pointer to the most recent release |
 
 ```bash
+# Image reference (owner is lowercased — GHCR rejects uppercase paths)
+IMAGE=ghcr.io/lqpcbaru/marineops-api:v1.0.0
+
+docker pull "$IMAGE"
+
+# 1. Apply migrations USING THE SAME IMAGE you are about to run.
+#    The image ships both the migration files and the Prisma CLI, so the
+#    schema can never drift from the code in this tag.
+docker run --rm -e DATABASE_URL="$DATABASE_URL" "$IMAGE" \
+  ./node_modules/.bin/prisma migrate deploy
+
+# 2. Seed — FIRST DEPLOY ONLY. NOT runnable from the image; see Seeding below.
+
+# 3. Run
+docker run -d --name marineops-api -p 3000:3000 --env-file ./production.env "$IMAGE"
+```
+
+> Run migrations from the **image**, not from a source checkout. Migrating
+> from a checkout of `main` while running a pinned older image tag puts the
+> schema ahead of the code that reads it.
+
+### Seeding (first deploy only)
+
+**`prisma db seed` cannot run from the published image.** The seed is
+declared as `tsx prisma/seed.ts` and `tsx` is a devDependency, so it is
+stripped from the production build. Verified by inspecting the output of
+`pnpm --filter @marineops/api deploy --prod` — `prisma/seed.ts` is present,
+`node_modules/tsx` is not.
+
+This is deliberate rather than an oversight: seeding is a one-time
+bootstrap that sets the initial admin password, which is a hands-on
+operation, and shipping a TypeScript transpiler into the runtime image
+permanently — to run a script executed once — is a poor trade. Seed from a
+source checkout at the **same git tag as the deployed image**:
+
+```bash
+git checkout v1.0.0            # match the deployed image tag
+pnpm install --frozen-lockfile
+pnpm --filter @marineops/api exec prisma generate
+
+NODE_ENV=production \
+DATABASE_URL="$DATABASE_URL" \
+SEED_ADMIN_PASSWORD="$SEED_ADMIN_PASSWORD" \
+  pnpm db:seed
+```
+
+The seed is idempotent (every write is an `upsert`) and refuses to run
+without `SEED_ADMIN_PASSWORD` when `NODE_ENV≠development`. It creates the
+`Admin`/`FisheriesOfficer`/`Auditor` roles, the `admin@marineops.local`
+user, 16 operation regions, 21 stations, and their provider-mapping rows.
+
+> If image-based seeding is ever required, the fix is to compile
+> `prisma/seed.ts` to JavaScript during the build and point the
+> `prisma.seed` script at the compiled output — not to add `tsx` to
+> production dependencies.
+
+**What a re-run does and does not touch:**
+
+| Data                                  | On re-run                                                     |
+| ------------------------------------- | ------------------------------------------------------------- |
+| `Admin` role `permissionCodes`        | **Overwritten** — hand-edited permissions on that role revert |
+| `FisheriesOfficer` / `Auditor` roles  | Untouched after creation                                      |
+| `admin@marineops.local` user          | Untouched — the admin password is **not** reset               |
+| Regions & stations (name, coords, tz) | **Refreshed** from the seed — hand edits to these revert      |
+| Station provider mappings             | Untouched — operator-configured external codes are preserved  |
+
+### Build & Start from source (alternative)
+
+Use only when deploying without containers. Note step 0 — the code defaults
+`NODE_ENV` to `development`, which is not a safe production default.
+
+```bash
+export NODE_ENV=production   # 0. REQUIRED — see the NODE_ENV note above
+
 # 1. Generate Prisma client
 pnpm --filter @marineops/api exec prisma generate
 
@@ -89,6 +206,56 @@ Browser → web host / reverse proxy → /api → NestJS API
   static hosts (Netlify, Vercel, S3+CloudFront, etc.) expose under a
   different name.
 
+> **A ready-made config implementing all of the above ships in the repo:**
+> `infrastructure/docker/nginx.conf` (+ `marineops_proxy_headers.conf`).
+> It covers SPA fallback, the DEPLOYMENT.md §2 routing table, immutable
+> caching for `/assets/` with `no-cache` on `index.html`, and the
+> `X-Forwarded-For` headers the rate limiters depend on. It has **not**
+> been validated with `nginx -t` (no nginx/Docker available in the
+> authoring environment) — run that once before first use. If you deploy
+> on a managed static host instead, mirror its behaviour rather than
+> ignoring it.
+
+> **`/admin` is intentionally a 501 in that config.** `apps/web-admin` does
+> not exist in this release. Without an explicit rule, the SPA fallback
+> would serve the **public** portal at `/admin`.
+
+### External provider configuration (required for sourced data)
+
+Weather, tide and wind/wave endpoints need **two** things. An API key alone
+is not sufficient.
+
+| Requirement                    | Where                                   | Supplied by           |
+| ------------------------------ | --------------------------------------- | --------------------- |
+| API credential                 | `METMALAYSIA_API_KEY` / `JUPEM_API_KEY` | Secret manager        |
+| Per-station external area code | `station_provider_mappings` row         | Operator, per station |
+
+The seed creates one mapping row per station per data type with
+`providerStationId = NULL`, `config = NULL` and **`isActive = false`** —
+scaffolding, not working configuration. Until real codes are supplied:
+
+- `/api/public/weather`, `/tide`, `/wind-wave` return a provider error.
+- `/api/public/moon`, `/sun`, `/stations` work normally (computed locally
+  or served from the database).
+- The API starts, stays healthy, and `/health/ready` passes. Absence of
+  provider data is **not** a startup failure.
+
+To activate a station, set the external code and flip `isActive`:
+
+| Data type | Field the provider reads                                 |
+| --------- | -------------------------------------------------------- |
+| `weather` | `config.marineArea` (falls back to `providerStationId`)  |
+| `wind`    | `config.marineArea` (falls back to `providerStationId`)  |
+| `tide`    | `config.stationCode` (falls back to `providerStationId`) |
+
+The providers **refuse** to fall back to the internal station UUID: an
+active mapping with no real code fails loudly rather than sending a
+meaningless identifier to the upstream API.
+
+> These codes are external data. They are **not** in this repository and
+> must not be guessed — an incorrect area code yields plausible-looking
+> weather for the wrong location.
+
 ### Health Checks
 
 ```
@@ -116,9 +283,14 @@ down-migrations. Plan releases accordingly:
 
 **Application rollback (no schema change involved):**
 
-1. Redeploy the previous known-good API image tag (the CI `docker` job tags
-   images by release ref — `docker tag marineops-api:<previous-ref> ...` /
-   redeploy that tag through your orchestrator).
+1. Redeploy the previous known-good image from GHCR. **Pin the immutable
+   `sha-<short-commit>` tag, not `latest`** — `latest` moves with every
+   release and a release tag can in principle be re-pushed:
+
+   ```bash
+   docker pull ghcr.io/lqpcbaru/marineops-api:sha-1a2b3c4
+   ```
+
 2. No database action needed if the previous release's schema is still
    compatible with the current database (true whenever the bad release
    didn't ship a migration).
@@ -129,10 +301,10 @@ down-migrations. Plan releases accordingly:
    don't leave the old and new API versions both writing against a schema
    only one of them understands.
 2. Restore the database from the pre-deploy backup (`pg_dump` above,
-   taken _before_ running `pnpm db:migrate` for the release), then redeploy
-   the previous API image tag. This loses any writes made between the
-   backup and the rollback — acceptable for the rollback window, not for
-   routine operation.
+   taken _before_ applying migrations for the release), then redeploy
+   the previous API image (`sha-` tag). This loses any writes made between
+   the backup and the rollback — acceptable for the rollback window, not
+   for routine operation.
 3. There is no automated "undo" for an already-applied migration; treat
    forward migrations as effectively permanent once deployed to a shared
    environment, and prefer additive/backward-compatible schema changes
@@ -144,18 +316,34 @@ down-migrations. Plan releases accordingly:
 
 ### Release Checklist
 
-- [ ] All tests pass (`pnpm test`, `pnpm test:e2e`)
-- [ ] Lint clean (`pnpm lint`)
-- [ ] TypeScript compiles (`pnpm typecheck`)
-- [ ] Build succeeds (`pnpm build`)
-- [ ] Database backed up (`pg_dump`, before migrating — see Rollback above)
-- [ ] Database migrated (`pnpm db:migrate`)
-- [ ] `SEED_ADMIN_PASSWORD` set in the target environment before seeding — `pnpm db:seed` fails fast without it outside `NODE_ENV=development`
-- [ ] Seed data applied (`pnpm db:seed`)
-- [ ] Docker image builds
-- [ ] Health endpoints respond
-- [ ] API responds on `/api/public/dashboard`
+CI (`.github/workflows/ci.yml`) already enforces lint, typecheck, unit
+tests, e2e tests and the build on every push, and on a **release** it also
+builds the image, smoke-tests that it starts and reaches the database, and
+only then publishes to GHCR. The items below are what CI cannot check.
+
+**Before the release**
+
+- [ ] Previous release's `sha-` image tag recorded and reachable for rollback
+- [ ] Database backed up (`pg_dump`) — taken **before** migrating
+- [ ] Migration reviewed for backward compatibility (additive preferred; see Rollback)
+
+**Deploy**
+
+- [ ] `NODE_ENV=production` set in the target environment (**not** defaulted — see the NODE_ENV note)
+- [ ] `APP_URL` set to the real public web origin (CORS)
+- [ ] `DATABASE_URL`, `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET` supplied from the secret manager
+- [ ] Migrations applied **from the deployed image tag** (`prisma migrate deploy`)
+- [ ] First deploy only: `SEED_ADMIN_PASSWORD` set and seed run from a checkout at the same tag
+- [ ] Reverse proxy serves SPA fallback and forwards `X-Forwarded-For`
+
+**Verify after deploy**
+
+- [ ] Startup log shows the expected effective config — `nodeEnv: production`, `secureCookies: true`, correct `corsOrigin`, and no startup warnings
+- [ ] `GET /health/live` and `GET /health/ready` both 200
+- [ ] `GET /api/public/dashboard` responds
+- [ ] A deep link (e.g. `/stesen`) loads on **hard refresh**, not just via in-app navigation
+- [ ] Admin login works and sets the `mops_rt` cookie with `Secure` + `HttpOnly`
+- [ ] Rate limiting keys on the **client** IP, not the proxy's (hit the login limit from one client and confirm others are unaffected)
 - [ ] No secrets in logs
-- [ ] Rate limiting active
-- [ ] Graceful shutdown working
-- [ ] Previous release's image tag recorded and reachable for rollback
+- [ ] Graceful shutdown working (`SIGTERM` drains rather than killing in-flight requests)
+- [ ] Sourced-data endpoints: either configured and returning data, or knowingly left disabled (see External provider configuration)
