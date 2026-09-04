@@ -25,11 +25,16 @@ Services:
   `REDIS_ENABLED: 'false'`, so it caches in-process and does not connect.
   Set `REDIS_ENABLED=true` to exercise the Redis path.
 - MarineOps API (port 3000)
+- Web tier (port **8080**) — both portals behind nginx. This is the only
+  way to exercise the full production chain locally: the public portal at
+  <http://localhost:8080/>, the Admin Portal at <http://localhost:8080/admin/>,
+  and the API reached _through the proxy_ rather than directly. It serves
+  built bundles and does not hot-reload; use `pnpm dev` for front-end work.
 
 > This compose file is **local development only** — it says so at the top of
 > the file, and it publishes Postgres/Redis on host ports with no
 > authentication in front of them. Do not use it as a production topology;
-> use the published image plus `infrastructure/docker/nginx.conf`.
+> use the published `marineops-api` and `marineops-web` images.
 
 ### Environment Variables
 
