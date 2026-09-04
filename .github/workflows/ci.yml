@@ -193,7 +193,7 @@ jobs:
 
           ready=false
           for i in $(seq 1 30); do
-            if curl -sf http://localhost/ > /dev/null; then ready=true; break; fi
+            if curl -sf http://localhost:8080/ > /dev/null; then ready=true; break; fi
             sleep 2
           done
           if [ "$ready" != "true" ]; then
@@ -204,7 +204,7 @@ jobs:
 
           # Admin portal document must come from the ADMIN bundle, and its
           # assets must resolve under /admin/assets/ (base=/admin/).
-          if ! curl -sf http://localhost/admin/ | grep -q '/admin/assets/'; then
+          if ! curl -sf http://localhost:8080/admin/ | grep -q '/admin/assets/'; then
             echo "/admin/ did not serve the admin bundle — logs:"
             docker logs smoke-web
             exit 1
@@ -212,15 +212,15 @@ jobs:
 
           # SPA fallback: a deep link with no file on disk must still return
           # the admin document, not a 404 and not the public portal.
-          if ! curl -sf http://localhost/admin/stations | grep -q '/admin/assets/'; then
+          if ! curl -sf http://localhost:8080/admin/stations | grep -q '/admin/assets/'; then
             echo "Admin SPA fallback is broken for deep links — logs:"
             docker logs smoke-web
             exit 1
           fi
 
           # Proxy path: reaches the API through nginx, not directly.
-          curl -sf http://localhost/health/live > /dev/null
-          curl -sf http://localhost/api/public/stations > /dev/null
+          curl -sf http://localhost:8080/health/live > /dev/null
+          curl -sf http://localhost:8080/api/public/stations > /dev/null
 
           # Both portal documents must carry a CSP. nginx inherits
           # add_header into a nested block only when that block sets no
@@ -228,9 +228,9 @@ jobs:
           # silently loses the whole security-header set -- with no error,
           # and invisible to every check above.
           for path in / /admin/; do
-            if ! curl -sI "http://localhost${path}" | grep -qi '^content-security-policy:'; then
+            if ! curl -sI "http://localhost:8080${path}" | grep -qi '^content-security-policy:'; then
               echo "No Content-Security-Policy on ${path} -- headers:"
-              curl -sI "http://localhost${path}"
+              curl -sI "http://localhost:8080${path}"
               exit 1
             fi
           done
@@ -239,7 +239,7 @@ jobs:
           # rebuilt from the listen port and plain-HTTP scheme, which
           # downgrades https://host/admin to http:// behind a TLS-
           # terminating proxy.
-          location=$(curl -sI http://localhost/admin | awk 'tolower($1)=="location:"{print $2}' | tr -d '[:space:]')
+          location=$(curl -sI http://localhost:8080/admin | awk 'tolower($1)=="location:"{print $2}' | tr -d '[:space:]')
           if [ "$location" != "/admin/" ]; then
             echo "Expected a relative Location of /admin/, got: ${location}"
             exit 1

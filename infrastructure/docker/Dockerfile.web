@@ -53,7 +53,23 @@ COPY infrastructure/docker/marineops_security_headers.conf /etc/nginx/marineops_
 # orchestrator that creates the Service before the Pod). This is documented
 # in the runbook.
 
-EXPOSE 80
+# Run as the unprivileged `nginx` user the base image already provides.
+#
+# The official image runs its MASTER process as root and only drops the
+# workers; a container escape or a master-process compromise therefore
+# lands as root. It is also a hard blocker on hardened platforms —
+# OpenShift, and any Kubernetes enforcing runAsNonRoot, refuse to start a
+# root container at all, so this image simply could not be deployed there.
+#
+# Everything nginx writes at runtime has to be owned by that user first:
+# the cache and temp directories it uses for proxying, its log paths, and
+# the pid file, which lives under /var/run and cannot be created by a
+# non-root process.
+RUN touch /var/run/nginx.pid  && chown -R nginx:nginx /var/cache/nginx /var/log/nginx /var/run/nginx.pid /usr/share/nginx/html
+
+USER nginx
+
+EXPOSE 8080
 
 # Hits the admin document rather than `/`, so the check also proves the
 # /admin/ location and its SPA fallback are wired up — a misconfigured
@@ -66,7 +82,7 @@ EXPOSE 80
 # keeps it out of the load balancer and restarts it on a loop. Verified in
 # the running container: 127.0.0.1 succeeds where localhost is refused.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD wget -qO- http://127.0.0.1/admin/ >/dev/null 2>&1 || exit 1
+  CMD wget -qO- http://127.0.0.1:8080/admin/ >/dev/null 2>&1 || exit 1
 
 # Static files and proxying only: this image holds no secrets and needs no
 # environment configuration of its own.

@@ -143,8 +143,14 @@ docker run -d --name api --network marineops \
   --env-file ./production.env "$IMAGE"
 
 # 4. Run the web tier. It terminates nothing itself — put TLS in front of
-#    port 80, or terminate at your load balancer (DEPLOYMENT.md §2).
-docker run -d --name marineops-web --network marineops -p 80:80 \
+#    it, or terminate at your load balancer (DEPLOYMENT.md §2).
+#
+#    The container listens on 8080 and runs as the unprivileged `nginx`
+#    user, so it cannot bind a port below 1024 inside the container. Map
+#    whatever public port you need onto 8080. Needing no root and no added
+#    capabilities, the image also runs unchanged under Kubernetes
+#    `runAsNonRoot: true` and on OpenShift.
+docker run -d --name marineops-web --network marineops -p 80:8080 \
   ghcr.io/lqpcbaru/marineops-web:v1.0.0
 ```
 
