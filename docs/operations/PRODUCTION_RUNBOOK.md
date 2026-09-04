@@ -365,6 +365,39 @@ GET /health/live  → {"status":"ok","uptime":3600,"version":"2.1.0"}
 GET /health/ready → {"status":"ok","checks":{"database":"ok"}}   (503 with {"status":"error","checks":{"database":"error"}} if DB is unreachable)
 ```
 
+### Telling failures apart
+
+Every failure mode below is distinguishable from the response alone —
+alert on the **code**, not on the status class, because several modes
+share a status and they need very different responses.
+
+| What happened                    | Status | `code`                                                | Who should care                                           |
+| -------------------------------- | ------ | ----------------------------------------------------- | --------------------------------------------------------- |
+| Bug in this application          | 500    | `INTERNAL_ERROR`                                      | Whoever owns the application. Page.                       |
+| Database unreachable / pool full | 503    | `DATABASE_UNAVAILABLE`                                | Infrastructure. Page.                                     |
+| Provider not configured yet      | 503    | `PROVIDER_CONFIG_ERROR`                               | Nobody. Expected until §Provider setup is done.           |
+| Provider down or timing out      | 503    | `PROVIDER_UNAVAILABLE` / `PROVIDER_TIMEOUT`           | Nobody at 3am — upstream is out. Track the rate.          |
+| Provider returned nonsense       | 502    | `PROVIDER_INVALID_RESPONSE` / `PROVIDER_SERVER_ERROR` | Whoever owns the integration.                             |
+| Provider credentials rejected    | 502    | `PROVIDER_AUTH_ERROR`                                 | Whoever holds the credential — it expired or was revoked. |
+| Provider rate limit hit          | 429    | `PROVIDER_RATE_LIMITED`                               | Capacity/quota owner.                                     |
+| Client hit our rate limit        | 429    | (`Retry-After` header)                                | Nobody. Working as designed.                              |
+| Not authenticated                | 401    | `AUTH_UNAUTHORIZED` / `AUTH_INVALID_CREDENTIALS`      | Nobody. Expected traffic.                                 |
+| Authenticated but not permitted  | 403    | `AUTH_FORBIDDEN`                                      | Possibly an access request.                               |
+
+Two things deliberately do **not** produce an error at all:
+
+- **Redis down.** Cache reads degrade to misses and requests fall through
+  to the origin; responses stay 200 and get slower. Look for
+  `RedisCacheStore` warnings, which are collapsed to one line per
+  operation per 30s so an outage cannot flood the log.
+- **No provider data for a station.** `/api/public/moon`, `/sun`,
+  `/stations`, `/dashboard`, `/calendar` and `/recommendation` need no
+  external provider and keep working normally.
+
+`/health/live` answers "is the process up" and `/health/ready` answers
+"can it serve" — during a database outage the first stays 200 and the
+second returns 503, which is what a load balancer should drain on.
+
 ### Database Backup
 
 > **There are no automated backups.** Nothing in this repository runs on a
