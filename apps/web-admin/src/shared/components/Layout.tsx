@@ -1,22 +1,7 @@
 import { Link, Outlet, useRouterState } from '@tanstack/react-router';
 import { useAuth } from '../auth/auth-context';
-import { PERMISSIONS } from '../auth/permissions';
+import { NAV_ITEMS } from '../auth/nav-items';
 import { AppButton } from './ui/AppButton';
-
-interface NavItem {
-  to: string;
-  label: string;
-  /** Hidden when the principal lacks this — convenience only, not security. */
-  permission: string;
-}
-
-const NAV_ITEMS: NavItem[] = [
-  { to: '/dashboard', label: 'Papan Pemuka', permission: PERMISSIONS.dashboard },
-  { to: '/users', label: 'Pengguna', permission: PERMISSIONS.users },
-  { to: '/roles', label: 'Peranan', permission: PERMISSIONS.roles },
-  { to: '/stations', label: 'Stesen', permission: PERMISSIONS.stationRead },
-  { to: '/audit', label: 'Jejak Audit', permission: PERMISSIONS.audit },
-];
 
 /**
  * Authenticated shell. Renders nothing auth-specific when anonymous — the

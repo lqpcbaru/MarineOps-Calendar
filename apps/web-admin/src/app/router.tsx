@@ -1,10 +1,4 @@
-import {
-  createRootRoute,
-  createRoute,
-  createRouter,
-  Navigate,
-  Outlet,
-} from '@tanstack/react-router';
+import { createRootRoute, createRoute, createRouter, Outlet } from '@tanstack/react-router';
 import { Layout } from '../shared/components/Layout';
 import { RequireAuth } from '../shared/auth/RequireAuth';
 import { PERMISSIONS } from '../shared/auth/permissions';
@@ -16,6 +10,7 @@ import { StationsPage } from '../features/stations/StationsPage';
 import { AuditPage } from '../features/audit/AuditPage';
 import { NotFoundPage } from '../features/errors/NotFoundPage';
 import { RouteErrorPage } from '../features/errors/RouteErrorPage';
+import { LandingRedirect } from '../features/errors/LandingRedirect';
 
 /**
  * Route tree per ROUTES.md §1.2.
@@ -60,7 +55,7 @@ const loginRoute = createRoute({
 const indexRoute = createRoute({
   getParentRoute: () => authedLayoutRoute,
   path: '/',
-  component: () => <Navigate to="/dashboard" replace />,
+  component: LandingRedirect,
 });
 
 const dashboardRoute = createRoute({
