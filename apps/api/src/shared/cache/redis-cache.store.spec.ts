@@ -93,6 +93,27 @@ describe('RedisCacheStore', () => {
     await expect(store.set('k1', makeEntry())).resolves.toBeUndefined();
   });
 
+  // A Redis outage fails every lookup, so logging each one emits a line per
+  // cache read for the whole outage — a flood that buries unrelated errors
+  // and says nothing the first line did not. Observed for real: ~6 requests
+  // against a stopped Redis produced 26 error lines in about ten seconds.
+  it('logs a sustained outage once rather than on every failed operation', async () => {
+    const redis = makeFakeRedis();
+    redis.get.mockRejectedValue(new Error('connection reset'));
+    const store = new RedisCacheStore('redis://unused', 3600, redis as never);
+    const warn = vi.spyOn(
+      (store as unknown as { logger: { warn: (m: string, d?: unknown) => void } }).logger,
+      'warn',
+    );
+
+    for (let i = 0; i < 25; i++) {
+      await expect(store.get(`k${i}`)).resolves.toBeNull();
+    }
+
+    expect(redis.get).toHaveBeenCalledTimes(25);
+    expect(warn).toHaveBeenCalledTimes(1);
+  });
+
   it('keys() strips the internal prefix', async () => {
     const redis = makeFakeRedis();
     const store = new RedisCacheStore<{ value: number }>('redis://unused', 3600, redis as never);

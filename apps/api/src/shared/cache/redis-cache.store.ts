@@ -7,6 +7,16 @@ import { LoggingService } from '../../platform/logging.service';
 const DEFAULT_TTL_SECONDS = 7 * 24 * 60 * 60; // covers every current module's staleTtlMs
 
 /**
+ * A Redis outage fails EVERY cache operation, so logging each one emits a
+ * line per lookup for as long as the outage lasts — under load that is a
+ * flood that buries unrelated errors and costs real money in log storage,
+ * while saying nothing the first line did not. Degrading to a cache miss is
+ * also the designed behaviour, not an incident in itself, so these are
+ * reported at warn and collapsed to one line per operation per interval.
+ */
+const FAILURE_LOG_INTERVAL_MS = 30_000;
+
+/**
  * Real Redis-backed cache, shared across horizontally-scaled API replicas
  * (unlike InMemoryCacheStore, which is per-process and lost on every
  * restart). Redis is treated as best-effort: any connection or
@@ -18,6 +28,7 @@ export class RedisCacheStore<T = unknown> implements CacheStorePort<T> {
   private readonly prefix = 'marineops:cache:';
   private readonly redis: Redis;
   private readonly logger = new LoggingService('RedisCacheStore');
+  private readonly lastFailureLoggedAt = new Map<string, number>();
 
   constructor(
     redisUrl: string,
@@ -33,11 +44,7 @@ export class RedisCacheStore<T = unknown> implements CacheStorePort<T> {
       if (!raw) return null;
       return this.deserialize(raw);
     } catch (error) {
-      this.logger.error(
-        'get failed, treating as cache miss',
-        error instanceof Error ? error : undefined,
-        { key },
-      );
+      this.logFailure('get', 'get failed, treating as cache miss', error, { key });
       return null;
     }
   }
@@ -46,11 +53,7 @@ export class RedisCacheStore<T = unknown> implements CacheStorePort<T> {
     try {
       await this.redis.set(this.prefix + key, JSON.stringify(entry), 'EX', this.ttlSeconds);
     } catch (error) {
-      this.logger.error(
-        'set failed, entry not cached',
-        error instanceof Error ? error : undefined,
-        { key },
-      );
+      this.logFailure('set', 'set failed, entry not cached', error, { key });
     }
   }
 
@@ -59,7 +62,7 @@ export class RedisCacheStore<T = unknown> implements CacheStorePort<T> {
       const removed = await this.redis.del(this.prefix + key);
       return removed > 0;
     } catch (error) {
-      this.logger.error('delete failed', error instanceof Error ? error : undefined, { key });
+      this.logFailure('delete', 'delete failed', error, { key });
       return false;
     }
   }
@@ -69,7 +72,7 @@ export class RedisCacheStore<T = unknown> implements CacheStorePort<T> {
       const keys = await this.scanKeys();
       if (keys.length > 0) await this.redis.del(...keys);
     } catch (error) {
-      this.logger.error('clear failed', error instanceof Error ? error : undefined);
+      this.logFailure('clear', 'clear failed', error);
     }
   }
 
@@ -103,6 +106,27 @@ export class RedisCacheStore<T = unknown> implements CacheStorePort<T> {
       cursor = next;
     } while (cursor !== '0');
     return found;
+  }
+
+  /**
+   * Collapses repeated failures of the same operation to one line per
+   * FAILURE_LOG_INTERVAL_MS. The first failure of an outage is always
+   * logged; the rest are suppressed until the window rolls over.
+   */
+  private logFailure(
+    operation: string,
+    message: string,
+    error: unknown,
+    context?: Record<string, unknown>,
+  ): void {
+    const now = Date.now();
+    const previous = this.lastFailureLoggedAt.get(operation);
+    if (previous !== undefined && now - previous < FAILURE_LOG_INTERVAL_MS) return;
+    this.lastFailureLoggedAt.set(operation, now);
+    this.logger.warn(message, {
+      ...context,
+      error: error instanceof Error ? error.message : String(error),
+    });
   }
 
   private deserialize(raw: string): CacheEntry<T> {
