@@ -245,6 +245,27 @@ jobs:
             exit 1
           fi
 
+          # The image declares a HEALTHCHECK, and curl succeeding says
+          # nothing about whether it passes -- a check written against a
+          # hostname the server does not answer on fails silently here and
+          # only shows up as a container that never becomes ready in
+          # production. Wait for Docker's own verdict.
+          healthy=false
+          for i in $(seq 1 30); do
+            status=$(docker inspect smoke-web --format '{{.State.Health.Status}}' 2>/dev/null || echo none)
+            if [ "$status" = "healthy" ]; then healthy=true; break; fi
+            if [ "$status" = "none" ]; then
+              echo "Image declares no HEALTHCHECK -- expected one."
+              exit 1
+            fi
+            sleep 2
+          done
+          if [ "$healthy" != "true" ]; then
+            echo "Web container never became healthy (last status: ${status}). Healthcheck log:"
+            docker inspect smoke-web --format '{{json .State.Health}}'
+            exit 1
+          fi
+
           echo "Web smoke test passed: both portals served, admin SPA fallback works, API reachable through the proxy."
 
       - name: Clean up smoke test containers

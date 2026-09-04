@@ -38,6 +38,12 @@ COPY --from=builder --chown=node:node /prod/api ./
 ENV NODE_ENV=production
 USER node
 EXPOSE 3000
+# 127.0.0.1 rather than localhost: localhost resolves to both 127.0.0.1 and
+# ::1, and which one a client tries first is up to the resolver, so a check
+# written against it passes or fails depending on what the server happens to
+# bind. Node listens dual-stack here so both work, but the web image's nginx
+# binds IPv4 only and its identical check could never pass -- same bug, so
+# both are pinned explicitly.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
-  CMD wget -qO- http://localhost:3000/health/live || exit 1
+  CMD wget -qO- http://127.0.0.1:3000/health/live || exit 1
 CMD ["node", "dist/main.js"]

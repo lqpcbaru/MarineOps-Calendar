@@ -58,8 +58,15 @@ EXPOSE 80
 # Hits the admin document rather than `/`, so the check also proves the
 # /admin/ location and its SPA fallback are wired up — a misconfigured
 # admin block is otherwise invisible until someone opens the portal.
+# 127.0.0.1, NOT localhost. /etc/hosts in this image maps localhost to both
+# 127.0.0.1 and ::1, BusyBox wget tries ::1 first, and nginx here listens on
+# 0.0.0.0:80 only -- so `localhost` is refused and this check could never
+# pass. Unnoticed, that is a container that never becomes ready: compose's
+# `condition: service_healthy` blocks on it forever, and an orchestrator
+# keeps it out of the load balancer and restarts it on a loop. Verified in
+# the running container: 127.0.0.1 succeeds where localhost is refused.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD wget -qO- http://localhost/admin/ >/dev/null 2>&1 || exit 1
+  CMD wget -qO- http://127.0.0.1/admin/ >/dev/null 2>&1 || exit 1
 
 # Static files and proxying only: this image holds no secrets and needs no
 # environment configuration of its own.
