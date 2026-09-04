@@ -119,6 +119,7 @@ jobs:
         run: |
           owner=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
           echo "repo=ghcr.io/${owner}/marineops-api" >> "$GITHUB_OUTPUT"
+          echo "web=ghcr.io/${owner}/marineops-web" >> "$GITHUB_OUTPUT"
           echo "sha=sha-$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Build Docker image
@@ -130,6 +131,18 @@ jobs:
             -t marineops-api:${{ github.ref_name }} .
       - name: Tag as latest
         run: docker tag marineops-api:${{ github.ref_name }} marineops-api:latest
+
+      # The web tier (both portals + nginx). Without this the front-ends
+      # have no deployable artifact — only zip files on a CI run.
+      - name: Build web Docker image
+        run: |
+          docker build -f infrastructure/docker/Dockerfile.web \
+            --label org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }} \
+            --label org.opencontainers.image.revision=${{ github.sha }} \
+            --label org.opencontainers.image.version=${{ github.ref_name }} \
+            -t marineops-web:${{ github.ref_name }} .
+      - name: Tag web as latest
+        run: docker tag marineops-web:${{ github.ref_name }} marineops-web:latest
       # A clean `docker build` only proves the image compiles — it says
       # nothing about whether the container actually starts (a missing env
       # var, a bad CMD path, or a non-root permission issue would all still
@@ -166,9 +179,56 @@ jobs:
           fi
 
           echo "Smoke test passed: container starts, connects to the database, and serves both health endpoints."
-      - name: Clean up smoke test container
+
+      # The API smoke test above leaves the API listening on 127.0.0.1:3000.
+      # nginx.conf proxies to the `api` host, so map that name to loopback
+      # and the whole documented chain (browser -> nginx -> API) is exercised
+      # for real. nginx also refuses to start on an invalid config, so this
+      # doubles as the `nginx -t` that cannot run at image build time.
+      - name: Smoke test — web tier serves both portals and proxies the API
+        run: |
+          docker run -d --name smoke-web --network host \
+            --add-host api:127.0.0.1 \
+            marineops-web:latest
+
+          ready=false
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost/ > /dev/null; then ready=true; break; fi
+            sleep 2
+          done
+          if [ "$ready" != "true" ]; then
+            echo "Web container never served the public portal — logs:"
+            docker logs smoke-web
+            exit 1
+          fi
+
+          # Admin portal document must come from the ADMIN bundle, and its
+          # assets must resolve under /admin/assets/ (base=/admin/).
+          if ! curl -sf http://localhost/admin/ | grep -q '/admin/assets/'; then
+            echo "/admin/ did not serve the admin bundle — logs:"
+            docker logs smoke-web
+            exit 1
+          fi
+
+          # SPA fallback: a deep link with no file on disk must still return
+          # the admin document, not a 404 and not the public portal.
+          if ! curl -sf http://localhost/admin/stations | grep -q '/admin/assets/'; then
+            echo "Admin SPA fallback is broken for deep links — logs:"
+            docker logs smoke-web
+            exit 1
+          fi
+
+          # Proxy path: reaches the API through nginx, not directly.
+          curl -sf http://localhost/health/live > /dev/null
+          curl -sf http://localhost/api/public/stations > /dev/null
+
+          echo "Web smoke test passed: both portals served, admin SPA fallback works, API reachable through the proxy."
+
+      - name: Clean up smoke test containers
         if: always()
-        run: docker rm -f smoke-test || true
+        run: |
+          docker rm -f smoke-test || true
+          docker rm -f smoke-web || true
 
       # Publish only reaches this point when the smoke test above passed, so
       # a broken image can never be tagged `latest` in the registry. Gated to
@@ -177,17 +237,21 @@ jobs:
       - name: Log in to GHCR
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
 
-      - name: Push image to GHCR
+      - name: Push images to GHCR
         run: |
           set -euo pipefail
-          REPO='${{ steps.image.outputs.repo }}'
-          # Three deterministic tags: the release tag (human-facing), the
-          # commit SHA (immutable — what a rollback should pin to), and
-          # `latest` (moving pointer for the current release).
+          # Three deterministic tags each: the release tag (human-facing),
+          # the commit SHA (immutable — what a rollback should pin to), and
+          # `latest` (moving pointer for the current release). The API and
+          # web images share tags so a rollback moves both together.
           for tag in '${{ github.ref_name }}' '${{ steps.image.outputs.sha }}' latest; do
-            docker tag marineops-api:latest "${REPO}:${tag}"
-            docker push "${REPO}:${tag}"
-            echo "Pushed ${REPO}:${tag}"
+            docker tag marineops-api:latest '${{ steps.image.outputs.repo }}':"${tag}"
+            docker push '${{ steps.image.outputs.repo }}':"${tag}"
+            echo "Pushed ${{ steps.image.outputs.repo }}:${tag}"
+
+            docker tag marineops-web:latest '${{ steps.image.outputs.web }}':"${tag}"
+            docker push '${{ steps.image.outputs.web }}':"${tag}"
+            echo "Pushed ${{ steps.image.outputs.web }}:${tag}"
           done
 
       - name: Log out of GHCR

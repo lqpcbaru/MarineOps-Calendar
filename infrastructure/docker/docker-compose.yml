@@ -76,6 +76,30 @@ services:
       RATE_LIMIT_MAX: '100'
       LOGIN_RATE_LIMIT_MAX: '10'
 
+  # Web tier: both portals plus the reverse proxy, i.e. the production
+  # topology from DEPLOYMENT.md §2/§4. Present here so the full chain
+  # (browser -> nginx -> portals/API) can be exercised locally before a
+  # release — it is the only way to verify the nginx config and the
+  # /admin routing without a deployed environment.
+  #
+  # Day-to-day front-end development still uses `pnpm dev` (Vite on 5173 /
+  # 5174 with its own /api proxy); this service serves BUILT bundles and
+  # will not hot-reload.
+  web:
+    build:
+      context: ../..
+      dockerfile: infrastructure/docker/Dockerfile.web
+    container_name: marineops-web
+    restart: unless-stopped
+    ports:
+      - '8080:80'
+    depends_on:
+      # nginx resolves the `api` upstream hostname at startup and refuses to
+      # start if it cannot — so the API container must exist first. This
+      # only waits for the container, not for the API to be listening;
+      # nginx retries the upstream per request, so that is sufficient.
+      - api
+
 volumes:
   postgres_data:
     driver: local

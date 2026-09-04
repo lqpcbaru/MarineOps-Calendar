@@ -79,11 +79,29 @@ happens to set.
 
 > **CORS / `APP_URL`:** `APP_URL` is the authoritative CORS origin. In `NODE_ENV=production` the API **fails to start** if `APP_URL` is unset (it will not silently fall back to a development origin). Note this check keys on `production` exactly — `NODE_ENV=staging` does **not** enforce it, so set `APP_URL` explicitly in staging or CORS will point at localhost.
 
-### Deploying the published image (recommended)
+### Deploying the published images (recommended)
 
-Publishing a GitHub **release** runs the `docker` CI job, which builds the
-image, smoke-tests that it starts and reaches the database, and only then
-pushes to GHCR. Three tags are published per release:
+Publishing a GitHub **release** runs the `docker` CI job, which builds **two**
+images, smoke-tests both, and only then pushes to GHCR:
+
+| Image           | Contents                                                 |
+| --------------- | -------------------------------------------------------- |
+| `marineops-api` | NestJS API + Prisma CLI + migrations                     |
+| `marineops-web` | Public portal, Admin portal, and the nginx reverse proxy |
+
+The smoke tests run before any push, so a container that fails to start,
+cannot reach the database, or serves a broken `/admin` route is never
+published. Both images are tagged identically so a rollback moves them
+together.
+
+> **Startup ordering matters.** nginx resolves the `api` upstream hostname
+> when it starts and **refuses to start if it cannot be resolved**. The API
+> service must therefore exist before the web container starts (compose
+> `depends_on`, or an orchestrator that creates the Service before the Pod).
+> It does not need to be _ready_ — nginx retries the upstream per request —
+> only resolvable.
+
+Three tags are published per release:
 
 | Tag                  | Use                                       |
 | -------------------- | ----------------------------------------- |
@@ -105,8 +123,15 @@ docker run --rm -e DATABASE_URL="$DATABASE_URL" "$IMAGE" \
 
 # 2. Seed — FIRST DEPLOY ONLY. NOT runnable from the image; see Seeding below.
 
-# 3. Run
-docker run -d --name marineops-api -p 3000:3000 --env-file ./production.env "$IMAGE"
+# 3. Run the API (must be resolvable as `api` to the web container)
+docker network create marineops 2>/dev/null || true
+docker run -d --name api --network marineops \
+  --env-file ./production.env "$IMAGE"
+
+# 4. Run the web tier. It terminates nothing itself — put TLS in front of
+#    port 80, or terminate at your load balancer (DEPLOYMENT.md §2).
+docker run -d --name marineops-web --network marineops -p 80:80 \
+  ghcr.io/lqpcbaru/marineops-web:v1.0.0
 ```
 
 > Run migrations from the **image**, not from a source checkout. Migrating
@@ -224,16 +249,26 @@ convenience: the refresh token is an httpOnly cookie scoped to
 `path=/api/v1/auth`, so the browser only sends it when the portal and the API
 share an origin.
 
+**You normally do not build this by hand.** A release publishes a
+`marineops-web` image containing both portals plus the nginx config
+(`infrastructure/docker/Dockerfile.web`) — see "Deploying the published
+images" above. Building bundles manually is only needed for a static host
+that is not running that container:
+
 ```bash
+pnpm --filter @marineops/web-public build   # output: apps/web-public/dist
 pnpm --filter @marineops/web-admin build    # output: apps/web-admin/dist
 ```
 
-Deploy `apps/web-admin/dist` to the path the nginx config expects:
+Both bundles share one document root, with the admin bundle **underneath**
+it so the URI path and the filesystem path line up. nginx.conf serves it via
+the inherited `root`, deliberately not `alias` (combining `alias` with
+`try_files` misresolves the SPA fallback):
 
-| Bundle                 | Served from | nginx root/alias         |
-| ---------------------- | ----------- | ------------------------ |
-| `apps/web-public/dist` | `/`         | `/usr/share/nginx/html`  |
-| `apps/web-admin/dist`  | `/admin/`   | `/usr/share/nginx/admin` |
+| Bundle                 | Served at | Filesystem path                |
+| ---------------------- | --------- | ------------------------------ |
+| `apps/web-public/dist` | `/`       | `/usr/share/nginx/html/`       |
+| `apps/web-admin/dist`  | `/admin/` | `/usr/share/nginx/html/admin/` |
 
 > **Three things must agree** or the portal breaks in ways that are easy to
 > misdiagnose: `base: '/admin/'` in `apps/web-admin/vite.config.ts`, the

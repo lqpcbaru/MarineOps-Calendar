@@ -1,0 +1,65 @@
+# MarineOps Hub — web tier (both portals + reverse proxy)
+#
+# Serves BOTH front-ends and proxies /api and /health to the API container:
+# the topology DEPLOYMENT.md §2/§4 describes. Before this image existed the
+# only buildable artifact was the API — the portals were reachable solely as
+# CI zip artifacts (14-day retention) and infrastructure/docker/nginx.conf
+# was referenced by nothing, so the documented topology could not actually
+# be deployed.
+#
+# Build from the REPOSITORY ROOT (it needs the pnpm workspace):
+#   docker build -f infrastructure/docker/Dockerfile.web -t marineops-web .
+
+FROM node:22-alpine AS builder
+WORKDIR /app
+
+# Workspace manifests plus both front-end packages. Neither portal imports
+# from apps/api, so the API source is deliberately not part of this context.
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json tsconfig.base.json ./
+COPY apps/web-public/ apps/web-public/
+COPY apps/web-admin/ apps/web-admin/
+COPY packages/ packages/
+
+RUN corepack enable && pnpm install --frozen-lockfile
+
+# Each app's build script runs `tsc -b` first, so a type error fails the
+# image build rather than shipping a broken bundle.
+RUN pnpm --filter @marineops/web-public build
+RUN pnpm --filter @marineops/web-admin build
+
+
+FROM nginx:1.27-alpine AS runner
+
+# Public portal at /, admin portal at /admin/. The admin bundle is placed
+# UNDER the public root on purpose: nginx.conf serves it via the inherited
+# `root` rather than an `alias` (see the comments there), so the URI path
+# and the filesystem path must line up. This also requires web-admin to be
+# built with base=/admin/ — it is, in its vite.config.ts.
+COPY --from=builder /app/apps/web-public/dist/ /usr/share/nginx/html/
+COPY --from=builder /app/apps/web-admin/dist/ /usr/share/nginx/html/admin/
+
+COPY infrastructure/docker/nginx.conf /etc/nginx/conf.d/default.conf
+COPY infrastructure/docker/marineops_proxy_headers.conf /etc/nginx/marineops_proxy_headers.conf
+
+# NOTE: `nginx -t` is deliberately NOT run here. nginx resolves the names in
+# an `upstream` block at config-parse time, and the `api` host does not
+# exist inside the build sandbox — the check would fail the build for a
+# config that is actually correct.
+#
+# The same property matters at RUNTIME: nginx refuses to start if the
+# upstream hostname cannot be resolved, so the API service must be
+# resolvable before this container starts (compose `depends_on`, or an
+# orchestrator that creates the Service before the Pod). This is documented
+# in the runbook.
+
+EXPOSE 80
+
+# Hits the admin document rather than `/`, so the check also proves the
+# /admin/ location and its SPA fallback are wired up — a misconfigured
+# admin block is otherwise invisible until someone opens the portal.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD wget -qO- http://localhost/admin/ >/dev/null 2>&1 || exit 1
+
+# Static files and proxying only: this image holds no secrets and needs no
+# environment configuration of its own.
+CMD ["nginx", "-g", "daemon off;"]
