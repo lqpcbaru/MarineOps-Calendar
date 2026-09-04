@@ -13,6 +13,17 @@ import { DomainError } from '../shared-kernel';
  * Maps DomainError subclasses to stable HTTP responses (ENGINEERING_STANDARDS §4, §3.8).
  * Shape per SYSTEM_ARCHITECTURE §8: { code, message, details?, correlationId? }.
  */
+/**
+ * Prisma error codes that mean the DATABASE is unreachable or overloaded,
+ * as opposed to the query being wrong.
+ *
+ * P1001 cannot reach the server, P1002 the server timed out accepting the
+ * connection, P1008 the operation timed out, P1017 the server closed the
+ * connection, P2024 the connection pool was exhausted waiting for one.
+ * None of these say anything about the application's own correctness.
+ */
+const DATABASE_UNAVAILABLE_CODES = new Set(['P1001', 'P1002', 'P1008', 'P1017', 'P2024']);
+
 @Catch()
 export class DomainExceptionFilter implements ExceptionFilter {
   private readonly logger = new Logger('DomainExceptionFilter');
@@ -54,6 +65,28 @@ export class DomainExceptionFilter implements ExceptionFilter {
       return;
     }
 
+    // A database outage is a dependency failure, not a fault in this
+    // application, and 500 says the opposite. Reported as 500 it is
+    // indistinguishable from a genuine bug: alerting cannot tell "Postgres
+    // is down" from "our code threw", the page goes to the wrong people,
+    // and clients and load balancers treat it as non-retryable when
+    // retrying is exactly right. Verified by stopping Postgres against the
+    // running stack — every data endpoint and login returned 500 while
+    // /health/ready correctly reported 503.
+    if (this.isDatabaseUnavailable(exception)) {
+      this.logger.error(
+        'Database unavailable',
+        exception instanceof Error ? exception.stack : undefined,
+        correlationId ? `correlationId=${correlationId}` : undefined,
+      );
+      response.status(HttpStatus.SERVICE_UNAVAILABLE).json({
+        code: 'DATABASE_UNAVAILABLE',
+        message: 'Pangkalan data tidak tersedia buat masa ini',
+        ...(correlationId ? { correlationId } : {}),
+      });
+      return;
+    }
+
     this.logger.error(
       exception instanceof Error ? exception.message : 'Unexpected error',
       exception instanceof Error ? exception.stack : undefined,
@@ -65,6 +98,17 @@ export class DomainExceptionFilter implements ExceptionFilter {
       message: 'Internal server error',
       ...(correlationId ? { correlationId } : {}),
     });
+  }
+
+  private isDatabaseUnavailable(exception: unknown): boolean {
+    // Thrown when the client cannot establish a connection at all — for
+    // example the server is down when the first query is issued.
+    if (exception instanceof Prisma.PrismaClientInitializationError) return true;
+
+    if (exception instanceof Prisma.PrismaClientKnownRequestError) {
+      return DATABASE_UNAVAILABLE_CODES.has(exception.code);
+    }
+    return false;
   }
 
   private httpStatusFor(code: string): number {
