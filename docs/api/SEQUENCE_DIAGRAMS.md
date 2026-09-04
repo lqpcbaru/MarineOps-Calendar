@@ -194,36 +194,51 @@ sequenceDiagram
 
 ---
 
-## 5. Sourced Data Refresh (cron) + Stale Fallback (FR-TID-002, FR-TID-003, NFR-REL-002)
+## 5. Sourced Data Read + Stale Fallback (FR-TID-002, FR-TID-003, NFR-REL-002)
+
+> **This is on-demand, not scheduled.** An earlier revision of this section
+> showed a NestJS cron refreshing each station hourly. No such job exists:
+> `@nestjs/schedule` is a dependency, `src/shared/scheduler` holds an
+> unwired scheduler module, and nothing anywhere registers a cron or
+> declares an `@Cron` handler. Provider calls happen inside a request that
+> misses the cache, so the cache is the only thing bounding how much
+> traffic reaches MET Malaysia, JUPEM and the marine forecast API.
 
 ```mermaid
 sequenceDiagram
     autonumber
-    participant CRON as NestJS Schedule (cron)
+    participant A as Public API request
     participant UC as GetTide use-case
-    participant CACHE as TideCacheRepository
+    participant CACHE as CacheService (Redis or in-process)
     participant PROV as TideProvider (external adapter)
-    participant API as External Tide API
+    participant API as JUPEM API
     participant E as DomainEventBus
 
-    CRON->>UC: refreshForStation(stationId) [hourly]
-    UC->>CACHE: get(stationId, parameter)
-    CACHE-->>UC: cache row (validUntil)
-    alt now < validUntil (fresh)
-        UC-->>CRON: no-op (fresh)
-    else nearing/at validUntil
+    A->>UC: getTide(stationId, range)
+    UC->>CACHE: get(key)
+    alt fresh (age < ttlMs)
+        CACHE-->>UC: cached payload
+        UC-->>A: 200 (cache hit)
+    else miss or stale
         UC->>PROV: fetch(stationId, range)
-        PROV->>API: HTTPS GET /tide?...
+        PROV->>API: HTTPS GET (10s timeout, size-capped body)
         alt success
             API-->>PROV: tide data
             PROV-->>UC: mapped TideData (domain model)
-            UC->>CACHE: upsert(stationId, parameter, payload, validUntil)
-            UC-->>CRON: refreshed
-        else failure / timeout
-            PROV-->>UC: error
+            UC->>CACHE: set(key, payload)
+            UC-->>A: 200 (fresh)
+        else no station mapping configured
+            PROV-->>UC: ProviderConfigurationError
+            UC-->>A: 503 PROVIDER_CONFIG_ERROR
+        else provider failure / timeout
+            PROV-->>UC: ProviderUnavailableError / ProviderTimeoutError
             UC->>E: publish(DataStaleDetected)
-            UC->>CACHE: leave existing row (now stale)
-            UC-->>CRON: stale fallback served on next read
+            alt a stale entry exists
+                CACHE-->>UC: stale payload
+                UC-->>A: 200 with stale marker
+            else nothing cached
+                UC-->>A: 503 PROVIDER_UNAVAILABLE
+            end
         end
     end
 ```
@@ -406,7 +421,7 @@ sequenceDiagram
 
 ## 11. Change log
 
-| Version | Date       | Notes                                    |
-| ------- | ---------- | ---------------------------------------- |
+| Version | Date       | Notes                                                                                                        |
+| ------- | ---------- | ------------------------------------------------------------------------------------------------------------ |
 | 2.1.0   | 2026-08-05 | Sprint 3.0: Add diagrams 9 (sourced data read with cache + stale fallback) and 10 (public dashboard fan-out) |
-| 2.0.0   | 2026-07-31 | Initial Hub sequence diagrams (ADR-0011) |
+| 2.0.0   | 2026-07-31 | Initial Hub sequence diagrams (ADR-0011)                                                                     |
