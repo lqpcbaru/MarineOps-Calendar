@@ -13,6 +13,7 @@ import {
   MarineSummaryGrid,
   OperationalLegend,
 } from '../../shared/components';
+import { formatDuration, formatStationTime } from '../../shared/format/station-time';
 import { getStations } from '../stesen/stesen.api';
 import { getSunData, type SunDataPoint } from './matahari.api';
 
@@ -21,52 +22,6 @@ function toLocalDateString(date: Date): string {
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
-}
-
-/**
- * Renders an instant as a clock time in the STATION's timezone.
- *
- * The API returns UTC instants. Showing them raw meant the page displayed
- * "2026-09-03T23:10:00Z" for a 07:10 sunrise — the right moment, written
- * so that an operator reading quickly sees 11pm on the previous day. On a
- * page whose only job is telling someone how much daylight they have, the
- * format is not cosmetic.
- *
- * The zone comes from the station record rather than the browser, so a
- * planner looking at a Sabah station from elsewhere still sees the time
- * that station will actually experience.
- */
-function formatStationTime(iso: string | undefined, timezone: string | undefined): string {
-  if (!iso) return '—';
-  const parsed = new Date(iso);
-  if (Number.isNaN(parsed.getTime())) return '—';
-  try {
-    return new Intl.DateTimeFormat('ms-MY', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false,
-      timeZone: timezone || 'Asia/Kuala_Lumpur',
-    }).format(parsed);
-  } catch {
-    // An unrecognised IANA zone must not blank the page.
-    return new Intl.DateTimeFormat('ms-MY', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false,
-      timeZone: 'Asia/Kuala_Lumpur',
-    }).format(parsed);
-  }
-}
-
-/** "PT12H9M" -> "12j 9m" */
-function formatDuration(iso: string | undefined): string {
-  if (!iso) return '—';
-  const match = /^PT(?:(\d+)H)?(?:(\d+)M)?$/.exec(iso);
-  if (!match) return iso;
-  const [, hours, minutes] = match;
-  return (
-    [hours ? `${hours}j` : null, minutes ? `${minutes}m` : null].filter(Boolean).join(' ') || iso
-  );
 }
 
 function RingkasanHariIni({
