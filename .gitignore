@@ -39,3 +39,8 @@ docker-compose.override.yml
 .env
 .env.local
 .env.*.local
+# Database dumps produced by infrastructure/scripts/db-backup.sh.
+# These contain production data and must never be committed.
+backups/
+*.dump
+*.dump.part

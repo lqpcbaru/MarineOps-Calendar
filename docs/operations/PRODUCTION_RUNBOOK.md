@@ -341,14 +341,55 @@ GET /health/ready → {"status":"ok","checks":{"database":"ok"}}   (503 with {"s
 
 ### Database Backup
 
+> **There are no automated backups.** Nothing in this repository runs on a
+> schedule. `infrastructure/scripts/db-backup.sh` performs a correct,
+> verified, self-pruning dump — but _something external must invoke it_.
+> Scheduling, durable storage and offsite copies are infrastructure
+> decisions tied to the hosting provider and are listed as operator actions
+> below. Do not treat the existence of this script as a backup solution.
+
 ```bash
-pg_dump $DATABASE_URL > backup_$(date +%Y%m%d).sql
+DATABASE_URL="postgresql://..." \
+BACKUP_DIR=/var/backups/marineops \
+RETENTION_DAYS=14 \
+  ./infrastructure/scripts/db-backup.sh
 ```
+
+The script writes a compressed custom-format dump (`pg_dump -Fc`), so a
+restore can be selective. It writes to a `.part` file and renames on
+success, so an interrupted run cannot leave a truncated file that _looks_
+like a valid backup — the failure that only reveals itself during a real
+restore. It then verifies the archive's table of contents parses, rejects
+implausibly small dumps, and prunes dumps older than `RETENTION_DAYS`.
+
+If `pg_dump` is not on the host, run it through the same Postgres image the
+stack uses (no client install needed):
+
+```bash
+docker run --rm --network marineops \
+  -e DATABASE_URL="$DATABASE_URL" \
+  -v "$PWD/backups:/backups" -e BACKUP_DIR=/backups \
+  -v "$PWD/infrastructure/scripts:/scripts" \
+  postgres:16-alpine /scripts/db-backup.sh
+```
+
+**What the operator must still provide** (none of it can live in the repo):
+
+| Requirement     | Recommendation                                                                                                      |
+| --------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Schedule        | Daily, plus an explicit run immediately before every migration                                                      |
+| Durable storage | A volume that is **not** the database host's own disk                                                               |
+| Offsite copy    | Object storage in a different failure domain                                                                        |
+| Retention       | `RETENTION_DAYS=14` locally; longer offsite per your data policy                                                    |
+| Restore drill   | Restore into a scratch database on a schedule — a backup that has never been restored is a hypothesis, not a backup |
 
 ### Database Restore
 
 ```bash
-psql $DATABASE_URL < backup_20260807.sql
+# Custom-format dumps from db-backup.sh
+pg_restore --dbname="$DATABASE_URL" --clean --if-exists backups/marineops_<stamp>.dump
+
+# Then bring the schema up to the deployed image's expectations
 pnpm run db:migrate
 ```
 
