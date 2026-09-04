@@ -21,9 +21,18 @@ docker compose -f infrastructure/docker/docker-compose.yml up -d
 Services:
 
 - PostgreSQL 16 (port 5432)
-- Redis 7 (port 6379) — started, but the API is configured with
-  `REDIS_ENABLED: 'false'`, so it caches in-process and does not connect.
-  Set `REDIS_ENABLED=true` to exercise the Redis path.
+- Redis 7 (port 6379) — started, but the API defaults to
+  `REDIS_ENABLED=false`, so it caches in-process and does not connect.
+  Run `REDIS_ENABLED=true docker compose ... up -d` to exercise the Redis
+  path. **Production should set `REDIS_ENABLED=true`**: with more than one
+  API instance an in-process cache is per-instance, so instances serve
+  divergent data and a cache invalidation only reaches whichever instance
+  handled it.
+
+  Redis is best-effort. If it goes down the API keeps serving — cache
+  reads degrade to misses and requests fall through to the provider — and
+  it resumes caching on recovery without a restart.
+
 - MarineOps API (port 3000)
 - Web tier (port **8080**) — both portals behind nginx. This is the only
   way to exercise the full production chain locally: the public portal at
@@ -310,11 +319,22 @@ The seed creates one mapping row per station per data type with
 `providerStationId = NULL`, `config = NULL` and **`isActive = false`** —
 scaffolding, not working configuration. Until real codes are supplied:
 
-- `/api/public/weather`, `/tide`, `/wind-wave` return a provider error.
-- `/api/public/moon`, `/sun`, `/stations` work normally (computed locally
-  or served from the database).
+- `/api/public/weather`, `/tide`, `/wind-wave` return **503** with code
+  `PROVIDER_CONFIG_ERROR`. `/api/public/vessels/*` does the same while
+  `GFW_API_TOKEN` is unset.
+- `/api/public/moon`, `/sun`, `/stations`, `/dashboard`, `/calendar` and
+  `/recommendation` work normally (computed locally or served from the
+  database).
 - The API starts, stays healthy, and `/health/ready` passes. Absence of
   provider data is **not** a startup failure.
+
+**For alerting:** 503 + `PROVIDER_CONFIG_ERROR` means _we_ have not
+finished configuring this station — it is the expected state of a freshly
+deployed environment and should not page anyone. A provider that was
+actually reached and misbehaved returns **502** (`PROVIDER_INVALID_RESPONSE`,
+`PROVIDER_SERVER_ERROR`, `PROVIDER_AUTH_ERROR`); one that could not be
+reached at all returns 503 `PROVIDER_UNAVAILABLE` or `PROVIDER_TIMEOUT`.
+Alert on the codes, not on the status alone.
 
 To activate a station, set the external code and flip `isActive`:
 
