@@ -28,4 +28,18 @@ export interface RefreshTokenRepository {
    * to mint a sibling replacement from the same parent.
    */
   revokeIfActive(id: string, replacedBy: string, now?: Date): Promise<boolean>;
+
+  /**
+   * Delete this user's rows whose expiresAt has passed. Returns how many
+   * were removed.
+   *
+   * Only EXPIRED rows, never merely revoked ones: reuse detection works by
+   * finding a revoked row and revoking its whole family (ADR-0010 §1), so
+   * deleting a revoked-but-unexpired token would turn a detectable replay
+   * into an unknown token — still a 401, but the family would survive and
+   * a thief could keep using the rest of it. Once a row is past its
+   * expiry it is rejected on age alone and holds no information worth
+   * keeping.
+   */
+  deleteExpired(userId: string, now?: Date): Promise<number>;
 }

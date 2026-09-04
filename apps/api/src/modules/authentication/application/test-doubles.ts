@@ -65,6 +65,23 @@ export class InMemoryRefreshTokenRepository implements RefreshTokenRepository {
     this.byHash.set(token.tokenHash, revoked);
     return true;
   }
+
+  async deleteExpired(userId: string, now: Date = new Date()): Promise<number> {
+    let count = 0;
+    for (const token of [...this.byId.values()]) {
+      if (token.userId === userId && token.toState().expiresAt.getTime() < now.getTime()) {
+        this.byId.delete(token.id);
+        this.byHash.delete(token.tokenHash);
+        count++;
+      }
+    }
+    return count;
+  }
+
+  /** Test-only: how many rows the double is currently holding. */
+  get size(): number {
+    return this.byId.size;
+  }
 }
 
 /** Fake token service: deterministic tokens, SHA-256 hashes, real JWT-less verify. */

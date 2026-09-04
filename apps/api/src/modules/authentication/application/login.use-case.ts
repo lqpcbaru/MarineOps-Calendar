@@ -17,6 +17,7 @@ import type {
   UserIdentityProvider,
 } from './contracts';
 import { loginCommandSchema } from './dtos';
+import { LoggingService } from '../../../platform/logging.service';
 import {
   CLOCK,
   DOMAIN_EVENT_BUS,
@@ -47,6 +48,8 @@ const DUMMY_PASSWORD_HASH =
  */
 @Injectable()
 export class LoginUseCase {
+  private readonly logger = new LoggingService('LoginUseCase');
+
   constructor(
     @Inject(USER_IDENTITY_PROVIDER) private readonly users: UserIdentityProvider,
     @Inject(PASSWORD_HASHER) private readonly hasher: PasswordHasher,
@@ -95,6 +98,26 @@ export class LoginUseCase {
       createdAt: now,
     });
     await this.refreshRepo.save(aggregate);
+
+    // Nothing else ever deletes a refresh token row, so without this the
+    // table grows for the life of the deployment: one row per login plus
+    // one per rotation, none of which are removed when they expire. That
+    // is both unbounded growth and an indefinitely retained pile of
+    // expired credential hashes.
+    //
+    // Pruning here keeps the work bounded to the one user who just logged
+    // in and served by an existing index, rather than needing a sweep job
+    // (there is no scheduler running in this application). It must never
+    // fail a login: the user is already authenticated and their token is
+    // already persisted by this point.
+    try {
+      await this.refreshRepo.deleteExpired(user.id, now);
+    } catch (error) {
+      this.logger.warn('Failed to prune expired refresh tokens', {
+        userId: user.id,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
 
     await this.events.publish({
       type: 'UserLoggedIn',
