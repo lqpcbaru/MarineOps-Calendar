@@ -36,6 +36,7 @@ import { PublicVesselsController } from './api/public/public-vessels.controller'
 import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { DomainExceptionFilter } from './platform/domain-exception.filter';
 import { JwtAuthGuard } from './modules/authentication/api/jwt-auth.guard';
+import { PermissionsGuard } from './modules/authentication/api/permissions.guard';
 
 @Module({
   imports: [
@@ -78,7 +79,20 @@ import { JwtAuthGuard } from './modules/authentication/api/jwt-auth.guard';
   ],
   providers: [
     { provide: APP_FILTER, useClass: DomainExceptionFilter },
+    // Order matters: JwtAuthGuard resolves the principal onto the request,
+    // and PermissionsGuard reads it. APP_GUARD instances run in the order
+    // they are registered.
     { provide: APP_GUARD, useClass: JwtAuthGuard },
+    // Global so that @RequirePermissions is enforced wherever it appears.
+    // It used to be applied per-controller via @UseGuards, which fails
+    // OPEN in the one case that matters: a new controller that carries
+    // @RequirePermissions but forgets @UseGuards(PermissionsGuard) reads
+    // as protected and enforces nothing, because the decorator is only
+    // metadata and nothing is left to act on it. Registering it here means
+    // the decorator alone is sufficient. It returns true when a handler
+    // has no @RequirePermissions metadata, so unannotated and @Public()
+    // routes are unaffected.
+    { provide: APP_GUARD, useClass: PermissionsGuard },
   ],
 })
 export class AppModule {}
