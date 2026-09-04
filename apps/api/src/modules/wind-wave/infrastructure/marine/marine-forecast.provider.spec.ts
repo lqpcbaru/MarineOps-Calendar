@@ -3,6 +3,7 @@ import { MarineForecastProvider } from './marine-forecast.provider';
 import type { StationProviderMappingPort } from '../../../stations/application/ports';
 import type { ProviderMappingRecord } from '../../../stations/domain';
 import type { MarineRawForecastResponse } from './marine-raw-dto';
+import { errorResponse, jsonResponse } from '../../../../shared/provider/test-responses';
 
 function makeMapping(): ProviderMappingRecord {
   return {
@@ -65,9 +66,7 @@ describe('MarineForecastProvider — HTTP mocked', () => {
   }
 
   it('returns mapped data on 200', async () => {
-    globalThis.fetch = vi
-      .fn()
-      .mockResolvedValue({ ok: true, status: 200, json: async () => MOCK_RESPONSE } as Response);
+    globalThis.fetch = vi.fn().mockResolvedValue(jsonResponse(MOCK_RESPONSE, 200));
     const provider = createProvider();
     const result = await provider.getWindWave('st-001', '2026-08-06', '2026-08-07');
     expect(result).toHaveLength(2);
@@ -76,61 +75,35 @@ describe('MarineForecastProvider — HTTP mocked', () => {
   });
 
   it('throws on 401', async () => {
-    globalThis.fetch = vi
-      .fn()
-      .mockResolvedValue({
-        ok: false,
-        status: 401,
-        text: async () => 'Unauthorized',
-      } as unknown as Response);
+    globalThis.fetch = vi.fn().mockResolvedValue(errorResponse(401, 'Unauthorized'));
     await expect(
       createProvider().getWindWave('st-001', '2026-08-06', '2026-08-06'),
     ).rejects.toThrow(/401/);
   });
 
   it('throws on 429', async () => {
-    globalThis.fetch = vi
-      .fn()
-      .mockResolvedValue({
-        ok: false,
-        status: 429,
-        text: async () => 'Rate limited',
-      } as unknown as Response);
+    globalThis.fetch = vi.fn().mockResolvedValue(errorResponse(429, 'Rate limited'));
     await expect(
       createProvider().getWindWave('st-001', '2026-08-06', '2026-08-06'),
     ).rejects.toThrow(/had kadar/);
   });
 
   it('throws on 500', async () => {
-    globalThis.fetch = vi
-      .fn()
-      .mockResolvedValue({
-        ok: false,
-        status: 500,
-        text: async () => 'error',
-      } as unknown as Response);
+    globalThis.fetch = vi.fn().mockResolvedValue(errorResponse(500, 'error'));
     await expect(
       createProvider().getWindWave('st-001', '2026-08-06', '2026-08-06'),
     ).rejects.toThrow(/500/);
   });
 
   it('tracks metrics on success', async () => {
-    globalThis.fetch = vi
-      .fn()
-      .mockResolvedValue({ ok: true, status: 200, json: async () => MOCK_RESPONSE } as Response);
+    globalThis.fetch = vi.fn().mockResolvedValue(jsonResponse(MOCK_RESPONSE, 200));
     const provider = createProvider();
     await provider.getWindWave('st-001', '2026-08-06', '2026-08-07');
     expect(provider.getMetrics().getState().successfulRequests).toBeGreaterThanOrEqual(1);
   });
 
   it('tracks metrics on failure', async () => {
-    globalThis.fetch = vi
-      .fn()
-      .mockResolvedValue({
-        ok: false,
-        status: 500,
-        text: async () => 'error',
-      } as unknown as Response);
+    globalThis.fetch = vi.fn().mockResolvedValue(errorResponse(500, 'error'));
     const provider = createProvider();
     await expect(provider.getWindWave('st-001', '2026-08-06', '2026-08-06')).rejects.toThrow();
     expect(provider.getMetrics().getState().failedRequests).toBeGreaterThanOrEqual(1);

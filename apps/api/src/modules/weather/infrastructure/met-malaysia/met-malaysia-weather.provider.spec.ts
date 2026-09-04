@@ -3,6 +3,7 @@ import { MetMalaysiaWeatherProvider } from './met-malaysia-weather.provider';
 import type { StationProviderMappingPort } from '../../../stations/application/ports';
 import type { ProviderMappingRecord } from '../../../stations/domain';
 import type { MetRawForecastResponse } from './met-raw-dto';
+import { errorResponse, jsonResponse } from '../../../../shared/provider/test-responses';
 
 function makeMapping(overrides: Partial<ProviderMappingRecord> = {}): ProviderMappingRecord {
   return {
@@ -77,11 +78,7 @@ describe('MetMalaysiaWeatherProvider — HTTP mocked', () => {
   }
 
   it('returns mapped forecast data on 200', async () => {
-    globalThis.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: async () => MOCK_FORECAST,
-    } as Response);
+    globalThis.fetch = vi.fn().mockResolvedValue(jsonResponse(MOCK_FORECAST, 200));
 
     const provider = createProvider();
     const result = await provider.getForecast('st-001', '2026-08-06', '2026-08-07');
@@ -93,44 +90,28 @@ describe('MetMalaysiaWeatherProvider — HTTP mocked', () => {
   });
 
   it('throws ProviderAuthenticationError on 401', async () => {
-    globalThis.fetch = vi.fn().mockResolvedValue({
-      ok: false,
-      status: 401,
-      text: async () => 'Unauthorized',
-    } as unknown as Response);
+    globalThis.fetch = vi.fn().mockResolvedValue(errorResponse(401, 'Unauthorized'));
 
     const provider = createProvider();
     await expect(provider.getCurrentWeather('st-001')).rejects.toThrow(/401/);
   });
 
   it('throws ProviderAuthenticationError on 403', async () => {
-    globalThis.fetch = vi.fn().mockResolvedValue({
-      ok: false,
-      status: 403,
-      text: async () => 'Forbidden',
-    } as unknown as Response);
+    globalThis.fetch = vi.fn().mockResolvedValue(errorResponse(403, 'Forbidden'));
 
     const provider = createProvider();
     await expect(provider.getCurrentWeather('st-001')).rejects.toThrow(/403/);
   });
 
   it('throws ProviderRateLimitError on 429', async () => {
-    globalThis.fetch = vi.fn().mockResolvedValue({
-      ok: false,
-      status: 429,
-      text: async () => 'Too many requests',
-    } as unknown as Response);
+    globalThis.fetch = vi.fn().mockResolvedValue(errorResponse(429, 'Too many requests'));
 
     const provider = createProvider();
     await expect(provider.getCurrentWeather('st-001')).rejects.toThrow(/had kadar/);
   });
 
   it('throws ProviderServerError on 500', async () => {
-    globalThis.fetch = vi.fn().mockResolvedValue({
-      ok: false,
-      status: 500,
-      text: async () => 'Server error',
-    } as unknown as Response);
+    globalThis.fetch = vi.fn().mockResolvedValue(errorResponse(500, 'Server error'));
 
     const provider = createProvider();
     await expect(provider.getCurrentWeather('st-001')).rejects.toThrow(/500/);
@@ -149,17 +130,9 @@ describe('MetMalaysiaWeatherProvider — HTTP mocked', () => {
     globalThis.fetch = vi.fn().mockImplementation(() => {
       calls++;
       if (calls < 3) {
-        return Promise.resolve({
-          ok: false,
-          status: 500,
-          text: async () => 'error',
-        } as unknown as Response);
+        return Promise.resolve(errorResponse(500, 'error'));
       }
-      return Promise.resolve({
-        ok: true,
-        status: 200,
-        json: async () => MOCK_FORECAST,
-      } as Response);
+      return Promise.resolve(jsonResponse(MOCK_FORECAST, 200));
     });
 
     const provider = createProvider();
@@ -169,11 +142,7 @@ describe('MetMalaysiaWeatherProvider — HTTP mocked', () => {
   });
 
   it('tracks metrics after success', async () => {
-    globalThis.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: async () => MOCK_FORECAST,
-    } as Response);
+    globalThis.fetch = vi.fn().mockResolvedValue(jsonResponse(MOCK_FORECAST, 200));
 
     const provider = createProvider();
     await provider.getForecast('st-001', '2026-08-06', '2026-08-07');
@@ -184,11 +153,7 @@ describe('MetMalaysiaWeatherProvider — HTTP mocked', () => {
   });
 
   it('tracks metrics after failure', async () => {
-    globalThis.fetch = vi.fn().mockResolvedValue({
-      ok: false,
-      status: 500,
-      text: async () => 'error',
-    } as unknown as Response);
+    globalThis.fetch = vi.fn().mockResolvedValue(errorResponse(500, 'error'));
 
     const provider = createProvider();
     await expect(provider.getCurrentWeather('st-001')).rejects.toThrow();
