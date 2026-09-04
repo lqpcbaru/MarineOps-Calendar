@@ -9,6 +9,7 @@ import {
   ProviderMetrics,
   ProviderHealth,
   createProviderConfig,
+  ProviderConfigurationError,
   ProviderInvalidResponseError,
 } from '../../../../shared/provider';
 import { PROVIDER_MAPPING_PORT } from '../../../stations/api/stations.module';
@@ -89,7 +90,7 @@ export class JupemTideProvider implements TideProviderPort {
   private async resolveArea(stationId: string, dataType: string): Promise<string> {
     const mapping = await this.mappingPort.getByStationAndType(stationId, dataType);
     if (!mapping || !mapping.isActive) {
-      throw new ProviderInvalidResponseError('JUPEM', `tiada pemetaan untuk stesen ${stationId}`);
+      throw new ProviderConfigurationError('JUPEM', `tiada pemetaan untuk stesen ${stationId}`);
     }
     // stationId is our internal UUID — it can never coincidentally be a real
     // JUPEM station code, so a mapping with no real code configured is
@@ -98,7 +99,7 @@ export class JupemTideProvider implements TideProviderPort {
       ((mapping.config as Record<string, unknown> | null)?.stationCode as string) ||
       mapping.providerStationId;
     if (!area) {
-      throw new ProviderInvalidResponseError(
+      throw new ProviderConfigurationError(
         'JUPEM',
         `pemetaan untuk stesen ${stationId} tidak mempunyai kod stesen`,
       );

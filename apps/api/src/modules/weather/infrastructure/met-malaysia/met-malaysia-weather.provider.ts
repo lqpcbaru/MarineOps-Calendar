@@ -9,6 +9,7 @@ import {
   ProviderMetrics,
   ProviderHealth,
   createProviderConfig,
+  ProviderConfigurationError,
   ProviderInvalidResponseError,
 } from '../../../../shared/provider';
 import { PROVIDER_MAPPING_PORT } from '../../../stations/api/stations.module';
@@ -136,7 +137,7 @@ export class MetMalaysiaWeatherProvider implements WeatherProviderPort {
   private async resolveArea(stationId: string, dataType: string): Promise<string> {
     const mapping = await this.mappingPort.getByStationAndType(stationId, dataType);
     if (!mapping || !mapping.isActive) {
-      throw new ProviderInvalidResponseError(
+      throw new ProviderConfigurationError(
         'MetMalaysia',
         `tiada pemetaan untuk stesen ${stationId}`,
       );
@@ -148,7 +149,7 @@ export class MetMalaysiaWeatherProvider implements WeatherProviderPort {
       ((mapping.config as Record<string, unknown> | null)?.marineArea as string) ||
       mapping.providerStationId;
     if (!area) {
-      throw new ProviderInvalidResponseError(
+      throw new ProviderConfigurationError(
         'MetMalaysia',
         `pemetaan untuk stesen ${stationId} tidak mempunyai kod kawasan`,
       );

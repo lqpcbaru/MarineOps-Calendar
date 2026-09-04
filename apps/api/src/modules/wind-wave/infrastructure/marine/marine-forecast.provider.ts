@@ -9,6 +9,7 @@ import {
   ProviderMetrics,
   ProviderHealth,
   createProviderConfig,
+  ProviderConfigurationError,
   ProviderInvalidResponseError,
 } from '../../../../shared/provider';
 import { PROVIDER_MAPPING_PORT } from '../../../stations/api/stations.module';
@@ -95,7 +96,7 @@ export class MarineForecastProvider implements WindWaveProviderPort {
   private async resolveArea(stationId: string, dataType: string): Promise<string> {
     const mapping = await this.mappingPort.getByStationAndType(stationId, dataType);
     if (!mapping || !mapping.isActive) {
-      throw new ProviderInvalidResponseError(
+      throw new ProviderConfigurationError(
         'MarineForecast',
         `tiada pemetaan untuk stesen ${stationId}`,
       );
@@ -107,7 +108,7 @@ export class MarineForecastProvider implements WindWaveProviderPort {
       ((mapping.config as Record<string, unknown> | null)?.marineArea as string) ||
       mapping.providerStationId;
     if (!area) {
-      throw new ProviderInvalidResponseError(
+      throw new ProviderConfigurationError(
         'MarineForecast',
         `pemetaan untuk stesen ${stationId} tidak mempunyai kod kawasan`,
       );

@@ -103,8 +103,17 @@ export class DomainExceptionFilter implements ExceptionFilter {
         return HttpStatus.SERVICE_UNAVAILABLE;
       case 'PROVIDER_RATE_LIMITED':
         return HttpStatus.TOO_MANY_REQUESTS;
-      case 'PROVIDER_AUTH_ERROR':
+      // Not 502. A configuration gap — no station->provider mapping, or a
+      // mapping with no provider code in it — means the upstream was never
+      // contacted at all, so calling it a Bad Gateway blames a system that
+      // did nothing wrong. It also makes the two indistinguishable to
+      // monitoring: a freshly deployed environment has no mappings yet, so
+      // every sourced-data request would raise the same 502 as a real
+      // upstream outage and bury it.
       case 'PROVIDER_CONFIG_ERROR':
+        return HttpStatus.SERVICE_UNAVAILABLE;
+      // These three did reach the provider, and it misbehaved.
+      case 'PROVIDER_AUTH_ERROR':
       case 'PROVIDER_INVALID_RESPONSE':
       case 'PROVIDER_SERVER_ERROR':
         return HttpStatus.BAD_GATEWAY;
