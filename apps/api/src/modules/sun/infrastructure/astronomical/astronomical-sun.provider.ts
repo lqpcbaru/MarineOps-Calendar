@@ -2,14 +2,10 @@ import { Inject, Injectable } from '@nestjs/common';
 import type { SunProviderPort, SunDataPoint } from '../../domain';
 import { computeSunData } from './sun-engine';
 import { mapSunData } from './astronomical-sun-mapper';
-import {
-  ProviderLogger,
-  ProviderMetrics,
-  ProviderHealth,
-  ProviderInvalidResponseError,
-} from '../../../../shared/provider';
+import { ProviderLogger, ProviderMetrics, ProviderHealth } from '../../../../shared/provider';
 import { STATIONS_QUERY_PORT } from '../../../stations/api/stations.module';
 import type { StationsQueryPort } from '../../../stations/application/ports/stations-query.port';
+import { NotFoundError } from '../../../../shared-kernel';
 
 @Injectable()
 export class AstronomicalSunProvider implements SunProviderPort {
@@ -33,10 +29,12 @@ export class AstronomicalSunProvider implements SunProviderPort {
       // Sandakan), enough to shift solar times by over an hour.
       const station = await this.stationsQuery.findPublicById(stationId);
       if (!station) {
-        throw new ProviderInvalidResponseError(
-          'AstronomicalSun',
-          `stesen tidak dijumpai: ${stationId}`,
-        );
+        // NOT a provider error. Sunrise/sunset is computed in-process from
+        // the station's coordinates — there is no upstream call and so no
+        // response that could be invalid. Reporting this as one produced a
+        // 502 for what is simply a station the caller asked for and we do
+        // not have, which is a 404.
+        throw new NotFoundError('Station', stationId);
       }
 
       const parsedDate = new Date(date);

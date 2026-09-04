@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { AstronomicalSunProvider } from './astronomical-sun.provider';
 import type { StationsQueryPort } from '../../../stations/application/ports/stations-query.port';
 import type { StationRecord } from '../../../stations/domain';
-import { ProviderInvalidResponseError } from '../../../../shared/provider';
+import { NotFoundError } from '../../../../shared-kernel';
 
 function makeStation(overrides: Partial<StationRecord> = {}): StationRecord {
   return {
@@ -66,10 +66,15 @@ describe('AstronomicalSunProvider', () => {
     expect(kudatResult.sunrise).not.toBe(kuchingResult.sunrise);
   });
 
-  it('throws when the station is unknown or archived', async () => {
+  // NotFoundError (404), not a provider error (502). Sunrise/sunset is
+  // computed in-process from the station's coordinates: no upstream is
+  // called, so there is no response that could be invalid. Reporting it as
+  // a provider fault made every /api/public/sun request for an unknown
+  // station answer 502.
+  it('reports an unknown or archived station as not found, not a provider fault', async () => {
     const provider = new AstronomicalSunProvider(makeStationsQuery(null));
     await expect(provider.getSunData('unknown', '2026-08-06')).rejects.toBeInstanceOf(
-      ProviderInvalidResponseError,
+      NotFoundError,
     );
   });
 
