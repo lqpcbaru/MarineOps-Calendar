@@ -44,3 +44,8 @@ docker-compose.override.yml
 backups/
 *.dump
 *.dump.part
+
+# Operator-supplied provider codes: external data, never committed.
+# example.json is the template and is tracked.
+infrastructure/provider-mappings/*.json
+!infrastructure/provider-mappings/example.json

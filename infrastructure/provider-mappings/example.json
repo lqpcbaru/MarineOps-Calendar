@@ -1,0 +1,9 @@
+[
+  { "stationCode": "PKG-01", "dataType": "tide", "code": "<JUPEM_STATION_CODE>" },
+  { "stationCode": "PKG-01", "dataType": "weather", "code": "<MET_MARINE_AREA>" },
+  { "stationCode": "PKG-01", "dataType": "wind", "code": "<MARINE_FORECAST_AREA>" },
+
+  { "stationCode": "PPN-01", "dataType": "tide", "code": "<JUPEM_STATION_CODE>" },
+  { "stationCode": "PPN-01", "dataType": "weather", "code": "<MET_MARINE_AREA>" },
+  { "stationCode": "PPN-01", "dataType": "wind", "code": "<MARINE_FORECAST_AREA>" }
+]

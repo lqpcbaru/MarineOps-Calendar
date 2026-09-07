@@ -342,7 +342,23 @@ actually reached and misbehaved returns **502** (`PROVIDER_INVALID_RESPONSE`,
 reached at all returns 503 `PROVIDER_UNAVAILABLE` or `PROVIDER_TIMEOUT`.
 Alert on the codes, not on the status alone.
 
-To activate a station, set the external code and flip `isActive`:
+To activate a station, set the external code and flip `isActive`. **Use
+the tooling rather than hand-written SQL** — it writes the correct
+`config` key for each data type and refuses the mistakes that are
+otherwise silent (an unknown or archived station code, an internal UUID,
+an unedited template placeholder, duplicate entries):
+
+```bash
+pnpm db:mappings:status                                        # what is configured now
+MAPPINGS_FILE=<your-file> pnpm db:mappings:plan                # validate, write nothing
+MAPPINGS_FILE=<your-file> pnpm db:mappings:apply               # write
+```
+
+See `infrastructure/provider-mappings/README.md` for the file format.
+`example.json` there is a template; the tool refuses to apply it until
+the codes are filled in. Applying is idempotent.
+
+The fields each provider reads, which the tooling sets for you:
 
 | Data type | Field the provider reads                                 |
 | --------- | -------------------------------------------------------- |
