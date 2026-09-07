@@ -14,8 +14,11 @@ import type { AstronomicalSunRawData } from './astronomical-sun-raw-dto';
  */
 function formatTime(date: Date, decimalHours: number): string {
   const midnightUtc = Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
-  const d = new Date(midnightUtc + Math.round(decimalHours * 3600) * 1000);
-  d.setUTCSeconds(0, 0);
+  // Round to the nearest minute rather than truncating: setUTCSeconds(0)
+  // discards up to 59 seconds, reporting every time a mean 30 seconds
+  // early as a uniform bias.
+  const exact = midnightUtc + decimalHours * 3600000;
+  const d = new Date(Math.round(exact / 60000) * 60000);
   return d.toISOString().replace(/\.\d{3}Z$/, 'Z');
 }
 
@@ -42,6 +45,10 @@ export function computeSunData(
 
   const haHours = (haRad * 180) / Math.PI / 15;
 
+  // Measured against PyEphem across 20 stations and 53 weekly dates over a
+  // year, sunrise, sunset and solar noon are all within 1.6 minutes; see
+  // ephemeris-accuracy.spec.ts.
+  //
   // Equation of time: the difference between apparent and mean solar time,
   // which swings roughly +14 to -16 minutes across the year. Omitting it
   // put every sunrise and sunset out by up to a quarter of an hour, which

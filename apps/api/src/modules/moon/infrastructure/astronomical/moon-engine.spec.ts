@@ -1,13 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import { computeMoonPhase } from './moon-engine';
 
+/** All Malaysian stations are UTC+8 year-round. */
+const TZ = 'Asia/Kuala_Lumpur';
+
 /** Pelabuhan Klang — the reference observer for these cases. */
 const LATITUDE = 3.0033;
 const LONGITUDE = 101.3925;
 const MYT_OFFSET_HOURS = 8;
 
 function at(date: string) {
-  return computeMoonPhase(new Date(`${date}T12:00:00Z`), LATITUDE, LONGITUDE);
+  return computeMoonPhase(new Date(`${date}T00:00:00Z`), LATITUDE, LONGITUDE, TZ);
 }
 
 function mytHour(iso: string | null): number | null {
@@ -119,9 +122,52 @@ describe('computeMoonPhase', () => {
   // Rise and set depend on the observer, which the old engine ignored
   // entirely — it took only a date.
   it('gives different rise times at different longitudes', () => {
-    const klang = computeMoonPhase(new Date('2026-09-04T12:00:00Z'), 3.0033, 101.3925);
-    const kudat = computeMoonPhase(new Date('2026-09-04T12:00:00Z'), 6.8833, 116.8333);
+    const klang = computeMoonPhase(new Date('2026-09-04T12:00:00Z'), 3.0033, 101.3925, TZ);
+    const kudat = computeMoonPhase(new Date('2026-09-04T12:00:00Z'), 6.8833, 116.8333, TZ);
     expect(klang.moonrise).not.toBe(kudat.moonrise);
+  });
+
+  // The window is as much part of being right as the arithmetic. Scanning
+  // the UTC day rather than the station's own day starts eight hours late
+  // here, silently skipping any moonrise between local midnight and 08:00
+  // and reporting the NEXT day's in its place — for roughly a third of the
+  // lunar cycle. Verified against PyEphem: the real moonrise at Bagan
+  // Datuk on 2026-09-07 is 03:22 local, which a UTC-day scan reported as
+  // 04:26 the following morning.
+  it('reports rise and set within the station local day, not the UTC day', () => {
+    for (let offset = 0; offset < 60; offset++) {
+      const date = new Date(Date.UTC(2026, 8, 1) + offset * 86400000);
+      const day = date.toISOString().slice(0, 10);
+      const result = computeMoonPhase(date, LATITUDE, LONGITUDE, TZ);
+
+      for (const instant of [result.moonrise, result.moonset]) {
+        if (!instant) continue;
+        const localDate = new Date(new Date(instant).getTime() + MYT_OFFSET_HOURS * 3600000)
+          .toISOString()
+          .slice(0, 10);
+        expect(localDate, `${day} produced an instant on ${localDate}`).toBe(day);
+      }
+    }
+  });
+
+  // An event in the final seconds of the day rounds past midnight and
+  // would otherwise be filed under tomorrow, so two consecutive days would
+  // both appear to carry the same event. 2027-02-26 at Port Klang is such
+  // a case: the true moonrise is 23:59:45 local.
+  it('keeps an event in the last seconds of the day inside that day', () => {
+    const result = computeMoonPhase(new Date('2027-02-26T00:00:00Z'), LATITUDE, LONGITUDE, TZ);
+    expect(result.moonrise).not.toBeNull();
+    const local = new Date(new Date(result.moonrise!).getTime() + MYT_OFFSET_HOURS * 3600000);
+    expect(local.toISOString().slice(0, 10)).toBe('2027-02-26');
+    expect(local.toISOString().slice(11, 16)).toBe('23:59');
+  });
+
+  // Rise and set follow the observer's clock, so the same instant asked
+  // for under two different zones must yield different windows.
+  it('follows the given timezone rather than assuming one', () => {
+    const kl = computeMoonPhase(new Date('2026-09-07T00:00:00Z'), LATITUDE, LONGITUDE, TZ);
+    const utc = computeMoonPhase(new Date('2026-09-07T00:00:00Z'), LATITUDE, LONGITUDE, 'UTC');
+    expect(kl.moonrise).not.toBe(utc.moonrise);
   });
 
   it('is deterministic for the same inputs', () => {

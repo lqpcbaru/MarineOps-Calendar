@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { mapMoonData } from './astronomical-moon-mapper';
 import { computeMoonPhase } from './moon-engine';
+
+/** All Malaysian stations are UTC+8 year-round. */
+const TZ = 'Asia/Kuala_Lumpur';
 import type { AstronomicalMoonRawData } from './astronomical-moon-raw-dto';
 
 describe('AstronomicalMoonMapper', () => {
@@ -29,13 +32,13 @@ describe('AstronomicalMoonMapper', () => {
 
 describe('MoonEngine', () => {
   it('produces deterministic output', () => {
-    const a = computeMoonPhase(new Date('2026-08-06'), 3.0033, 101.3925);
-    const b = computeMoonPhase(new Date('2026-08-06'), 3.0033, 101.3925);
+    const a = computeMoonPhase(new Date('2026-08-06'), 3.0033, 101.3925, TZ);
+    const b = computeMoonPhase(new Date('2026-08-06'), 3.0033, 101.3925, TZ);
     expect(a).toEqual(b);
   });
 
   it('returns valid phase name', () => {
-    const result = computeMoonPhase(new Date('2026-08-06'), 3.0033, 101.3925);
+    const result = computeMoonPhase(new Date('2026-08-06'), 3.0033, 101.3925, TZ);
     expect([
       'Bulan Baharu',
       'Bulan Sabit Muda',
@@ -49,20 +52,20 @@ describe('MoonEngine', () => {
   });
 
   it('returns illumination between 0-100', () => {
-    const result = computeMoonPhase(new Date('2026-08-06'), 3.0033, 101.3925);
+    const result = computeMoonPhase(new Date('2026-08-06'), 3.0033, 101.3925, TZ);
     expect(result.illumination).toBeGreaterThanOrEqual(0);
     expect(result.illumination).toBeLessThanOrEqual(100);
   });
 
   it('returns positive age in days', () => {
-    const result = computeMoonPhase(new Date('2026-08-06'), 3.0033, 101.3925);
+    const result = computeMoonPhase(new Date('2026-08-06'), 3.0033, 101.3925, TZ);
     expect(result.ageDays).toBeGreaterThan(0);
     expect(result.ageDays).toBeLessThan(30);
   });
 
   it('different dates produce different results', () => {
-    const a = computeMoonPhase(new Date('2026-08-01'), 3.0033, 101.3925);
-    const b = computeMoonPhase(new Date('2026-08-29'), 3.0033, 101.3925);
+    const a = computeMoonPhase(new Date('2026-08-01'), 3.0033, 101.3925, TZ);
+    const b = computeMoonPhase(new Date('2026-08-29'), 3.0033, 101.3925, TZ);
     expect(a.phaseName).not.toBe(b.phaseName);
   });
 });

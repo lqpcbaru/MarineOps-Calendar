@@ -34,7 +34,12 @@ export class AstronomicalMoonProvider implements MoonProviderPort {
       }
 
       const parsedDate = new Date(date);
-      const raw = computeMoonPhase(parsedDate, station.latitude, station.longitude);
+      const raw = computeMoonPhase(
+        parsedDate,
+        station.latitude,
+        station.longitude,
+        station.timezone,
+      );
       const result = mapMoonData(raw, date);
 
       this.metrics.recordSuccess(Date.now() - start);
