@@ -11,6 +11,8 @@
  *
  * Secret values are NEVER logged — only whether each one is configured.
  */
+import { resolveTrustedProxyHops } from './trusted-proxy-hops';
+
 export interface StartupSummary {
   nodeEnv: string;
   port: number;
@@ -18,6 +20,13 @@ export interface StartupSummary {
   /** Derived from NODE_ENV — false means the refresh cookie has no Secure flag. */
   secureCookies: boolean;
   cacheBackend: 'redis' | 'in-memory';
+  /**
+   * Proxies trusted to have appended to X-Forwarded-For. Logged because
+   * a mismatch with the real topology is invisible until it matters: too
+   * low and every client shares one rate-limit bucket, too high and a
+   * client can forge its own address past the limiter.
+   */
+  trustedProxyHops: number;
   rateLimitMax: number;
   loginRateLimitMax: number;
   /** Booleans only — never the credential itself. */
@@ -34,6 +43,7 @@ export function buildStartupSummary(env: NodeJS.ProcessEnv = process.env): Start
     corsOrigin: env['APP_URL'] || 'http://localhost:5173',
     secureCookies: !isLocal,
     cacheBackend: env['REDIS_ENABLED'] === 'true' ? 'redis' : 'in-memory',
+    trustedProxyHops: resolveTrustedProxyHops(env),
     rateLimitMax: parseInt(env['RATE_LIMIT_MAX'] || '100', 10),
     loginRateLimitMax: parseInt(env['LOGIN_RATE_LIMIT_MAX'] || '10', 10),
     providerCredentials: {

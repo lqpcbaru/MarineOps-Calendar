@@ -28,6 +28,15 @@
 #      port 80 even though the site itself only serves 443.
 
 services:
+  # Caddy appends its own entry to X-Forwarded-For, so the API now sits
+  # behind TWO proxies rather than one. Left at the default of 1, Express
+  # resolves req.ip to Caddy's internal address for every request and both
+  # rate limiters collapse into a single shared bucket — ten failed
+  # sign-ins by anyone would lock out everyone.
+  api:
+    environment:
+      TRUSTED_PROXY_HOPS: '2'
+
   caddy:
     image: caddy:2-alpine
     container_name: marineops-caddy

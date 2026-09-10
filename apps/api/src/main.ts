@@ -10,6 +10,7 @@ import { LoggingService } from './platform/logging.service';
 import { correlationIdMiddleware } from './platform/correlation-id.middleware';
 import { createLoginRateLimiter } from './platform/login-rate-limit';
 import { buildStartupSummary, buildStartupWarnings } from './platform/startup-summary';
+import { resolveTrustedProxyHops } from './platform/trusted-proxy-hops';
 
 async function bootstrap() {
   const logger = new LoggingService('Bootstrap');
@@ -17,12 +18,13 @@ async function bootstrap() {
     logger: ['log', 'error', 'warn'],
   });
 
-  // DEPLOYMENT.md's documented topology is exactly one reverse proxy
-  // (nginx/Caddy) in front of the API container. Without this, Express's
-  // req.ip resolves to the proxy's own address for every request — the
-  // rate limiter below would key on that single IP and throttle all
-  // production traffic together instead of per-client.
-  app.set('trust proxy', 1);
+  // How many proxies append to X-Forwarded-For before a request reaches
+  // us. Must match the deployment: too low and req.ip becomes a proxy's
+  // own address, so every client shares one rate-limit bucket; too high
+  // and a client can forge req.ip and step around the limiter. Defaults
+  // to 1 (the web container alone); the TLS overlay sets 2.
+  // See platform/trusted-proxy-hops.ts.
+  app.set('trust proxy', resolveTrustedProxyHops());
 
   app.use(correlationIdMiddleware);
   app.use(cookieParser());

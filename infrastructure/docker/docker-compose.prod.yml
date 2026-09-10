@@ -62,6 +62,13 @@ services:
       REDIS_URL: redis://redis:6379
       REDIS_ENABLED: ${REDIS_ENABLED:-true}
 
+      # Number of proxies that append to X-Forwarded-For before a
+      # request reaches the API. 1 is the web container alone; the TLS
+      # overlay raises it to 2. Count proxies, not network hops — too low
+      # and every client shares one rate-limit bucket, too high and a
+      # client can forge its own address past the limiter.
+      TRUSTED_PROXY_HOPS: ${TRUSTED_PROXY_HOPS:-1}
+
       LOG_LEVEL: ${LOG_LEVEL:-warn}
       LOG_FORMAT: ${LOG_FORMAT:-json}
       RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-100}
