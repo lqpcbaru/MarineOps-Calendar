@@ -1,0 +1,30 @@
+# TLS termination for MarineOps.
+#
+# Caddy's only job here is HTTPS: obtain and renew the certificate, then
+# hand every request to the web container unchanged. All routing —
+# public portal, /admin, /api, /health, SPA fallbacks, security headers —
+# already lives in nginx.conf inside that container, and duplicating any
+# of it here would create two places to keep in step.
+
+{
+	email {$ACME_EMAIL}
+}
+
+{$PUBLIC_DOMAIN} {
+	encode zstd gzip
+
+	reverse_proxy web:8080 {
+		# The API trusts exactly one proxy hop and derives the client IP
+		# for rate limiting from X-Forwarded-For. Caddy sets that, plus
+		# X-Forwarded-Proto, which is what tells the API the original
+		# request was HTTPS.
+		header_up X-Real-IP {remote_host}
+	}
+
+	# Caddy already logs to stdout; keep it structured for the same
+	# json-file driver the other services use.
+	log {
+		output stdout
+		format json
+	}
+}

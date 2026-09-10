@@ -1,0 +1,144 @@
+# ── Production runtime ────────────────────────────────────────
+#
+# Runs the PUBLISHED GHCR images. Nothing is built here: the images are
+# the artefacts CI smoke-tested before pushing, so what runs in
+# production is byte-for-byte what passed.
+#
+# This is deliberately separate from docker-compose.yml, which builds
+# from source and is for local development only.
+#
+#   MARINEOPS_TAG=v1.0.0 \
+#     docker compose -f infrastructure/docker/docker-compose.prod.yml \
+#       --env-file ./production.env up -d
+#
+# WHAT THIS FILE DOES NOT PROVIDE
+#
+# - PostgreSQL. Production uses managed Postgres (DEPLOYMENT.md §3), so
+#   DATABASE_URL must point at it. Running the database as a container
+#   beside the app would put the one piece of state that matters on the
+#   same disk as the stateless tier.
+# - TLS. Add docker-compose.tls.yml for a terminator on this host, or
+#   point an existing load balancer at the web service. This is NOT
+#   optional in production: the refresh cookie is issued with `Secure`
+#   whenever NODE_ENV is not development, and browsers discard Secure
+#   cookies delivered over plain HTTP — so sign-in silently fails to
+#   persist without HTTPS in front.
+#
+# Every secret is `${VAR:?}`, so a missing one fails the deployment
+# immediately rather than starting a container that 500s on first use.
+
+services:
+  api:
+    image: ghcr.io/lqpcbaru/marineops-api:${MARINEOPS_TAG:?MARINEOPS_TAG is required, e.g. v1.0.0 or sha-abc1234}
+    container_name: marineops-api
+    restart: unless-stopped
+    # Not published to the host: only the web tier needs to reach it, and
+    # it does so over this compose network. Exposing the API directly
+    # would bypass nginx's rate limiting and security headers.
+    expose:
+      - '3000'
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: '3000'
+      APP_NAME: ${APP_NAME:-MarineOps}
+
+      # Public origin of the site. Used for CORS, so it must match the
+      # scheme and host a browser actually loads — including https://.
+      APP_URL: ${APP_URL:?APP_URL is required, e.g. https://marineops.example}
+
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required (managed Postgres)}
+
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?JWT_ACCESS_SECRET is required}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?JWT_REFRESH_SECRET is required}
+      JWT_ACCESS_TTL_MINUTES: ${JWT_ACCESS_TTL_MINUTES:-15}
+      JWT_REFRESH_TTL_DAYS: ${JWT_REFRESH_TTL_DAYS:-7}
+
+      # Enabled by default here, unlike the development compose. More
+      # than one API instance means an in-process cache is per-instance
+      # and diverges between them.
+      REDIS_URL: redis://redis:6379
+      REDIS_ENABLED: ${REDIS_ENABLED:-true}
+
+      LOG_LEVEL: ${LOG_LEVEL:-warn}
+      LOG_FORMAT: ${LOG_FORMAT:-json}
+      RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-100}
+      LOGIN_RATE_LIMIT_MAX: ${LOGIN_RATE_LIMIT_MAX:-10}
+
+      # Absent until issued. Their absence is a supported state: the
+      # sourced-data endpoints answer 503 PROVIDER_CONFIG_ERROR and
+      # everything else serves normally.
+      METMALAYSIA_API_KEY: ${METMALAYSIA_API_KEY:-}
+      JUPEM_API_KEY: ${JUPEM_API_KEY:-}
+      GFW_API_TOKEN: ${GFW_API_TOKEN:-}
+    deploy:
+      resources:
+        limits:
+          memory: ${API_MEMORY_LIMIT:-512M}
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '5'
+
+  web:
+    image: ghcr.io/lqpcbaru/marineops-web:${MARINEOPS_TAG:?MARINEOPS_TAG is required, e.g. v1.0.0 or sha-abc1234}
+    container_name: marineops-web
+    restart: unless-stopped
+    ports:
+      # Loopback by default, so a misconfigured host cannot accidentally
+      # serve the site over plain HTTP to the internet. With the TLS
+      # overlay, Caddy reaches this over the compose network and this
+      # binding is unnecessary but harmless. With an external load
+      # balancer on another host, set WEB_BIND=0.0.0.0:8080 — and only
+      # do that where the network path to it is already private.
+      - '${WEB_BIND:-127.0.0.1:8080}:8080'
+    depends_on:
+      # nginx resolves the `api` upstream when it starts and refuses to
+      # start if it cannot. This waits for the container to exist, which
+      # is all that is needed — nginx retries the upstream per request.
+      - api
+    deploy:
+      resources:
+        limits:
+          memory: ${WEB_MEMORY_LIMIT:-128M}
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '5'
+
+  redis:
+    image: redis:7-alpine
+    container_name: marineops-redis
+    restart: unless-stopped
+    # Cache only. Nothing here is authoritative, so it is deliberately
+    # not published and not backed up: losing it costs a cold cache.
+    expose:
+      - '6379'
+    command:
+      - redis-server
+      - --save
+      - ''
+      - --appendonly
+      - 'no'
+      - --maxmemory
+      - ${REDIS_MAXMEMORY:-256mb}
+      - --maxmemory-policy
+      - allkeys-lru
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: ${REDIS_MEMORY_LIMIT:-320M}
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '5'

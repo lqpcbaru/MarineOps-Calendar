@@ -1,0 +1,25 @@
+# Schedules marineops-backup.service.
+#
+# Nothing in the repository can schedule itself; this is the piece that
+# turns db-backup.sh from a script somebody has to remember into an
+# actual backup regime. Until it is installed and enabled, there are no
+# backups, however correct the script is.
+
+[Unit]
+Description=Daily MarineOps PostgreSQL backup
+Documentation=file:///opt/marineops/docs/operations/PRODUCTION_RUNBOOK.md
+
+[Timer]
+# 02:15 local time, daily. Randomised so a fleet of hosts does not hit a
+# managed database simultaneously.
+OnCalendar=*-*-* 02:15:00
+RandomizedDelaySec=30m
+
+# If the host was off at 02:15, run once it is back rather than skipping
+# the day entirely.
+Persistent=true
+
+Unit=marineops-backup.service
+
+[Install]
+WantedBy=timers.target
