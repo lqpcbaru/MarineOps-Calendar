@@ -185,6 +185,13 @@ the deployment with the variable's name before a container starts.
 Verified for `MARINEOPS_TAG`, `APP_URL`, `DATABASE_URL`,
 `JWT_ACCESS_SECRET` and `JWT_REFRESH_SECRET`.
 
+**The database connection must require TLS.** `DATABASE_URL` reaches a
+managed database across a network; without `sslmode` the driver may
+negotiate a plaintext connection and send the password and every row in
+the clear. Use `?sslmode=verify-full` where the provider publishes a CA
+certificate, since that authenticates the server as well as encrypting —
+`require` alone will happily talk to an impostor.
+
 | File                                         | Provides                                             | Status                                                    |
 | -------------------------------------------- | ---------------------------------------------------- | --------------------------------------------------------- |
 | `docker-compose.prod.yml`                    | API, web and Redis from the published GHCR images    | **READY**                                                 |
