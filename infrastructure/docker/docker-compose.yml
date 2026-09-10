@@ -1,5 +1,3 @@
-version: '3.9'
-
 # ── Local development compose ─────────────────────────────────
 # This file is for LOCAL DEVELOPMENT ONLY. It must never be used
 # verbatim for production. Production secrets are injected from a
@@ -59,6 +57,11 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      # Waited on unconditionally: compose cannot make a dependency
+      # conditional on REDIS_ENABLED, and waiting for an already-healthy
+      # container costs nothing when the cache is off.
+      redis:
+        condition: service_healthy
     environment:
       NODE_ENV: production
       PORT: 3000
@@ -66,7 +69,12 @@ services:
       APP_URL: ${APP_URL:-http://localhost:3000}
       DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
       REDIS_URL: redis://redis:6379
-      REDIS_ENABLED: 'false'
+      # Defaults to the in-memory store so a bare `docker compose up` needs
+      # no extra setup. Production runs more than one API instance, where an
+      # in-process cache is per-instance and diverges between them -- set
+      # REDIS_ENABLED=true there. Kept overridable so the Redis path can
+      # actually be exercised before a release.
+      REDIS_ENABLED: ${REDIS_ENABLED:-false}
       JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?JWT_ACCESS_SECRET is required}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?JWT_REFRESH_SECRET is required}
       JWT_ACCESS_TTL_MINUTES: '15'
@@ -75,6 +83,30 @@ services:
       LOG_FORMAT: json
       RATE_LIMIT_MAX: '100'
       LOGIN_RATE_LIMIT_MAX: '10'
+
+  # Web tier: both portals plus the reverse proxy, i.e. the production
+  # topology from DEPLOYMENT.md §2/§4. Present here so the full chain
+  # (browser -> nginx -> portals/API) can be exercised locally before a
+  # release — it is the only way to verify the nginx config and the
+  # /admin routing without a deployed environment.
+  #
+  # Day-to-day front-end development still uses `pnpm dev` (Vite on 5173 /
+  # 5174 with its own /api proxy); this service serves BUILT bundles and
+  # will not hot-reload.
+  web:
+    build:
+      context: ../..
+      dockerfile: infrastructure/docker/Dockerfile.web
+    container_name: marineops-web
+    restart: unless-stopped
+    ports:
+      - '8080:8080'
+    depends_on:
+      # nginx resolves the `api` upstream hostname at startup and refuses to
+      # start if it cannot — so the API container must exist first. This
+      # only waits for the container, not for the API to be listening;
+      # nginx retries the upstream per request, so that is sufficient.
+      - api
 
 volumes:
   postgres_data:

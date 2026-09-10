@@ -26,6 +26,10 @@ import { ROLE_REPOSITORY } from '../../src/modules/roles/application/di-tokens';
 import { InMemoryRoleRepository } from '../../src/modules/roles/application/test-doubles';
 import type { RoleRecord } from '../../src/modules/roles/domain';
 
+import { AuditModule } from '../../src/modules/audit/api/audit.module';
+import { AUDIT_REPOSITORY } from '../../src/modules/audit/application/di-tokens';
+import { InMemoryAuditRepository } from '../../src/modules/audit/application/test-doubles';
+
 import { DomainExceptionFilter } from '../../src/platform/domain-exception.filter';
 
 /**
@@ -37,6 +41,7 @@ import { DomainExceptionFilter } from '../../src/platform/domain-exception.filte
  */
 describe('Roles admin RBAC + business rules (e2e, in-memory infrastructure)', () => {
   let app: INestApplication;
+  let auditRepository: InMemoryAuditRepository;
 
   const auditor: UserAuthRecord = makeUserRecord({
     id: 'user-auditor',
@@ -79,9 +84,10 @@ describe('Roles admin RBAC + business rules (e2e, in-memory infrastructure)', ()
     roleRepository = new InMemoryRoleRepository();
     roleRepository.seed([existingRole, roleWithUsers]);
     roleRepository.setUserCount(roleWithUsers.id, 3);
+    auditRepository = new InMemoryAuditRepository();
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AuthenticationModule, RolesModule],
+      imports: [AuthenticationModule, RolesModule, AuditModule],
       controllers: [AuthController, RolesController],
     })
       .overrideProvider(USER_IDENTITY_PROVIDER)
@@ -94,6 +100,8 @@ describe('Roles admin RBAC + business rules (e2e, in-memory infrastructure)', ()
       .useValue(fakeTokenService)
       .overrideProvider(ROLE_REPOSITORY)
       .useValue(roleRepository)
+      .overrideProvider(AUDIT_REPOSITORY)
+      .useValue(auditRepository)
       .compile();
 
     app = moduleFixture.createNestApplication();
@@ -156,6 +164,12 @@ describe('Roles admin RBAC + business rules (e2e, in-memory infrastructure)', ()
         .send({ name: 'DataAnalyst', permissionCodes: ['dashboard.read'] });
       expect(res.status).toBe(201);
       expect(res.body.name).toBe('DataAnalyst');
+      const auditEntry = auditRepository.events.find((e) => e.entityId === res.body.id);
+      expect(auditEntry).toMatchObject({
+        actorId: admin.id,
+        action: 'role.create',
+        entityType: 'role',
+      });
     });
 
     it('POST /v1/roles rejects an empty permissionCodes array with 400', async () => {

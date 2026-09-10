@@ -20,6 +20,8 @@ import {
   PermissionsGuard,
   RequirePermissions,
 } from '../../modules/authentication/api/permissions.guard';
+import { CurrentPrincipal } from '../../modules/authentication/api/current-principal.decorator';
+import type { AuthPrincipal } from '../../modules/authentication/domain';
 
 @Controller('v1/roles')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
@@ -59,8 +61,11 @@ export class RolesController {
 
   @Post()
   @RequirePermissions('role.manage')
-  async create(@Body() body: CreateRoleCommand) {
-    const role = await this.createRole.execute(body);
+  async create(
+    @Body() body: CreateRoleCommand,
+    @CurrentPrincipal() principal: AuthPrincipal | undefined,
+  ) {
+    const role = await this.createRole.execute(body, principal?.userId ?? null);
     return {
       id: role.id,
       name: role.name,
@@ -72,8 +77,12 @@ export class RolesController {
 
   @Patch(':id')
   @RequirePermissions('role.manage')
-  async update(@Param('id') id: string, @Body() body: UpdateRoleCommand) {
-    const role = await this.updateRole.execute(id, body);
+  async update(
+    @Param('id') id: string,
+    @Body() body: UpdateRoleCommand,
+    @CurrentPrincipal() principal: AuthPrincipal | undefined,
+  ) {
+    const role = await this.updateRole.execute(id, body, principal?.userId ?? null);
     return {
       id: role.id,
       name: role.name,
@@ -86,7 +95,7 @@ export class RolesController {
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @RequirePermissions('role.manage')
-  async delete(@Param('id') id: string) {
-    await this.deleteRole.execute(id);
+  async delete(@Param('id') id: string, @CurrentPrincipal() principal: AuthPrincipal | undefined) {
+    await this.deleteRole.execute(id, principal?.userId ?? null);
   }
 }

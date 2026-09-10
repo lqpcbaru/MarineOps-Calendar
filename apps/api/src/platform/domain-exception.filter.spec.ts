@@ -3,6 +3,11 @@ import type { ArgumentsHost } from '@nestjs/common';
 import { HttpException, HttpStatus } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { NotFoundError, ValidationError } from '../shared-kernel';
+import {
+  ProviderConfigurationError,
+  ProviderInvalidResponseError,
+  ProviderUnavailableError,
+} from '../shared/provider/provider-error';
 import { DomainExceptionFilter } from './domain-exception.filter';
 
 function makeHost(correlationId?: string) {
@@ -32,6 +37,100 @@ describe('DomainExceptionFilter', () => {
     expect(json).toHaveBeenCalledWith(
       expect.objectContaining({ code: 'NOT_FOUND', correlationId: 'req-123' }),
     );
+  });
+
+  // A missing station->provider mapping is OUR configuration gap: the
+  // upstream is never contacted, so 502 Bad Gateway blames a system that
+  // did nothing. It also hides real outages — a newly deployed environment
+  // has no mappings yet, so every sourced-data request would emit the same
+  // 502 as a genuine upstream failure. Found live: /api/public/tide,
+  // /weather and /wind-wave all returned 502 on a correctly working stack
+  // that simply had no mappings configured yet.
+  it('reports a provider configuration gap as 503, not 502', () => {
+    const filter = new DomainExceptionFilter();
+    const { host, status, json } = makeHost('req-cfg');
+
+    filter.catch(new ProviderConfigurationError('JUPEM', 'tiada pemetaan untuk stesen st-1'), host);
+
+    expect(status).toHaveBeenCalledWith(HttpStatus.SERVICE_UNAVAILABLE);
+    expect(json).toHaveBeenCalledWith(expect.objectContaining({ code: 'PROVIDER_CONFIG_ERROR' }));
+  });
+
+  // The distinction the previous test protects only means something if a
+  // provider that WAS reached and misbehaved still reports 502.
+  it('still reports a bad upstream response as 502', () => {
+    const filter = new DomainExceptionFilter();
+    const { host, status } = makeHost('req-bad');
+
+    filter.catch(new ProviderInvalidResponseError('JUPEM', 'missing data array'), host);
+
+    expect(status).toHaveBeenCalledWith(HttpStatus.BAD_GATEWAY);
+  });
+
+  it('reports an unreachable provider as 503', () => {
+    const filter = new DomainExceptionFilter();
+    const { host, status } = makeHost('req-down');
+
+    filter.catch(new ProviderUnavailableError('JUPEM'), host);
+
+    expect(status).toHaveBeenCalledWith(HttpStatus.SERVICE_UNAVAILABLE);
+  });
+
+  // A database outage is a dependency failure, not a fault in this
+  // application. Reported as 500 it is indistinguishable from a genuine
+  // bug: alerting cannot tell "Postgres is down" from "our code threw",
+  // and clients treat it as non-retryable when retrying is exactly right.
+  // Observed live by stopping Postgres: every data endpoint and login
+  // returned 500 while /health/ready correctly reported 503.
+  it('reports an unreachable database as 503, not 500', () => {
+    const filter = new DomainExceptionFilter();
+    const { host, status, json } = makeHost('req-db');
+
+    filter.catch(
+      new Prisma.PrismaClientKnownRequestError("Can't reach database server", {
+        code: 'P1001',
+        clientVersion: 'test',
+      }),
+      host,
+    );
+
+    expect(status).toHaveBeenCalledWith(HttpStatus.SERVICE_UNAVAILABLE);
+    expect(json).toHaveBeenCalledWith(
+      expect.objectContaining({ code: 'DATABASE_UNAVAILABLE', correlationId: 'req-db' }),
+    );
+  });
+
+  it('reports a connection-pool timeout as 503', () => {
+    const filter = new DomainExceptionFilter();
+    const { host, status } = makeHost('req-pool');
+
+    filter.catch(
+      new Prisma.PrismaClientKnownRequestError('Timed out fetching a connection', {
+        code: 'P2024',
+        clientVersion: 'test',
+      }),
+      host,
+    );
+
+    expect(status).toHaveBeenCalledWith(HttpStatus.SERVICE_UNAVAILABLE);
+  });
+
+  // The distinction only means anything if a real application fault still
+  // reports 500 — otherwise every bug would be excused as an outage.
+  it('still reports an ordinary Prisma failure as 500', () => {
+    const filter = new DomainExceptionFilter();
+    const { host, status, json } = makeHost('req-bug');
+
+    filter.catch(
+      new Prisma.PrismaClientKnownRequestError('Record to update not found', {
+        code: 'P2025',
+        clientVersion: 'test',
+      }),
+      host,
+    );
+
+    expect(status).toHaveBeenCalledWith(HttpStatus.INTERNAL_SERVER_ERROR);
+    expect(json).toHaveBeenCalledWith(expect.objectContaining({ code: 'INTERNAL_ERROR' }));
   });
 
   it('includes correlationId in the envelope for an HttpException', () => {

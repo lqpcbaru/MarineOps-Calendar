@@ -26,6 +26,8 @@ import {
   PermissionsGuard,
   RequirePermissions,
 } from '../../modules/authentication/api/permissions.guard';
+import { CurrentPrincipal } from '../../modules/authentication/api/current-principal.decorator';
+import type { AuthPrincipal } from '../../modules/authentication/domain';
 
 @Controller('v1/stations')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
@@ -53,23 +55,30 @@ export class AdminStationsController {
 
   @Post()
   @RequirePermissions('station.write')
-  async create(@Body() body: CreateStationCommand) {
-    const s = await this.createStation.execute(body);
+  async create(
+    @Body() body: CreateStationCommand,
+    @CurrentPrincipal() principal: AuthPrincipal | undefined,
+  ) {
+    const s = await this.createStation.execute(body, principal?.userId ?? null);
     return toPublicStation(s);
   }
 
   @Patch(':id')
   @RequirePermissions('station.write')
-  async update(@Param('id') id: string, @Body() body: UpdateStationCommand) {
-    const s = await this.updateStation.execute(id, body);
+  async update(
+    @Param('id') id: string,
+    @Body() body: UpdateStationCommand,
+    @CurrentPrincipal() principal: AuthPrincipal | undefined,
+  ) {
+    const s = await this.updateStation.execute(id, body, principal?.userId ?? null);
     return toPublicStation(s);
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @RequirePermissions('station.write')
-  async archive(@Param('id') id: string) {
-    await this.archiveStation.execute(id);
+  async archive(@Param('id') id: string, @CurrentPrincipal() principal: AuthPrincipal | undefined) {
+    await this.archiveStation.execute(id, principal?.userId ?? null);
   }
 }
 

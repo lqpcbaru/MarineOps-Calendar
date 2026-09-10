@@ -5,8 +5,10 @@ import { UpdateUserUseCase } from '../application/update-user.use-case';
 import { DisableUserUseCase } from '../application/disable-user.use-case';
 import { PrismaUserRepository } from '../infrastructure/prisma-user.repository';
 import { USER_REPOSITORY } from '../application/di-tokens';
+import { AuditModule } from '../../audit/api/audit.module';
 
 @Module({
+  imports: [AuditModule],
   providers: [
     CreateUserUseCase,
     GetUsersUseCase,

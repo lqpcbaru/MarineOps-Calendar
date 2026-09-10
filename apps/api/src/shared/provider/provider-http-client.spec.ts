@@ -10,6 +10,7 @@ import {
   ProviderUnavailableError,
   ProviderConfigurationError,
 } from './provider-error';
+import { errorResponse, jsonResponse } from './test-responses';
 
 describe('ProviderHttpClient', () => {
   let originalFetch: typeof globalThis.fetch;
@@ -35,40 +36,24 @@ describe('ProviderHttpClient', () => {
   }
 
   it('returns parsed JSON on a 200 response', async () => {
-    globalThis.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: async () => ({ hello: 'world' }),
-    } as Response);
+    globalThis.fetch = vi.fn().mockResolvedValue(jsonResponse({ hello: 'world' }, 200));
 
     const client = createClient();
     await expect(client.get('/path')).resolves.toEqual({ hello: 'world' });
   });
 
   it('throws ProviderAuthenticationError on 401/403', async () => {
-    globalThis.fetch = vi.fn().mockResolvedValue({
-      ok: false,
-      status: 401,
-      text: async () => 'Unauthorized',
-    } as unknown as Response);
+    globalThis.fetch = vi.fn().mockResolvedValue(errorResponse(401, 'Unauthorized'));
     await expect(createClient().get('/path')).rejects.toBeInstanceOf(ProviderAuthenticationError);
   });
 
   it('throws ProviderRateLimitError on 429', async () => {
-    globalThis.fetch = vi.fn().mockResolvedValue({
-      ok: false,
-      status: 429,
-      text: async () => 'Too many requests',
-    } as unknown as Response);
+    globalThis.fetch = vi.fn().mockResolvedValue(errorResponse(429, 'Too many requests'));
     await expect(createClient().get('/path')).rejects.toBeInstanceOf(ProviderRateLimitError);
   });
 
   it('throws ProviderServerError on 5xx', async () => {
-    globalThis.fetch = vi.fn().mockResolvedValue({
-      ok: false,
-      status: 503,
-      text: async () => 'Service unavailable',
-    } as unknown as Response);
+    globalThis.fetch = vi.fn().mockResolvedValue(errorResponse(503, 'Service unavailable'));
     await expect(createClient().get('/path')).rejects.toBeInstanceOf(ProviderServerError);
   });
 
@@ -80,14 +65,30 @@ describe('ProviderHttpClient', () => {
   });
 
   it('throws ProviderInvalidResponseError on malformed JSON in an ok response', async () => {
-    globalThis.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: async () => {
-        throw new SyntaxError('Unexpected token in JSON');
-      },
-    } as unknown as Response);
+    // Real malformed body rather than a stubbed json() that throws: the
+    // client parses the body itself, so this exercises the actual path.
+    globalThis.fetch = vi.fn().mockResolvedValue(new Response('{"data": [', { status: 200 }));
     await expect(createClient().get('/path')).rejects.toBeInstanceOf(ProviderInvalidResponseError);
+  });
+
+  // response.json() buffers whatever the upstream sends, with no limit, so
+  // a provider that misbehaves can push this process into memory
+  // exhaustion from the outside. The cap is enforced while reading rather
+  // than after, so the memory is never allocated in the first place.
+  it('refuses an upstream response larger than the size cap', async () => {
+    const oversized = 'x'.repeat(11 * 1024 * 1024);
+    globalThis.fetch = vi
+      .fn()
+      .mockResolvedValue(new Response(JSON.stringify({ pad: oversized }), { status: 200 }));
+
+    await expect(createClient().get('/path')).rejects.toBeInstanceOf(ProviderInvalidResponseError);
+  });
+
+  it('accepts a response comfortably under the cap', async () => {
+    const payload = { pad: 'x'.repeat(64 * 1024) };
+    globalThis.fetch = vi.fn().mockResolvedValue(jsonResponse(payload, 200));
+
+    await expect(createClient().get('/path')).resolves.toEqual(payload);
   });
 
   it('throws ProviderUnavailableError on a raw network failure (DNS/connection refused)', async () => {

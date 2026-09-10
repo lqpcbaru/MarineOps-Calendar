@@ -69,7 +69,14 @@ describe('CacheService', () => {
     await svc.set('key-1', 'stale-data', 'test', 'st-001');
     await new Promise((r) => setTimeout(r, 5));
 
-    const result = await svc.getOrFetch('key-1', async () => { throw new Error('down'); }, 'test', 'st-001');
+    const result = await svc.getOrFetch(
+      'key-1',
+      async () => {
+        throw new Error('down');
+      },
+      'test',
+      'st-001',
+    );
     expect(result.data).toBe('stale-data');
     expect(result.status).toBe('STALE');
     expect(result.source).toBe('cache');
@@ -79,7 +86,14 @@ describe('CacheService', () => {
     const svc = createService();
 
     await expect(
-      svc.getOrFetch('key-1', async () => { throw new Error('down'); }, 'test', 'st-001'),
+      svc.getOrFetch(
+        'key-1',
+        async () => {
+          throw new Error('down');
+        },
+        'test',
+        'st-001',
+      ),
     ).rejects.toThrow('down');
   });
 
@@ -111,5 +125,28 @@ describe('CacheService', () => {
     expect(state.hits).toBe(2);
     expect(state.refreshCount).toBe(1);
     expect(state.hitRatio).toBeCloseTo(2 / 3);
+  });
+});
+
+describe('CacheService — expired entry eviction', () => {
+  it('deletes a fully-expired entry instead of leaving it resident', async () => {
+    const store = new InMemoryCacheStore<string>();
+    const service = new CacheService<string>(
+      store,
+      createCachePolicy({ ttlMs: 1000, staleTtlMs: 2000 }),
+    );
+
+    await service.set('k', 'v', 'provider', 'station');
+    expect(await store.exists('k')).toBe(true);
+
+    // Age the stored entry past staleTtlMs.
+    const stored = (await store.get('k'))!;
+    stored.createdAt = new Date(Date.now() - 10_000);
+    await store.set('k', stored);
+
+    expect(await service.get('k')).toBeNull();
+    // The point of the fix: it is gone from the store, not merely
+    // reported as a miss while still occupying memory.
+    expect(await store.exists('k')).toBe(false);
   });
 });

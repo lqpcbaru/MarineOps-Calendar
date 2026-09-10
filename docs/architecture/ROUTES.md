@@ -57,6 +57,23 @@ This document is the **canonical route table** for both portals (frontend) and b
 
 ## 2. Backend routes
 
+> **These tables are the v2.0.0 target, not the current surface.** The
+> changelog at the foot of this page has said so since 2.0.1, which is
+> easy to miss when the tables themselves read as a description of what
+> exists. Verified against the running API, the following rows are **NOT
+> IMPLEMENTED** and return 404:
+>
+> - Public: `/api/public/wind`, `/api/public/wave` (superseded by
+>   `/api/public/wind-wave`), `/api/public/hijri`, `/api/public/alerts`,
+>   `/api/public/about`
+> - Admin: `/api/v1/dashboard`, `/api/v1/calendar`, `/api/v1/alerts`,
+>   `/api/v1/settings`, and all four `/api/v1/<x>/refresh` endpoints
+>
+> Everything else in both tables is implemented and covered by tests. The
+> `/api/v1/<x>/refresh` rows in particular describe an admin-triggered
+> provider refresh that does not exist in any form — see DEPLOYMENT.md §1
+> on the absence of scheduled refresh generally.
+
 ### 2.1 Public API surface — `/api/public` (no auth, read-only)
 
 | Method | Path                   | Module         | Returns                       |

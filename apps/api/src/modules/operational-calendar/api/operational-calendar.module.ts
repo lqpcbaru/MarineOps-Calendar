@@ -7,7 +7,7 @@ import { MoonModule } from '../../moon/api/moon.module';
 import { SunModule } from '../../sun/api/sun.module';
 import { StationsModule } from '../../stations/api/stations.module';
 import { CacheService } from '../../../shared/cache/cache.service';
-import { InMemoryCacheStore } from '../../../shared/cache/in-memory-cache.store';
+import { createCacheStore } from '../../../shared/cache/create-cache-store';
 import { createCachePolicy } from '../../../shared/cache/cache-policy';
 
 @Module({
@@ -16,10 +16,11 @@ import { createCachePolicy } from '../../../shared/cache/cache-policy';
     OperationalCalendarService,
     {
       provide: 'CACHE_SERVICE',
-      useFactory: () => new CacheService(
-        new InMemoryCacheStore(),
-        createCachePolicy({ ttlMs: 24 * 60 * 60 * 1000, staleTtlMs: 48 * 60 * 60 * 1000 }),
-      ),
+      useFactory: () =>
+        new CacheService(
+          createCacheStore(),
+          createCachePolicy({ ttlMs: 24 * 60 * 60 * 1000, staleTtlMs: 48 * 60 * 60 * 1000 }),
+        ),
     },
   ],
   exports: [OperationalCalendarService],

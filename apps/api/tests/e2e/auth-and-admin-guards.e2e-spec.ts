@@ -26,6 +26,10 @@ import { USER_REPOSITORY } from '../../src/modules/users/application/di-tokens';
 import { InMemoryUserRepository } from '../../src/modules/users/application/test-doubles';
 import type { UserRecord } from '../../src/modules/users/domain';
 
+import { AuditModule } from '../../src/modules/audit/api/audit.module';
+import { AUDIT_REPOSITORY } from '../../src/modules/audit/application/di-tokens';
+import { InMemoryAuditRepository } from '../../src/modules/audit/application/test-doubles';
+
 import { DomainExceptionFilter } from '../../src/platform/domain-exception.filter';
 
 /**
@@ -40,6 +44,7 @@ import { DomainExceptionFilter } from '../../src/platform/domain-exception.filte
  */
 describe('Auth flow + admin RBAC guards (e2e, in-memory infrastructure)', () => {
   let app: INestApplication;
+  let auditRepository: InMemoryAuditRepository;
 
   const planner: UserAuthRecord = makeUserRecord({
     id: 'user-planner',
@@ -77,9 +82,10 @@ describe('Auth flow + admin RBAC guards (e2e, in-memory infrastructure)', () => 
     };
     const userRepository = new InMemoryUserRepository();
     userRepository.seed([adminRecord]);
+    auditRepository = new InMemoryAuditRepository();
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AuthenticationModule, UsersModule],
+      imports: [AuthenticationModule, UsersModule, AuditModule],
       controllers: [AuthController, UsersController],
     })
       .overrideProvider(USER_IDENTITY_PROVIDER)
@@ -92,6 +98,8 @@ describe('Auth flow + admin RBAC guards (e2e, in-memory infrastructure)', () => 
       .useValue(fakeTokenService)
       .overrideProvider(USER_REPOSITORY)
       .useValue(userRepository)
+      .overrideProvider(AUDIT_REPOSITORY)
+      .useValue(auditRepository)
       .compile();
 
     app = moduleFixture.createNestApplication();
@@ -204,6 +212,29 @@ describe('Auth flow + admin RBAC guards (e2e, in-memory infrastructure)', () => 
         .set('Authorization', 'Bearer not-a-real-token');
 
       expect(res.status).toBe(401);
+    });
+  });
+
+  describe('POST /v1/users records an audit entry', () => {
+    it('creates a user and records the acting admin as the audit actor', async () => {
+      const token = await loginAs(admin.email);
+      const res = await request(app.getHttpServer())
+        .post('/api/v1/users')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          email: 'newuser@marineops.local',
+          name: 'New User',
+          password: 'password123',
+          roleIds: ['role-1'],
+        });
+
+      expect(res.status).toBe(201);
+      const auditEntry = auditRepository.events.find((e) => e.entityId === res.body.id);
+      expect(auditEntry).toMatchObject({
+        actorId: admin.id,
+        action: 'user.create',
+        entityType: 'user',
+      });
     });
   });
 });

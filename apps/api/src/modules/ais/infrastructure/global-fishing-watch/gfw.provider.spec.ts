@@ -5,6 +5,7 @@ import type {
   GfwVesselProfileResponse,
   GfwVesselEventsResponse,
 } from './gfw-raw-dto';
+import { errorResponse, jsonResponse } from '../../../../shared/provider/test-responses';
 
 const MOCK_SEARCH: GfwVesselSearchResponse = {
   entries: [
@@ -82,73 +83,43 @@ describe('GfwAisProvider — HTTP mocked', () => {
   });
 
   it('returns search results on 200', async () => {
-    globalThis.fetch = vi
-      .fn()
-      .mockResolvedValue({ ok: true, status: 200, json: async () => MOCK_SEARCH } as Response);
+    globalThis.fetch = vi.fn().mockResolvedValue(jsonResponse(MOCK_SEARCH, 200));
     const result = await new GfwAisProvider().searchVessels('test');
     expect(result.vessels).toHaveLength(1);
     expect(result.vessels[0]!.name).toBe('Test');
   });
 
   it('returns vessel profile on 200', async () => {
-    globalThis.fetch = vi
-      .fn()
-      .mockResolvedValue({ ok: true, status: 200, json: async () => MOCK_PROFILE } as Response);
+    globalThis.fetch = vi.fn().mockResolvedValue(jsonResponse(MOCK_PROFILE, 200));
     const result = await new GfwAisProvider().getVesselProfile('v-1');
     expect(result.identity.name).toBe('Test Vessel');
     expect(result.activity.fishingHours).toBe(100);
   });
 
   it('returns events on 200', async () => {
-    globalThis.fetch = vi
-      .fn()
-      .mockResolvedValue({ ok: true, status: 200, json: async () => MOCK_EVENTS } as Response);
+    globalThis.fetch = vi.fn().mockResolvedValue(jsonResponse(MOCK_EVENTS, 200));
     const result = await new GfwAisProvider().getVesselEvents('v-1');
     expect(result).toHaveLength(1);
     expect(result[0]!.type).toBe('FISHING');
   });
 
   it('throws on 401', async () => {
-    globalThis.fetch = vi
-      .fn()
-      .mockResolvedValue({
-        ok: false,
-        status: 401,
-        text: async () => 'Unauthorized',
-      } as unknown as Response);
+    globalThis.fetch = vi.fn().mockResolvedValue(errorResponse(401, 'Unauthorized'));
     await expect(new GfwAisProvider().searchVessels('test')).rejects.toThrow(/401/);
   });
 
   it('throws on 429', async () => {
-    globalThis.fetch = vi
-      .fn()
-      .mockResolvedValue({
-        ok: false,
-        status: 429,
-        text: async () => 'Rate limited',
-      } as unknown as Response);
+    globalThis.fetch = vi.fn().mockResolvedValue(errorResponse(429, 'Rate limited'));
     await expect(new GfwAisProvider().searchVessels('test')).rejects.toThrow(/had kadar/);
   });
 
   it('throws on 500', async () => {
-    globalThis.fetch = vi
-      .fn()
-      .mockResolvedValue({
-        ok: false,
-        status: 500,
-        text: async () => 'Error',
-      } as unknown as Response);
+    globalThis.fetch = vi.fn().mockResolvedValue(errorResponse(500, 'Error'));
     await expect(new GfwAisProvider().searchVessels('test')).rejects.toThrow(/500/);
   });
 
   it('throws on 403', async () => {
-    globalThis.fetch = vi
-      .fn()
-      .mockResolvedValue({
-        ok: false,
-        status: 403,
-        text: async () => 'Forbidden',
-      } as unknown as Response);
+    globalThis.fetch = vi.fn().mockResolvedValue(errorResponse(403, 'Forbidden'));
     await expect(new GfwAisProvider().searchVessels('test')).rejects.toThrow(/403/);
   });
 
@@ -159,13 +130,7 @@ describe('GfwAisProvider — HTTP mocked', () => {
   });
 
   it('throws on malformed response', async () => {
-    globalThis.fetch = vi
-      .fn()
-      .mockResolvedValue({
-        ok: true,
-        status: 200,
-        json: async () => ({ entries: null }),
-      } as Response);
+    globalThis.fetch = vi.fn().mockResolvedValue(jsonResponse({ entries: null }, 200));
     await expect(new GfwAisProvider().searchVessels('test')).rejects.toThrow(/missing entries/);
   });
 
@@ -179,13 +144,8 @@ describe('GfwAisProvider — HTTP mocked', () => {
     let calls = 0;
     globalThis.fetch = vi.fn().mockImplementation(() => {
       calls++;
-      if (calls < 3)
-        return Promise.resolve({
-          ok: false,
-          status: 500,
-          text: async () => 'error',
-        } as unknown as Response);
-      return Promise.resolve({ ok: true, status: 200, json: async () => MOCK_SEARCH } as Response);
+      if (calls < 3) return Promise.resolve(errorResponse(500, 'error'));
+      return Promise.resolve(jsonResponse(MOCK_SEARCH, 200));
     });
     const result = await new GfwAisProvider().searchVessels('test');
     expect(calls).toBe(3);
@@ -193,9 +153,7 @@ describe('GfwAisProvider — HTTP mocked', () => {
   });
 
   it('tracks metrics', async () => {
-    globalThis.fetch = vi
-      .fn()
-      .mockResolvedValue({ ok: true, status: 200, json: async () => MOCK_SEARCH } as Response);
+    globalThis.fetch = vi.fn().mockResolvedValue(jsonResponse(MOCK_SEARCH, 200));
     const provider = new GfwAisProvider();
     await provider.searchVessels('test');
     expect(provider.getMetrics().getState().successfulRequests).toBeGreaterThanOrEqual(1);

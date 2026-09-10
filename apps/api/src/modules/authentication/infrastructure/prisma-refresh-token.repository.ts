@@ -64,6 +64,15 @@ export class PrismaRefreshTokenRepository implements RefreshTokenRepository {
     return result.count === 1;
   }
 
+  async deleteExpired(userId: string, now: Date = new Date()): Promise<number> {
+    // Scoped to one user and served by refresh_token_user_id_idx, so this
+    // stays a small indexed delete rather than a table-wide sweep.
+    const result = await this.prisma.refreshToken.deleteMany({
+      where: { userId, expiresAt: { lt: now } },
+    });
+    return result.count;
+  }
+
   private toState(row: {
     id: string;
     userId: string;

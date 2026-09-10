@@ -42,6 +42,10 @@ import type {
   UpdateStationParams,
 } from '../../src/modules/stations/domain';
 
+import { AuditModule } from '../../src/modules/audit/api/audit.module';
+import { AUDIT_REPOSITORY } from '../../src/modules/audit/application/di-tokens';
+import { InMemoryAuditRepository } from '../../src/modules/audit/application/test-doubles';
+
 import { DomainExceptionFilter } from '../../src/platform/domain-exception.filter';
 
 /** Minimal in-memory StationRepository — no shared test-double module exists
@@ -135,6 +139,7 @@ class InMemoryRegionRepository implements RegionRepository {
 
 describe('Stations admin RBAC + business rules (e2e, in-memory infrastructure)', () => {
   let app: INestApplication;
+  let auditRepository: InMemoryAuditRepository;
 
   const planner: UserAuthRecord = makeUserRecord({
     id: 'user-planner',
@@ -180,9 +185,10 @@ describe('Stations admin RBAC + business rules (e2e, in-memory infrastructure)',
 
     const stationRepository = new InMemoryStationRepository();
     stationRepository.seed([existingStation]);
+    auditRepository = new InMemoryAuditRepository();
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AuthenticationModule, StationsModule],
+      imports: [AuthenticationModule, StationsModule, AuditModule],
       controllers: [AuthController, AdminStationsController],
     })
       .overrideProvider(USER_IDENTITY_PROVIDER)
@@ -213,6 +219,8 @@ describe('Stations admin RBAC + business rules (e2e, in-memory infrastructure)',
         getByStation: async () => [],
         getByStationAndType: async () => null,
       })
+      .overrideProvider(AUDIT_REPOSITORY)
+      .useValue(auditRepository)
       .compile();
 
     app = moduleFixture.createNestApplication();
@@ -287,6 +295,12 @@ describe('Stations admin RBAC + business rules (e2e, in-memory infrastructure)',
         });
       expect(res.status).toBe(201);
       expect(res.body.code).toBe('LGK-01');
+      const auditEntry = auditRepository.events.find((e) => e.entityId === res.body.id);
+      expect(auditEntry).toMatchObject({
+        actorId: stationWriter.id,
+        action: 'station.create',
+        entityType: 'station',
+      });
     });
 
     it('POST /v1/stations rejects a duplicate code with 409', async () => {

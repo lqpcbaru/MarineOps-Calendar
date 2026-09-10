@@ -384,6 +384,17 @@ async function seedStations(regionMap: Map<string, string>): Promise<Map<string,
   return idMap;
 }
 
+/**
+ * These rows are scaffolding, not working configuration: providerStationId
+ * and config are null because no one has supplied the real MET
+ * Malaysia/JUPEM area codes for these stations. isActive is false on
+ * purpose — the sourced-data providers (met-malaysia-weather.provider.ts,
+ * jupem-tide.provider.ts, marine-forecast.provider.ts) treat an inactive
+ * mapping as "unconfigured" and fail loudly rather than guessing. Do not
+ * flip this to true without also filling in a real area/station code —
+ * the providers refuse to fall back to the internal stationId (a UUID),
+ * since it can never coincidentally be a valid external area code.
+ */
 async function seedProviderMappings(stationMap: Map<string, string>) {
   let count = 0;
 
@@ -397,19 +408,23 @@ async function seedProviderMappings(stationMap: Map<string, string>) {
             dataType: pt.dataType,
           },
         },
-        update: {
-          providerName: pt.providerName,
-          providerStationId: null,
-          config: Prisma.JsonNull,
-          isActive: true,
-        },
+        // Deliberately empty: only ever CREATE the placeholder row, never
+        // overwrite an existing one. providerStationId/config/isActive hold
+        // the real external area codes an operator configures by hand (the
+        // seed cannot know them — they come from MET Malaysia/JUPEM). An
+        // earlier version reset these fields on every run, so re-running
+        // what the runbook calls an idempotent seed silently wiped the
+        // provider configuration and took the sourced-data endpoints
+        // offline. Reference data (regions/stations) is still refreshed
+        // above; operator configuration is not.
+        update: {},
         create: {
           stationId,
           dataType: pt.dataType,
           providerName: pt.providerName,
           providerStationId: null,
           config: Prisma.JsonNull,
-          isActive: true,
+          isActive: false,
         },
       });
       count++;
@@ -417,7 +432,7 @@ async function seedProviderMappings(stationMap: Map<string, string>) {
   }
 
   console.info(
-    `Seeded ${count} provider mappings (${STATIONS.length} stations × ${PROVIDER_TYPES.length} providers)`,
+    `Seeded ${count} provider mappings (${STATIONS.length} stations × ${PROVIDER_TYPES.length} providers) — inactive scaffolding, not live until real area codes are configured`,
   );
 }
 

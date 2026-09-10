@@ -25,6 +25,11 @@ import { AuditController } from '../../src/api/admin/audit.controller';
 import { AUDIT_REPOSITORY } from '../../src/modules/audit/application/di-tokens';
 import { InMemoryAuditRepository } from '../../src/modules/audit/application/test-doubles';
 
+import { RolesModule } from '../../src/modules/roles/api/roles.module';
+import { RolesController } from '../../src/api/admin/roles.controller';
+import { ROLE_REPOSITORY } from '../../src/modules/roles/application/di-tokens';
+import { InMemoryRoleRepository } from '../../src/modules/roles/application/test-doubles';
+
 import { DomainExceptionFilter } from '../../src/platform/domain-exception.filter';
 
 /**
@@ -44,6 +49,11 @@ describe('Audit admin RBAC guards (e2e, in-memory infrastructure)', () => {
     email: 'auditor@marineops.local',
     permissionCodes: ['audit.read'],
   });
+  const roleAdmin: UserAuthRecord = makeUserRecord({
+    id: 'user-role-admin',
+    email: 'roleadmin@marineops.local',
+    permissionCodes: ['role.manage', 'audit.read'],
+  });
 
   beforeAll(async () => {
     process.env['JWT_ACCESS_SECRET'] = 'e2e-test-secret';
@@ -52,6 +62,7 @@ describe('Audit admin RBAC guards (e2e, in-memory infrastructure)', () => {
       new Map([
         [planner.id, planner],
         [auditor.id, auditor],
+        [roleAdmin.id, roleAdmin],
       ]),
     );
     const fakeTokenService = new FakeTokenService();
@@ -65,9 +76,11 @@ describe('Audit admin RBAC guards (e2e, in-memory infrastructure)', () => {
       payload: { field: 'status' },
     });
 
+    const roleRepository = new InMemoryRoleRepository();
+
     const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AuthenticationModule, AuditModule],
-      controllers: [AuthController, AuditController],
+      imports: [AuthenticationModule, AuditModule, RolesModule],
+      controllers: [AuthController, AuditController, RolesController],
     })
       .overrideProvider(USER_IDENTITY_PROVIDER)
       .useValue(identityProvider)
@@ -79,6 +92,8 @@ describe('Audit admin RBAC guards (e2e, in-memory infrastructure)', () => {
       .useValue(fakeTokenService)
       .overrideProvider(AUDIT_REPOSITORY)
       .useValue(auditRepository)
+      .overrideProvider(ROLE_REPOSITORY)
+      .useValue(roleRepository)
       .compile();
 
     app = moduleFixture.createNestApplication();
@@ -128,5 +143,32 @@ describe('Audit admin RBAC guards (e2e, in-memory infrastructure)', () => {
       .get('/api/v1/audit?page=not-a-number')
       .set('Authorization', `Bearer ${token}`);
     expect(res.status).toBe(400);
+  });
+
+  describe('end-to-end: a real admin mutation produces a queryable audit entry', () => {
+    it('POST /v1/roles is recorded and readable back via GET /v1/audit', async () => {
+      const token = await loginAs(roleAdmin.email);
+
+      const createRes = await request(app.getHttpServer())
+        .post('/api/v1/roles')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ name: 'E2ERole', permissionCodes: ['station.read'] });
+      expect(createRes.status).toBe(201);
+
+      const auditRes = await request(app.getHttpServer())
+        .get(`/api/v1/audit?entityType=role&action=role.create`)
+        .set('Authorization', `Bearer ${token}`);
+      expect(auditRes.status).toBe(200);
+
+      const entry = auditRes.body.data.find(
+        (e: { entityId: string }) => e.entityId === createRes.body.id,
+      );
+      expect(entry).toMatchObject({
+        actorId: roleAdmin.id,
+        action: 'role.create',
+        entityType: 'role',
+        entityId: createRes.body.id,
+      });
+    });
   });
 });

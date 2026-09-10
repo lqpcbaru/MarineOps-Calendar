@@ -12,8 +12,8 @@
 
 ```mermaid
 flowchart TB
-    subgraph EDGE["Edge / CDN"]
-        CDN["CDN + Reverse Proxy<br/>(rate-limit, TLS, static cache)"]
+    subgraph EDGE["Edge (external — not in this repository)"]
+        LB["TLS terminator / load balancer<br/>optional CDN in front"]
     end
 
     subgraph USERS["Clients"]
@@ -21,46 +21,60 @@ flowchart TB
         ADM["Admin Portal browser<br/>(apps/web-admin — JWT)"]
     end
 
+    subgraph WEBTIER["Web container (infrastructure/docker/Dockerfile.web)"]
+        NGINX["nginx — serves BOTH portal bundles<br/>and reverse-proxies /api and /health<br/>listens on 8080, runs as non-root"]
+    end
+
     subgraph APP["Application tier (containers × N)"]
         API["MarineOps Hub API<br/>NestJS modular monolith<br/>/api/public + /api/v1"]
-        CRON["NestJS Schedule (cron)<br/>runs inside API process"]
     end
 
     subgraph DATA["Data tier"]
-        PG[("PostgreSQL 16<br/>primary + caches")]
-        S3[("Object storage<br/>S3-compatible")]
+        PG[("PostgreSQL 16")]
+        REDIS[("Redis 7 — optional<br/>REDIS_ENABLED=true")]
     end
 
     subgraph EXT["External providers"]
-        TIDE["Tide API<br/>(NOAA etc.)"]
-        WEATHER["Weather API<br/>(OM/OWM)"]
-        WINDWAVE["Wind/Wave API"]
+        MET["MET Malaysia<br/>(weather)"]
+        JUPEM["JUPEM<br/>(tide)"]
+        MARINE["Marine forecast<br/>(wind/wave)"]
+        GFW["Global Fishing Watch<br/>(vessel AIS)"]
     end
 
-    PUB -->|"/api/public (GET, no auth)"| CDN
-    ADM -->|"/api/v1 (Bearer JWT)"| CDN
-    CDN -->|static| PUB
-    CDN -->|static /admin| ADM
-    CDN -->"/api/public" API
-    CDN -->"/api/v1" API
+    PUB --> LB
+    ADM --> LB
+    LB --> NGINX
+
+    NGINX -->|"static /"| PUB
+    NGINX -->|"static /admin/"| ADM
+    NGINX -->|"/api/public, /api/v1, /health"| API
 
     API --> PG
-    API --> S3
-    API -.->|"adapter ports (HTTPS)" TIDE
-    API -.-> WEATHER
-    API -.-> WINDWAVE
-
-    CRON -.->|"in-process trigger"| API
-    CRON -.-> TIDE
-    CRON -.-> WEATHER
-    CRON -.-> WINDWAVE
+    API -.->|"when enabled"| REDIS
+    API -.->|"adapter ports (HTTPS, on demand)"| MET
+    API -.-> JUPEM
+    API -.-> MARINE
+    API -.-> GFW
 ```
+
+**Provider data is fetched on demand and cached** — there is no background
+refresh. `@nestjs/schedule` is a dependency and `src/shared/scheduler`
+contains an unwired scheduler module, but nothing registers a cron job and
+no `@Cron` handler exists anywhere in the application. A read that misses
+the cache calls the provider inline; the cache is the only thing keeping
+provider traffic down. Earlier revisions of this diagram showed an
+in-process cron doing hourly refresh, which was never built.
+
+There is likewise no object storage: nothing in the API reads or writes
+S3, and no artefacts are stored outside PostgreSQL.
 
 ---
 
 ## 2. Routing at the edge
 
-The reverse proxy / CDN routes by path prefix:
+nginx in the web container routes by path prefix (the config is
+`infrastructure/docker/nginx.conf`; a CDN in front is optional and adds
+nothing that is required):
 
 | Path            | Target                                              | Notes                                           |
 | --------------- | --------------------------------------------------- | ----------------------------------------------- |

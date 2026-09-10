@@ -26,6 +26,8 @@ import {
   PermissionsGuard,
   RequirePermissions,
 } from '../../modules/authentication/api/permissions.guard';
+import { CurrentPrincipal } from '../../modules/authentication/api/current-principal.decorator';
+import type { AuthPrincipal } from '../../modules/authentication/domain';
 
 @Controller('v1/users')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
@@ -53,23 +55,30 @@ export class UsersController {
 
   @Post()
   @RequirePermissions('user.manage')
-  async create(@Body() body: CreateUserCommand) {
-    const user = await this.createUser.execute(body);
+  async create(
+    @Body() body: CreateUserCommand,
+    @CurrentPrincipal() principal: AuthPrincipal | undefined,
+  ) {
+    const user = await this.createUser.execute(body, principal?.userId ?? null);
     return toPublicUser(user);
   }
 
   @Patch(':id')
   @RequirePermissions('user.manage')
-  async update(@Param('id') id: string, @Body() body: UpdateUserCommand) {
-    const user = await this.updateUser.execute(id, body);
+  async update(
+    @Param('id') id: string,
+    @Body() body: UpdateUserCommand,
+    @CurrentPrincipal() principal: AuthPrincipal | undefined,
+  ) {
+    const user = await this.updateUser.execute(id, body, principal?.userId ?? null);
     return toPublicUser(user);
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @RequirePermissions('user.manage')
-  async disable(@Param('id') id: string) {
-    await this.disableUser.execute(id);
+  async disable(@Param('id') id: string, @CurrentPrincipal() principal: AuthPrincipal | undefined) {
+    await this.disableUser.execute(id, principal?.userId ?? null);
   }
 }
 

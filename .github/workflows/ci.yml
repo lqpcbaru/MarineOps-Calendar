@@ -82,12 +82,24 @@ jobs:
           name: web-public-dist
           path: apps/web-public/dist
           retention-days: 14
+      # Built with base=/admin/ so it can be served alongside web-public
+      # from one origin — see infrastructure/docker/nginx.conf.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web-admin-dist
+          path: apps/web-admin/dist
+          retention-days: 14
 
   docker:
-    name: Docker Build
+    name: Docker Build & Publish
     runs-on: ubuntu-latest
     needs: test
     if: github.event_name == 'release'
+    # GITHUB_TOKEN needs packages:write to push to GHCR. Scoped to this job
+    # only — the lint/test/build jobs stay read-only.
+    permissions:
+      contents: read
+      packages: write
     services:
       postgres:
         image: postgres:16-alpine
@@ -99,10 +111,38 @@ jobs:
         options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
     steps:
       - uses: actions/checkout@v4
+
+      # GHCR rejects uppercase path segments, and this repo's owner/name are
+      # mixed-case — always normalise rather than interpolating directly.
+      - name: Resolve image reference
+        id: image
+        run: |
+          owner=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          echo "repo=ghcr.io/${owner}/marineops-api" >> "$GITHUB_OUTPUT"
+          echo "web=ghcr.io/${owner}/marineops-web" >> "$GITHUB_OUTPUT"
+          echo "sha=sha-$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+
       - name: Build Docker image
-        run: docker build -f apps/api/Dockerfile -t marineops-api:${{ github.ref_name }} .
+        run: |
+          docker build -f apps/api/Dockerfile \
+            --label org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }} \
+            --label org.opencontainers.image.revision=${{ github.sha }} \
+            --label org.opencontainers.image.version=${{ github.ref_name }} \
+            -t marineops-api:${{ github.ref_name }} .
       - name: Tag as latest
         run: docker tag marineops-api:${{ github.ref_name }} marineops-api:latest
+
+      # The web tier (both portals + nginx). Without this the front-ends
+      # have no deployable artifact — only zip files on a CI run.
+      - name: Build web Docker image
+        run: |
+          docker build -f infrastructure/docker/Dockerfile.web \
+            --label org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }} \
+            --label org.opencontainers.image.revision=${{ github.sha }} \
+            --label org.opencontainers.image.version=${{ github.ref_name }} \
+            -t marineops-web:${{ github.ref_name }} .
+      - name: Tag web as latest
+        run: docker tag marineops-web:${{ github.ref_name }} marineops-web:latest
       # A clean `docker build` only proves the image compiles — it says
       # nothing about whether the container actually starts (a missing env
       # var, a bad CMD path, or a non-root permission issue would all still
@@ -139,6 +179,125 @@ jobs:
           fi
 
           echo "Smoke test passed: container starts, connects to the database, and serves both health endpoints."
-      - name: Clean up smoke test container
+
+      # The API smoke test above leaves the API listening on 127.0.0.1:3000.
+      # nginx.conf proxies to the `api` host, so map that name to loopback
+      # and the whole documented chain (browser -> nginx -> API) is exercised
+      # for real. nginx also refuses to start on an invalid config, so this
+      # doubles as the `nginx -t` that cannot run at image build time.
+      - name: Smoke test — web tier serves both portals and proxies the API
+        run: |
+          docker run -d --name smoke-web --network host \
+            --add-host api:127.0.0.1 \
+            marineops-web:latest
+
+          ready=false
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:8080/ > /dev/null; then ready=true; break; fi
+            sleep 2
+          done
+          if [ "$ready" != "true" ]; then
+            echo "Web container never served the public portal — logs:"
+            docker logs smoke-web
+            exit 1
+          fi
+
+          # Admin portal document must come from the ADMIN bundle, and its
+          # assets must resolve under /admin/assets/ (base=/admin/).
+          if ! curl -sf http://localhost:8080/admin/ | grep -q '/admin/assets/'; then
+            echo "/admin/ did not serve the admin bundle — logs:"
+            docker logs smoke-web
+            exit 1
+          fi
+
+          # SPA fallback: a deep link with no file on disk must still return
+          # the admin document, not a 404 and not the public portal.
+          if ! curl -sf http://localhost:8080/admin/stations | grep -q '/admin/assets/'; then
+            echo "Admin SPA fallback is broken for deep links — logs:"
+            docker logs smoke-web
+            exit 1
+          fi
+
+          # Proxy path: reaches the API through nginx, not directly.
+          curl -sf http://localhost:8080/health/live > /dev/null
+          curl -sf http://localhost:8080/api/public/stations > /dev/null
+
+          # Both portal documents must carry a CSP. nginx inherits
+          # add_header into a nested block only when that block sets no
+          # add_header of its own, so a location that gains a Cache-Control
+          # silently loses the whole security-header set -- with no error,
+          # and invisible to every check above.
+          for path in / /admin/; do
+            if ! curl -sI "http://localhost:8080${path}" | grep -qi '^content-security-policy:'; then
+              echo "No Content-Security-Policy on ${path} -- headers:"
+              curl -sI "http://localhost:8080${path}"
+              exit 1
+            fi
+          done
+
+          # The /admin redirect must stay relative. An absolute Location is
+          # rebuilt from the listen port and plain-HTTP scheme, which
+          # downgrades https://host/admin to http:// behind a TLS-
+          # terminating proxy.
+          location=$(curl -sI http://localhost:8080/admin | awk 'tolower($1)=="location:"{print $2}' | tr -d '[:space:]')
+          if [ "$location" != "/admin/" ]; then
+            echo "Expected a relative Location of /admin/, got: ${location}"
+            exit 1
+          fi
+
+          # The image declares a HEALTHCHECK, and curl succeeding says
+          # nothing about whether it passes -- a check written against a
+          # hostname the server does not answer on fails silently here and
+          # only shows up as a container that never becomes ready in
+          # production. Wait for Docker's own verdict.
+          healthy=false
+          for i in $(seq 1 30); do
+            status=$(docker inspect smoke-web --format '{{.State.Health.Status}}' 2>/dev/null || echo none)
+            if [ "$status" = "healthy" ]; then healthy=true; break; fi
+            if [ "$status" = "none" ]; then
+              echo "Image declares no HEALTHCHECK -- expected one."
+              exit 1
+            fi
+            sleep 2
+          done
+          if [ "$healthy" != "true" ]; then
+            echo "Web container never became healthy (last status: ${status}). Healthcheck log:"
+            docker inspect smoke-web --format '{{json .State.Health}}'
+            exit 1
+          fi
+
+          echo "Web smoke test passed: both portals served, admin SPA fallback works, API reachable through the proxy."
+
+      - name: Clean up smoke test containers
         if: always()
-        run: docker rm -f smoke-test || true
+        run: |
+          docker rm -f smoke-test || true
+          docker rm -f smoke-web || true
+
+      # Publish only reaches this point when the smoke test above passed, so
+      # a broken image can never be tagged `latest` in the registry. Gated to
+      # `release` by the job-level `if:` — pull requests (including from
+      # forks) build and smoke-test but never authenticate or push.
+      - name: Log in to GHCR
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      - name: Push images to GHCR
+        run: |
+          set -euo pipefail
+          # Three deterministic tags each: the release tag (human-facing),
+          # the commit SHA (immutable — what a rollback should pin to), and
+          # `latest` (moving pointer for the current release). The API and
+          # web images share tags so a rollback moves both together.
+          for tag in '${{ github.ref_name }}' '${{ steps.image.outputs.sha }}' latest; do
+            docker tag marineops-api:latest '${{ steps.image.outputs.repo }}':"${tag}"
+            docker push '${{ steps.image.outputs.repo }}':"${tag}"
+            echo "Pushed ${{ steps.image.outputs.repo }}:${tag}"
+
+            docker tag marineops-web:latest '${{ steps.image.outputs.web }}':"${tag}"
+            docker push '${{ steps.image.outputs.web }}':"${tag}"
+            echo "Pushed ${{ steps.image.outputs.web }}:${tag}"
+          done
+
+      - name: Log out of GHCR
+        if: always()
+        run: docker logout ghcr.io || true
