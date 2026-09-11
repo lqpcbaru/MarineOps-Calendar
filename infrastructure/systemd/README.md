@@ -49,6 +49,35 @@ runbook's restore procedure must be rehearsed against a scratch database
 periodically — a dump nobody has ever restored is a hypothesis, not a
 backup.
 
+## Failure notification
+
+A failed backup was previously recorded by systemd and read by nobody.
+`marineops-backup.service` now declares
+`OnFailure=marineops-alert@%n.service`, which runs
+`/etc/marineops/alert.sh` with the failed unit's name.
+
+```bash
+sudo cp infrastructure/systemd/marineops-alert@.service /etc/systemd/system/
+sudo install -m 0700 infrastructure/scripts/alert-hook.sh /etc/marineops/alert.sh
+sudo editor /etc/marineops/alert.sh          # add your delivery command
+sudo install -m 0600 /dev/null /etc/marineops/alert.env   # and its credentials
+sudo systemctl daemon-reload
+
+# fire it without waiting for a real failure
+sudo systemctl start marineops-alert@test.service
+journalctl -u 'marineops-alert@*' -n 20
+```
+
+**As shipped the hook only writes to the journal**, and logs a warning
+saying so. That is more than before — a failure now produces a
+`daemon.err` entry and a named unit failure — but it is not delivery.
+Point it at whatever you already use; the repository cannot choose that,
+and a hook that looked configured while doing nothing would be worse
+than one that admits it.
+
+Delivery credentials belong in `/etc/marineops/alert.env` (mode 0600),
+loaded by the unit, so they stay out of the script.
+
 ## Not covered here
 
 - **Offsite copies.** These dumps sit on the same host as the

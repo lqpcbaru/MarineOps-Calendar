@@ -23,6 +23,11 @@ Documentation=file:///opt/marineops/docs/operations/PRODUCTION_RUNBOOK.md
 Requires=docker.service
 After=docker.service network-online.target
 
+# A failed backup is otherwise recorded and unread. This delivers it
+# wherever /etc/marineops/alert.sh is pointed; unconfigured, it still
+# writes an error to the journal, which is strictly more than before.
+OnFailure=marineops-alert@%n.service
+
 [Service]
 Type=oneshot
 EnvironmentFile=/etc/marineops/backup.env
