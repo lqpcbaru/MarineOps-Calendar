@@ -60,8 +60,12 @@ async function bootstrap() {
   //   /api/public/*  → public controllers (anonymous, read-only)
   //   /api/v1/*      → admin controllers (JWT + RBAC)
   //   /health/*      → health endpoints (excluded from the "api" prefix)
+  // `health/(.*)` is the pre-path-to-regexp-8 spelling. Nest 11 still
+  // accepts it but logs a deprecation warning on every boot and
+  // auto-converts it to exactly the form below, so write it directly
+  // rather than depend on a conversion that a future major may drop.
   app.setGlobalPrefix('api', {
-    exclude: [{ path: 'health/(.*)', method: RequestMethod.ALL }],
+    exclude: [{ path: 'health/{*path}', method: RequestMethod.ALL }],
   });
   app.enableShutdownHooks();
 
