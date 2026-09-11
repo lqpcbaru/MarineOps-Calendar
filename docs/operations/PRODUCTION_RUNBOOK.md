@@ -188,9 +188,25 @@ Verified for `MARINEOPS_TAG`, `APP_URL`, `DATABASE_URL`,
 **The database connection must require TLS.** `DATABASE_URL` reaches a
 managed database across a network; without `sslmode` the driver may
 negotiate a plaintext connection and send the password and every row in
-the clear. Use `?sslmode=verify-full` where the provider publishes a CA
-certificate, since that authenticates the server as well as encrypting —
-`require` alone will happily talk to an impostor.
+the clear. Set `?sslmode=require`. That much is verified: a connection
+made this way appears in the server's `pg_stat_ssl` as encrypted.
+
+**What it does not give you is server authentication.** Prisma 6.19.3
+ignores both `sslmode=verify-full` and `sslrootcert`. Measured against a
+TLS-enabled PostgreSQL 16 with a self-signed certificate, Prisma
+connected happily to a CA it could not possibly trust, accepted a
+certificate whose name did not match the host it dialled, and accepted
+an unrelated CA passed as `sslrootcert`. `psql` against the same server
+refuses all three — `server certificate for "pgtls" does not match host
+name` and `certificate verify failed`. So `verify-full` in the URL is
+harmless but buys nothing today, and must not be recorded as protection
+against an impostor database.
+
+The control that actually holds is therefore the network path: reach the
+database over private networking or a VPC peer, and restrict its inbound
+rules to the application host. If you need real verification rather than
+encryption alone, re-test these three cases after a Prisma upgrade
+before relying on the parameter.
 
 | File                                         | Provides                                             | Status                                                    |
 | -------------------------------------------- | ---------------------------------------------------- | --------------------------------------------------------- |

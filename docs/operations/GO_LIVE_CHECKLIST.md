@@ -28,6 +28,24 @@ Status vocabulary, used consistently:
 No code work is outstanding. Everything below is configuration or
 infrastructure.
 
+`docker-compose.prod.yml` has now been **executed**, not just parsed:
+the published-image stack was brought up against a PostgreSQL 16
+stand-in, `prisma migrate deploy` and the seed were run from the image
+itself, and all three containers reported healthy. Verified on that
+running stack: both portals and `/api/public/stations` serve 200;
+`/health/ready` returns 503 while `/health/live` stays 200 during a
+database outage, and recovers without a restart; the API port is not
+published to the host; the refresh cookie is issued
+`HttpOnly; Secure; SameSite=Lax; Path=/api/v1/auth`; refresh rotation,
+replay rejection and token-family revocation all behave; an admin
+mutation is audited without recording the password; oversized bodies are
+refused with 413; no secret value appears in any log line. With a Caddy
+hop in front and `TRUSTED_PROXY_HOPS=2`, two different client addresses
+still get two independent rate-limit buckets and a forged
+`X-Forwarded-For` is ignored. The database TLS caveat in §9 was found
+during this run. What has **not** been exercised is Let's Encrypt
+issuance, which needs a real domain (§3).
+
 ---
 
 ## 2. Hosting — EXTERNAL ACTION REQUIRED
@@ -67,14 +85,14 @@ certificate automatically. No certificate handling is required by hand.
 Copy `infrastructure/environments/production.env` to the host, fill it
 in, `chmod 600`. Never commit it.
 
-| Variable                      | Source              | Notes                                                           |
-| ----------------------------- | ------------------- | --------------------------------------------------------------- |
-| `DATABASE_URL`                | Managed Postgres    | **Must include `?sslmode=verify-full`** (or at least `require`) |
-| `JWT_ACCESS_SECRET`           | Generate            | `openssl rand -base64 48`                                       |
-| `JWT_REFRESH_SECRET`          | Generate            | Generate separately — never reuse the access secret             |
-| `APP_URL`                     | Your domain         | Must match the browser's origin exactly, including `https://`   |
-| `PUBLIC_DOMAIN`, `ACME_EMAIL` | Your domain         | TLS overlay only                                                |
-| `MARINEOPS_TAG`               | A published release | Pin to `sha-<commit>` for rollbacks                             |
+| Variable                      | Source              | Notes                                                         |
+| ----------------------------- | ------------------- | ------------------------------------------------------------- |
+| `DATABASE_URL`                | Managed Postgres    | **Must include `?sslmode=require`** — encrypts, but see §9    |
+| `JWT_ACCESS_SECRET`           | Generate            | `openssl rand -base64 48`                                     |
+| `JWT_REFRESH_SECRET`          | Generate            | Generate separately — never reuse the access secret           |
+| `APP_URL`                     | Your domain         | Must match the browser's origin exactly, including `https://` |
+| `PUBLIC_DOMAIN`, `ACME_EMAIL` | Your domain         | TLS overlay only                                              |
+| `MARINEOPS_TAG`               | A published release | Pin to `sha-<commit>` for rollbacks                           |
 
 The API refuses to start without `DATABASE_URL`, `JWT_ACCESS_SECRET` or
 `JWT_REFRESH_SECRET`, and compose aborts the deployment before any
@@ -166,8 +184,11 @@ Install the timer (`infrastructure/systemd/README.md`), then:
 - **Offsite copies — EXTERNAL ACTION REQUIRED.** The dumps sit on the
   application host. Losing the host loses both.
 - **Rehearse a restore.** A dump nobody has restored is a hypothesis.
-  The runbook's restore procedure has been verified against a scratch
-  database in development; do it once against production-shaped data.
+  The full cycle has now been run once: `db-backup.sh` inside the
+  `postgres:16-alpine` image produced a dump, `pg_restore` loaded it into
+  a fresh database, and every table matched the source row for row, with
+  all three migrations and the admin credential intact. Do it once more
+  against production-shaped data, on the real host.
 
 ---
 
@@ -220,3 +241,12 @@ different conditions all return 503 and want three different responses.
 - **Astronomy is a low-precision series**, accurate to a couple of
   minutes and bounded by tests. Good for operational planning; not for
   navigation.
+- **The database connection is encrypted but not authenticated.**
+  Prisma 6.19.3 ignores `sslmode=verify-full` and `sslrootcert`;
+  measured against a TLS PostgreSQL with a self-signed certificate it
+  accepted an unknown CA, a mismatched certificate name and an unrelated
+  root CA, all of which `psql` refuses. `sslmode=require` genuinely
+  encrypts — confirmed via `pg_stat_ssl` — so keep it, but rely on
+  private networking and inbound rules restricted to the application
+  host for protection against an impostor database, not on the URL
+  parameter. Details in the runbook.

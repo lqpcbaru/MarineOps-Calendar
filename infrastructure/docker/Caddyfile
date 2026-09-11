@@ -14,10 +14,14 @@
 	encode zstd gzip
 
 	reverse_proxy web:8080 {
-		# The API trusts exactly one proxy hop and derives the client IP
-		# for rate limiting from X-Forwarded-For. Caddy sets that, plus
-		# X-Forwarded-Proto, which is what tells the API the original
-		# request was HTTPS.
+		# Caddy replaces X-Forwarded-For with the address it is actually
+		# talking to, discarding whatever the client sent — verified by
+		# proxying to an echo server: a request carrying a forged
+		# `X-Forwarded-For: 9.9.9.9` arrived with Caddy's peer address
+		# instead. nginx then appends Caddy, so the API sees two entries
+		# and docker-compose.tls.yml sets TRUSTED_PROXY_HOPS=2 to match.
+		# Caddy also sets X-Forwarded-Proto, which is what tells the API
+		# the original request was HTTPS.
 		header_up X-Real-IP {remote_host}
 	}
 
