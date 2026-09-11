@@ -1,0 +1,42 @@
+# Delivers a notification when another MarineOps unit fails.
+#
+# Templated on the failed unit's name, so one file covers every unit
+# that references it:
+#
+#   OnFailure=marineops-alert@%n.service
+#
+# WITHOUT EDITING /etc/marineops/alert.sh, THIS DELIVERS NOTHING.
+# systemd already records failures; the gap it closes is that nobody
+# reads that. Point the script at whatever you already use — a webhook,
+# an email relay, a paging API — because the repository cannot choose
+# that, and pretending it had would be worse than leaving it explicit.
+#
+# Install:
+#   sudo cp infrastructure/systemd/marineops-alert@.service /etc/systemd/system/
+#   sudo install -m 0700 infrastructure/scripts/alert-hook.sh /etc/marineops/alert.sh
+#   sudo editor /etc/marineops/alert.sh          # add your delivery command
+#   sudo systemctl daemon-reload
+#
+# Verify it fires without waiting for a real failure:
+#   sudo systemctl start marineops-alert@test.service
+#   journalctl -u 'marineops-alert@*' -n 20
+
+[Unit]
+Description=MarineOps failure notification for %i
+
+[Service]
+Type=oneshot
+
+# %i is the failed unit's name, passed through so the hook can say what
+# broke. The hook is expected to exist; if it does not, this unit fails
+# too and that failure is itself recorded.
+ExecStart=/etc/marineops/alert.sh %i
+
+# Credentials for the delivery channel belong here, not in the script, so
+# the script can stay world-readable if that is convenient while the
+# secrets stay 0600.
+EnvironmentFile=-/etc/marineops/alert.env
+
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectHome=yes

@@ -447,6 +447,37 @@ GET /health/live  → {"status":"ok","uptime":3600,"version":"2.1.0"}
 GET /health/ready → {"status":"ok","checks":{"database":"ok"}}   (503 with {"status":"error","checks":{"database":"error"}} if DB is unreachable)
 ```
 
+### Health checking from outside
+
+`infrastructure/scripts/health-check.sh` probes a running deployment and
+exits with a severity a monitor can use directly: **0** healthy, **1**
+degraded, **2** down, **3** the check itself is misconfigured.
+
+```bash
+BASE_URL=https://marineops.example ./infrastructure/scripts/health-check.sh
+```
+
+It checks liveness, readiness, both portals, a public endpoint needing
+no provider credential, HSTS, and **certificate expiry** — the last
+because Caddy renews silently and, when renewal stops working, nothing
+complains until the certificate expires and the site breaks for everyone
+at once.
+
+Container healthchecks cannot replace this. They only report whether a
+process answers on loopback, and are blind to an expired certificate, a
+broken terminator, DNS pointing elsewhere, or a firewall change — all of
+which leave every container "healthy" and the site unreachable.
+
+Sourced-data endpoints are reported but never affect the exit code:
+`503 PROVIDER_CONFIG_ERROR` is the expected state until provider codes
+are supplied, and alerting on it beforehand only teaches people to
+ignore the channel.
+
+**Still EXTERNAL ACTION REQUIRED:** something has to run this and act on
+the exit code. Cron, a systemd timer, or an external uptime service —
+run it from a different host than the application where you can, since a
+check on the failed host cannot report that the host is gone.
+
 ### Telling failures apart
 
 Every failure mode below is distinguishable from the response alone —

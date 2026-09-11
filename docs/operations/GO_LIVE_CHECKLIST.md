@@ -171,12 +171,24 @@ Install the timer (`infrastructure/systemd/README.md`), then:
 
 ---
 
-## 8. Monitoring — EXTERNAL ACTION REQUIRED
+## 8. Monitoring — CONFIG REQUIRED, then EXTERNAL ACTION REQUIRED
 
-**Nothing is configured.** The application emits what a monitor needs —
-structured JSON logs, `/health/live`, `/health/ready`, and distinct
-error codes per failure mode — but no monitor exists and no alert will
-fire.
+Two pieces now exist and need pointing at something:
+
+- `infrastructure/scripts/health-check.sh` probes a deployment from
+  outside and exits 0 healthy / 1 degraded / 2 down / 3 misconfigured,
+  including certificate expiry. **Something still has to run it and act
+  on the exit code** — ideally from a different host, since a check on
+  the failed host cannot report that the host is gone.
+- `marineops-alert@.service` fires on a failed backup and runs
+  `/etc/marineops/alert.sh`. **As shipped it only writes to the
+  journal** and logs a warning saying so; add your delivery command.
+
+**No alert reaches a human until both are wired.** The application emits
+everything a monitor needs — structured JSON logs, `/health/live`,
+`/health/ready`, and distinct error codes per failure mode — and the two
+scripts above turn that into severities and notifications. What is still
+missing is a destination.
 
 Minimum worth having, in order:
 
