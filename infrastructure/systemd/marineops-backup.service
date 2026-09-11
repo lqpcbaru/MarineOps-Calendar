@@ -1,0 +1,69 @@
+# MarineOps — database backup (invoked by marineops-backup.timer)
+#
+# Install:
+#   sudo cp infrastructure/systemd/marineops-backup.* /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now marineops-backup.timer
+#
+# DATABASE_URL is read from an environment file that systemd loads at
+# run time, so the credential never appears in this unit, in `systemctl
+# show`, or in the process arguments. Create it readable only by root:
+#
+#   sudo install -m 0600 /dev/null /etc/marineops/backup.env
+#   sudo editor /etc/marineops/backup.env       # DATABASE_URL=postgresql://...
+#
+# The script runs inside the same postgres image the database is on, so
+# no postgresql-client needs installing on the host and pg_dump always
+# matches the server's major version.
+
+[Unit]
+Description=MarineOps PostgreSQL backup
+Documentation=file:///opt/marineops/docs/operations/PRODUCTION_RUNBOOK.md
+# Needs Docker for the postgres image, and the network for a managed database.
+Requires=docker.service
+After=docker.service network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/marineops/backup.env
+
+# Adjust these three to match the host.
+Environment=MARINEOPS_DIR=/opt/marineops
+Environment=BACKUP_DIR=/var/backups/marineops
+Environment=RETENTION_DAYS=14
+
+ExecStartPre=/usr/bin/install -d -m 0700 ${BACKUP_DIR}
+
+ExecStart=/usr/bin/docker run --rm \
+  --network host \
+  -e DATABASE_URL \
+  -e BACKUP_DIR=/backups \
+  -e RETENTION_DAYS \
+  -v ${BACKUP_DIR}:/backups \
+  -v ${MARINEOPS_DIR}/infrastructure/scripts:/scripts:ro \
+  postgres:16-alpine /scripts/db-backup.sh
+
+# A dump that hangs holds the timer's next run; fail instead.
+TimeoutStartSec=30min
+
+# The script writes to a .part file and renames only after pg_restore
+# --list has parsed it, so an interrupted run leaves no dump that looks
+# valid. Restarting on failure would just repeat a failing dump, so let
+# it fail and let the OnFailure hook or your alerting notice.
+Restart=no
+
+# Deliberately modest hardening.
+#
+# ProtectSystem=strict and ReadWritePaths= are the obvious next step and
+# are omitted on purpose: strict remounts /run read-only, which breaks
+# writing to the Docker socket, and ReadWritePaths does NOT expand
+# ${BACKUP_DIR} — systemd takes it literally, so the unit would guard a
+# path that does not exist. Both faults stop backups silently, which is
+# worse than the sandboxing is worth. Tighten this once it can be tested
+# on the real host.
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectHome=yes
+
+[Install]
+WantedBy=multi-user.target

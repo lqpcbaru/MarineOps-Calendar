@@ -158,6 +158,72 @@ docker run -d --name marineops-web --network marineops -p 80:8080 \
 > from a checkout of `main` while running a pinned older image tag puts the
 > schema ahead of the code that reads it.
 
+### Running it as a stack (preferred over loose `docker run`)
+
+The commands above show what each container needs. For anything that has
+to be reproduced, rolled back, or handed to someone else, use the
+production compose file instead — it captures the same thing plus
+restart policies, resource limits, log rotation, startup ordering and
+fail-fast on missing configuration.
+
+```bash
+# Secrets come from a file you create on the host, never from the repo.
+cp infrastructure/environments/production.env ./production.env
+editor ./production.env                    # fill in every empty value
+chmod 600 ./production.env
+
+MARINEOPS_TAG=v1.0.0   docker compose     -f infrastructure/docker/docker-compose.prod.yml     -f infrastructure/docker/docker-compose.tls.yml     --env-file ./production.env up -d
+```
+
+**Always pass `--env-file` explicitly.** Without it, compose silently
+loads any `.env` sitting next to the compose file, which on a host that
+once ran the development stack would quietly supply development
+secrets. Passing it replaces that default rather than merging with it.
+
+Every required value is declared `${VAR:?…}`, so a missing one aborts
+the deployment with the variable's name before a container starts.
+Verified for `MARINEOPS_TAG`, `APP_URL`, `DATABASE_URL`,
+`JWT_ACCESS_SECRET` and `JWT_REFRESH_SECRET`.
+
+**The database connection must require TLS.** `DATABASE_URL` reaches a
+managed database across a network; without `sslmode` the driver may
+negotiate a plaintext connection and send the password and every row in
+the clear. Use `?sslmode=verify-full` where the provider publishes a CA
+certificate, since that authenticates the server as well as encrypting —
+`require` alone will happily talk to an impostor.
+
+| File                                         | Provides                                             | Status                                                    |
+| -------------------------------------------- | ---------------------------------------------------- | --------------------------------------------------------- |
+| `docker-compose.prod.yml`                    | API, web and Redis from the published GHCR images    | **READY**                                                 |
+| `docker-compose.tls.yml` + `Caddyfile`       | HTTPS via Let's Encrypt on this host                 | **CONFIG REQUIRED** — needs `PUBLIC_DOMAIN`, `ACME_EMAIL` |
+| `infrastructure/environments/production.env` | The value template                                   | **CONFIG REQUIRED** — every secret is empty               |
+| PostgreSQL                                   | Not included — managed database per DEPLOYMENT.md §3 | **EXTERNAL ACTION REQUIRED**                              |
+
+#### TLS is not optional
+
+The refresh cookie is issued with `Secure` whenever `NODE_ENV` is not
+`development`, and browsers discard `Secure` cookies delivered over
+plain HTTP. Served without HTTPS the site loads and login appears to
+succeed, but the session never persists — the next request is
+anonymous. Either use the TLS overlay or terminate at a load balancer.
+
+Skip the overlay if TLS already terminates elsewhere; then set
+`WEB_BIND` so that terminator can reach the web service, and make sure
+it forwards `X-Forwarded-For` and `X-Forwarded-Proto`. The API trusts
+exactly one proxy hop and derives the rate-limit key from that header.
+
+#### What the compose file deliberately leaves out
+
+- **PostgreSQL.** Production uses a managed database, so `DATABASE_URL`
+  points off-host. Running it as a sibling container would put the only
+  state that matters on the same disk as the stateless tier.
+- **Publishing the API port.** Only the web tier reaches the API, over
+  the compose network. Exposing it directly would bypass nginx's rate
+  limiting and security headers.
+- **A public bind for the web tier.** `WEB_BIND` defaults to
+  `127.0.0.1:8080` so a half-finished host cannot serve the site over
+  plain HTTP to the internet by accident.
+
 ### Seeding (first deploy only)
 
 **`prisma db seed` cannot run from the published image.** The seed is
@@ -416,12 +482,39 @@ second returns 503, which is what a load balancer should drain on.
 
 ### Database Backup
 
-> **There are no automated backups.** Nothing in this repository runs on a
-> schedule. `infrastructure/scripts/db-backup.sh` performs a correct,
-> verified, self-pruning dump — but _something external must invoke it_.
-> Scheduling, durable storage and offsite copies are infrastructure
-> decisions tied to the hosting provider and are listed as operator actions
-> below. Do not treat the existence of this script as a backup solution.
+> **Backups do not run until you install the scheduler.** Nothing in this
+> repository schedules itself. `infrastructure/scripts/db-backup.sh`
+> performs a correct, verified, self-pruning dump, and
+> `infrastructure/systemd/` now ships the timer that calls it — but the
+> units have to be installed and enabled on the host before any backup
+> exists. Do not treat the presence of either as a backup solution.
+
+**Scheduling — CONFIG REQUIRED:**
+
+```bash
+sudo mkdir -p /etc/marineops
+sudo install -m 0600 /dev/null /etc/marineops/backup.env
+sudo editor /etc/marineops/backup.env       # DATABASE_URL=postgresql://...
+
+sudo cp infrastructure/systemd/marineops-backup.* /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now marineops-backup.timer
+
+systemctl list-timers marineops-backup.timer   # confirm the next run
+sudo systemctl start marineops-backup.service  # prove it works now
+```
+
+`DATABASE_URL` is loaded by systemd from a root-only file and passed to
+the container by name, so it appears in neither the unit, nor
+`systemctl show`, nor the container's command line — all readable by any
+local user. See `infrastructure/systemd/README.md`.
+
+Still **EXTERNAL ACTION REQUIRED** after that, and neither is decided
+here: an **offsite copy** (these dumps sit on the same host as the
+application, so a host loss takes both) and **alerting on failure**
+(systemd records it; nothing reads that yet).
+
+**Manual run:**
 
 ```bash
 DATABASE_URL="postgresql://..." \

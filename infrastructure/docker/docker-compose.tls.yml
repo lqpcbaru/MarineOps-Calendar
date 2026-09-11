@@ -1,0 +1,71 @@
+# ── TLS termination overlay ───────────────────────────────────
+#
+# Adds a Caddy terminator in front of the web tier, obtaining and
+# renewing certificates from Let's Encrypt automatically. Layer it over
+# the production file:
+#
+#   MARINEOPS_TAG=v1.0.0 PUBLIC_DOMAIN=marineops.example \
+#     docker compose \
+#       -f infrastructure/docker/docker-compose.prod.yml \
+#       -f infrastructure/docker/docker-compose.tls.yml \
+#       --env-file ./production.env up -d
+#
+# Skip this file entirely if TLS already terminates somewhere else — a
+# cloud load balancer, an ingress controller, an existing proxy. In that
+# case set WEB_BIND so your terminator can reach the web service, and
+# make sure it forwards X-Forwarded-Proto: the API trusts one proxy hop
+# and rate-limits per client IP from X-Forwarded-For.
+#
+# TLS is not decoration here. The refresh cookie carries `Secure`
+# whenever NODE_ENV is not development, and browsers discard Secure
+# cookies delivered over plain HTTP, so sessions silently fail to
+# persist without HTTPS.
+#
+# BEFORE FIRST START, two things must already be true, and neither can
+# be arranged from inside this repository:
+#   1. PUBLIC_DOMAIN resolves to this host's public IP.
+#   2. Ports 80 and 443 reach this host. Let's Encrypt validates over
+#      port 80 even though the site itself only serves 443.
+
+services:
+  # Caddy appends its own entry to X-Forwarded-For, so the API now sits
+  # behind TWO proxies rather than one. Left at the default of 1, Express
+  # resolves req.ip to Caddy's internal address for every request and both
+  # rate limiters collapse into a single shared bucket — ten failed
+  # sign-ins by anyone would lock out everyone.
+  api:
+    environment:
+      TRUSTED_PROXY_HOPS: '2'
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: marineops-caddy
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+      - '443:443/udp' # HTTP/3
+    environment:
+      PUBLIC_DOMAIN: ${PUBLIC_DOMAIN:?PUBLIC_DOMAIN is required, e.g. marineops.example}
+      # Let's Encrypt uses this only to warn about expiring certificates.
+      ACME_EMAIL: ${ACME_EMAIL:?ACME_EMAIL is required for certificate expiry notices}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # Certificates and ACME account keys. Losing this volume means
+      # re-issuing on next start, which counts against Let's Encrypt rate
+      # limits — keep it.
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - web
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '5'
+
+volumes:
+  caddy_data:
+    driver: local
+  caddy_config:
+    driver: local
