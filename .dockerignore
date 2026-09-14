@@ -10,6 +10,13 @@
 .env
 .env.*
 !.env.example
+# Recursive too: the patterns above are matched against the context
+# root only, so a nested env file such as infrastructure/docker/.env
+# (which exists) was still being sent to the daemon. No build stage
+# reads any .env file, so excluding them everywhere costs nothing.
+**/.env
+**/.env.*
+!**/.env.example
 
 # Prisma local SQLite/dev artifacts
 **/*.db
