@@ -231,6 +231,20 @@ Two pieces now exist and need pointing at something:
 - `marineops-alert@.service` fires on a failed backup and runs
   `/etc/marineops/alert.sh`. **As shipped it only writes to the
   journal** and logs a warning saying so; add your delivery command.
+  Verified under systemd 252, not merely inspected: a failing backup
+  puts the unit in `failed`, the hook runs, and the journal names the
+  failed unit.
+
+  **It only covers a backup that ran and failed.** Nothing here notices a
+  backup that never ran at all — timer disabled or masked, or the host
+  simply off overnight — because `OnFailure` needs a failure to fire.
+  Cover that with a freshness check rather than assuming silence means
+  success: alert when the newest file in `BACKUP_DIR` is older than about
+  two days, e.g. from the monitoring host over ssh, or on the box with
+  `systemctl list-timers marineops-backup.timer` and
+  `systemctl is-failed marineops-backup.service`. `Persistent=true` on
+  the timer already catches up a run missed while the host was down, but
+  it cannot help if the timer was never enabled.
 
 **No alert reaches a human until both are wired.** The application emits
 everything a monitor needs — structured JSON logs, `/health/live`,
