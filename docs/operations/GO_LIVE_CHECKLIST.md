@@ -209,13 +209,24 @@ and duplicates. See `infrastructure/provider-mappings/README.md`.
 Install the timer (`infrastructure/systemd/README.md`), then:
 
 - **Offsite copies — EXTERNAL ACTION REQUIRED.** The dumps sit on the
-  application host. Losing the host loses both.
+  application host. Losing the host loses both. The runbook's "Offsite
+  copies" section has the transport, the permissions each leg must keep
+  (dumps are `0600` in a `0700` directory and must stay at least that
+  restrictive), the retention rule that matters — local pruning must
+  never propagate as deletions offsite — and the restore-from-offsite
+  procedure. It needs a destination and a write-scoped credential, and
+  neither can live in this repository.
 - **Rehearse a restore.** A dump nobody has restored is a hypothesis.
   The full cycle has now been run once: `db-backup.sh` inside the
   `postgres:16-alpine` image produced a dump, `pg_restore` loaded it into
   a fresh database, and every table matched the source row for row, with
   all three migrations and the admin credential intact. Do it once more
   against production-shaped data, on the real host.
+- **Rehearse a restore _from the offsite copy_ — required, not
+  optional.** Only the local leg has been exercised. Fetching a dump back
+  from offsite is the step that fails in an emergency precisely because
+  nobody has tried it. Until you have done it once, the offsite copy is
+  an assumption rather than a backup.
 
 ---
 
@@ -238,13 +249,19 @@ Two pieces now exist and need pointing at something:
   **It only covers a backup that ran and failed.** Nothing here notices a
   backup that never ran at all — timer disabled or masked, or the host
   simply off overnight — because `OnFailure` needs a failure to fire.
-  Cover that with a freshness check rather than assuming silence means
-  success: alert when the newest file in `BACKUP_DIR` is older than about
-  two days, e.g. from the monitoring host over ssh, or on the box with
-  `systemctl list-timers marineops-backup.timer` and
-  `systemctl is-failed marineops-backup.service`. `Persistent=true` on
-  the timer already catches up a run missed while the host was down, but
-  it cannot help if the timer was never enabled.
+  `infrastructure/scripts/backup-freshness.sh` covers that, and uses the
+  same exit severities as the health check — 0 fresh, 1 stale, 2 no dump
+  at all, 3 misconfigured — so one monitor can act on both:
+
+  ```bash
+  BACKUP_DIR=/var/backups/marineops ./infrastructure/scripts/backup-freshness.sh
+  ```
+
+  It must run where `BACKUP_DIR` is visible, so unlike the health check it
+  cannot come from outside; cron on the box, or ssh from the monitoring
+  host. `Persistent=true` on the timer already catches up a run missed
+  while the host was down, but cannot help if the timer was never enabled
+  — which is exactly what this notices.
 
 **No alert reaches a human until both are wired.** The application emits
 everything a monitor needs — structured JSON logs, `/health/live`,

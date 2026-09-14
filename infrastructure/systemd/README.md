@@ -83,7 +83,17 @@ loaded by the unit, so they stay out of the script.
 - **Offsite copies.** These dumps sit on the same host as the
   application. A host loss takes both. Ship `/var/backups/marineops`
   somewhere else; which object store or backup service is an
-  infrastructure decision this repository does not make.
-- **Alerting on failure.** systemd will record the failure, but nothing
-  reads that. Add an `OnFailure=` hook to whatever paging you use, or
-  scrape the unit's state.
+  infrastructure decision this repository does not make. The transport,
+  the permissions each leg must keep, the retention rule and the
+  restore-from-offsite procedure are in the runbook's "Offsite copies"
+  section.
+- **A delivery destination.** `OnFailure=` _is_ wired — it runs
+  `marineops-alert@.service`, verified under systemd — but as shipped
+  that hook only writes to the journal and logs a warning saying so. Put
+  your paging command in `/etc/marineops/alert.sh` and its credentials in
+  `/etc/marineops/alert.env` (mode 0600, loaded by the unit). Until then
+  nothing reaches a human.
+- **Noticing a backup that never ran.** `OnFailure=` needs a failure to
+  fire, so it cannot see a timer that was never enabled or got masked.
+  `infrastructure/scripts/backup-freshness.sh` covers that — run it from
+  cron here, or over ssh from the monitoring host.
