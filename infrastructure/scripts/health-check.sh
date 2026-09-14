@@ -116,26 +116,27 @@ case "$BASE_URL" in
   https://*)
     host=$(printf '%s' "$BASE_URL" | sed -e 's#^https://##' -e 's#[:/].*$##')
     if command -v openssl >/dev/null 2>&1; then
-      end=$(printf 'Q\n' \
-        | openssl s_client -connect "$host:443" -servername "$host" 2>/dev/null \
-        | openssl x509 -noout -enddate 2>/dev/null \
+      cert=$(printf 'Q\n' \
+        | openssl s_client -connect "$host:443" -servername "$host" 2>/dev/null)
+      end=$(printf '%s\n' "$cert" | openssl x509 -noout -enddate 2>/dev/null \
         | sed 's/^notAfter=//')
       if [ -n "${end:-}" ]; then
-        end_epoch=$(date -d "$end" +%s 2>/dev/null || echo '')
-        if [ -n "$end_epoch" ]; then
-          days=$(( (end_epoch - $(date +%s)) / 86400 ))
-          if [ "$days" -lt 0 ]; then
-            note "DOWN     certificate     EXPIRED ${days#-} days ago"
-            worse 2
-          elif [ "$days" -lt "$CERT_WARN_DAYS" ]; then
-            note "WARN     certificate     expires in $days days (renewal should have run)"
-            worse 1
-          else
-            note "OK       certificate     expires in $days days"
-          fi
-        else
-          note "WARN     certificate     could not parse expiry date"
+        # The decision is openssl's own -checkend, not `date` arithmetic.
+        # OpenSSL prints "Sep 14 12:41:07 2026 GMT", which GNU date parses
+        # and BusyBox date does not — so on Alpine the arithmetic this
+        # replaces reported "could not parse expiry date" on every run and
+        # never detected a real expiry, which is worse than no check: a
+        # permanent warning is one everybody learns to ignore. -checkend
+        # needs no date parsing and behaves identically on both.
+        if ! printf '%s\n' "$cert" | openssl x509 -noout -checkend 0 >/dev/null 2>&1; then
+          note "DOWN     certificate     EXPIRED ($end)"
+          worse 2
+        elif ! printf '%s\n' "$cert" | openssl x509 -noout \
+          -checkend "$((CERT_WARN_DAYS * 86400))" >/dev/null 2>&1; then
+          note "WARN     certificate     expires within $CERT_WARN_DAYS days ($end) — renewal should have run"
           worse 1
+        else
+          note "OK       certificate     valid beyond $CERT_WARN_DAYS days ($end)"
         fi
       else
         note "WARN     certificate     could not read from $host:443"
