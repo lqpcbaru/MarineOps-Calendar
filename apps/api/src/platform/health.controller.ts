@@ -13,7 +13,14 @@ export class HealthController {
       status: 'ok',
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
-      version: '2.1.0',
+      // docker-compose.prod.yml passes MARINEOPS_TAG through as
+      // APP_VERSION, so this reports the image tag the container was
+      // actually deployed from — which is the one thing worth knowing
+      // here when confirming a rollback landed. It was previously the
+      // literal '2.1.0', which matched no released artefact and no
+      // declared package version (all four are 0.1.0), so it reported a
+      // build that did not exist.
+      version: process.env['APP_VERSION'] ?? 'unknown',
     };
   }
 

@@ -31,6 +31,13 @@
 
 set -eu
 
+# A dump is the whole database, argon2id password hashes included. Without
+# this it lands 0644: safe under the systemd unit, which creates BACKUP_DIR
+# with `install -d -m 0700`, but the manual invocation documented above
+# mkdir -p's a 0755 directory, and then every user on the host can read it.
+# Setting the umask here protects both paths and depends on no other config.
+umask 077
+
 : "${DATABASE_URL:?DATABASE_URL is required}"
 BACKUP_DIR="${BACKUP_DIR:-./backups}"
 RETENTION_DAYS="${RETENTION_DAYS:-14}"

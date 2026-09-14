@@ -143,6 +143,25 @@ jobs:
             -t marineops-web:${{ github.ref_name }} .
       - name: Tag web as latest
         run: docker tag marineops-web:${{ github.ref_name }} marineops-web:latest
+
+      # This job gets its OWN postgres service, separate from the `test`
+      # job's, and nothing had ever created a schema in it. The web smoke
+      # test below curls /api/public/stations, which runs
+      # prisma.station.findMany() — against an empty database that is a 500
+      # ("The table `public.stations` does not exist"), and `curl -sf` fails
+      # the step. Because this job is gated to `release` and no release had
+      # been cut, the assertion had never actually executed: the first
+      # release would have failed here.
+      #
+      # Run it from the image about to be published, which is also exactly
+      # what the runbook tells operators to do on a real deploy, so this
+      # rehearses the deployment rather than just satisfying the check.
+      - name: Apply migrations to the smoke-test database
+        run: |
+          docker run --rm --network host \
+            -e DATABASE_URL=postgresql://marineops:test@localhost:5432/marineops_test \
+            marineops-api:latest ./node_modules/.bin/prisma migrate deploy
+
       # A clean `docker build` only proves the image compiles — it says
       # nothing about whether the container actually starts (a missing env
       # var, a bad CMD path, or a non-root permission issue would all still
