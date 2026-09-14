@@ -20,7 +20,18 @@
 Description=MarineOps PostgreSQL backup
 Documentation=file:///opt/marineops/docs/operations/PRODUCTION_RUNBOOK.md
 # Needs Docker for the postgres image, and the network for a managed database.
-Requires=docker.service
+#
+# Wants=, deliberately, not Requires=. Measured under systemd 252: with
+# Requires= and docker.service missing or masked, this is a *dependency*
+# failure — systemd leaves the unit `inactive` with Result=success, and
+# OnFailure below does NOT fire. The backup silently never runs and nobody
+# is told, which is the exact outcome the alert exists to prevent. With
+# Wants= the unit starts regardless, ExecStart fails because docker is not
+# there, the unit enters `failed`, and the alert fires. Verified both ways.
+#
+# A backup that cannot run must fail loudly rather than be skipped quietly.
+# After= still orders it behind Docker whenever Docker is present.
+Wants=docker.service
 After=docker.service network-online.target
 
 # A failed backup is otherwise recorded and unread. This delivers it
