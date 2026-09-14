@@ -598,6 +598,105 @@ docker run --rm --network marineops \
 | Retention       | `RETENTION_DAYS=14` locally; longer offsite per your data policy                                                    |
 | Restore drill   | Restore into a scratch database on a schedule — a backup that has never been restored is a hypothesis, not a backup |
 
+### Is a backup actually happening?
+
+`marineops-alert@.service` fires when a backup **ran and failed**. It
+cannot tell you about a backup that never ran — a timer that was never
+enabled, one that got masked, or a host that was off. Silence from the
+alert hook is therefore not evidence of success, and this is the check
+that closes that gap:
+
+```bash
+BACKUP_DIR=/var/backups/marineops \
+  ./infrastructure/scripts/backup-freshness.sh
+```
+
+Exit codes are the same severities `health-check.sh` uses, so a monitor
+can treat both the same way: **0** a dump newer than `MAX_AGE_HOURS`
+exists, **1** dumps exist but the newest is stale, **2** no dump at all
+or the directory is missing, **3** the check is misconfigured.
+
+`MAX_AGE_HOURS` defaults to 48. The timer runs daily, so two days
+tolerates one missed run plus `RandomizedDelaySec` before anyone is
+told. Age comparison is done by `find -mmin`, so there is no date
+parsing to differ between GNU and BusyBox.
+
+Unlike `health-check.sh` this one **cannot** run from outside — it needs
+to see `BACKUP_DIR`. Run it on the backup host from cron or a timer, or
+over ssh from the monitoring host, which keeps the alerting off the box
+being checked:
+
+```bash
+ssh marineops-host 'BACKUP_DIR=/var/backups/marineops \
+  /opt/marineops/infrastructure/scripts/backup-freshness.sh'
+```
+
+### Offsite copies — EXTERNAL ACTION REQUIRED
+
+The dumps sit on the application host. **Losing the host loses both the
+application and every backup of it.** Nothing here chooses a destination
+for you, and no credentials for one belong in this repository.
+
+Once you have storage in a different failure domain, copy after each
+run — either append to `/etc/marineops/alert.sh`'s sibling logic, a
+separate timer, or your provider's own agent:
+
+```bash
+# Illustrative only — substitute your own transport and destination.
+# Whatever you use must preserve mode 0600 (see below).
+rsync -a --chmod=F600 /var/backups/marineops/*.dump \
+  <USER>@<OFFSITE_HOST>:<OFFSITE_PATH>/
+```
+
+**Permissions.** A dump is the entire database, argon2id password hashes
+included. `db-backup.sh` sets `umask 077`, so dumps are written `0600`
+inside a `0700` directory. The offsite copy must be at least as
+restrictive:
+
+| Where            | Required                                                                             |
+| ---------------- | ------------------------------------------------------------------------------------ |
+| Local dumps      | `0600`, directory `0700`, owned by root — already enforced by the script             |
+| In transit       | Encrypted (ssh/TLS). Never a plain-HTTP or anonymous-FTP endpoint                    |
+| At rest offsite  | Private by default. No public read, no anonymous listing, encrypted if offered       |
+| Offsite identity | A write-scoped credential, not an administrator one, so a leak cannot delete history |
+
+**Retention.** `RETENTION_DAYS=14` prunes the local copy only;
+`db-backup.sh` never touches the offsite one. Set the offsite lifetime
+deliberately — a longer window there is the point of having it, and
+**local pruning must not be allowed to propagate as deletions offsite**,
+or a bad local run can destroy the history it was meant to protect.
+Prefer append-only or versioned storage where it is offered.
+
+**Restoring from the offsite copy** — the procedure differs from a local
+restore only in fetching the file first, and that step is exactly the
+one that fails in an emergency if it has never been tried:
+
+```bash
+# 1. Fetch into a directory only root can read
+sudo install -d -m 0700 /var/restore
+sudo <YOUR_TRANSPORT> <OFFSITE_PATH>/marineops_<stamp>.dump /var/restore/
+sudo chmod 0600 /var/restore/marineops_<stamp>.dump
+
+# 2. Prove the archive is intact BEFORE touching any database
+pg_restore --list /var/restore/marineops_<stamp>.dump >/dev/null && echo "archive OK"
+
+# 3. Restore into a SCRATCH database first, never straight over production
+createdb -T template0 marineops_restore_check
+pg_restore --dbname=marineops_restore_check --no-owner --no-privileges \
+  /var/restore/marineops_<stamp>.dump
+
+# 4. Compare against what you expect, then drop the scratch copy
+psql -d marineops_restore_check -c "select count(*) from users;"
+dropdb marineops_restore_check
+```
+
+> **A rehearsal is required once the destination exists, and is not
+> optional.** The local backup-and-restore cycle has been exercised — dump,
+> `pg_restore` into a fresh database, row-for-row match on every table
+> including the migration history. The offsite leg has **not**, because
+> there is no destination yet. Until you have fetched a dump back from
+> offsite and restored it, the offsite copy is an assumption, not a backup.
+
 ### Database Restore
 
 ```bash
