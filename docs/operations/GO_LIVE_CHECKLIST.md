@@ -46,6 +46,33 @@ still get two independent rate-limit buckets and a forged
 during this run. What has **not** been exercised is Let's Encrypt
 issuance, which needs a real domain (§3).
 
+### Released artefacts
+
+**`v0.1.0` is published**, from `1779c9b`. Deploy with
+`MARINEOPS_TAG=v0.1.0`.
+
+| Image                            | Tags                              |
+| -------------------------------- | --------------------------------- |
+| `ghcr.io/lqpcbaru/marineops-api` | `v0.1.0`, `sha-1779c9b`, `latest` |
+| `ghcr.io/lqpcbaru/marineops-web` | `v0.1.0`, `sha-1779c9b`, `latest` |
+
+Pin `sha-1779c9b` to roll back — it is immutable, whereas `latest` moves
+with each release. Both images carry
+`org.opencontainers.image.revision=1779c9b…`, so a running container can
+always be traced to a commit, and `/health/live` reports the tag it was
+deployed from because the compose file passes `MARINEOPS_TAG` through as
+`APP_VERSION`.
+
+Both packages are **public**: verified pullable with an anonymous
+registry token, so the host needs no `docker login` and no pull secret.
+
+The release pipeline ran green end to end — build, `migrate deploy`
+against the smoke database, the API and web-tier smoke tests, then six
+pushes. The published images were then pulled back down and run through
+`docker-compose.prod.yml`: all three containers healthy, both portals and
+every non-provider endpoint 200, sourced-data endpoints 503
+`PROVIDER_CONFIG_ERROR` as designed.
+
 ---
 
 ## 2. Hosting — EXTERNAL ACTION REQUIRED
