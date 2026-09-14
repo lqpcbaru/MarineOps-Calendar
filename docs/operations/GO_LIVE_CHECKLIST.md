@@ -66,6 +66,18 @@ deployed from because the compose file passes `MARINEOPS_TAG` through as
 Both packages are **public**: verified pullable with an anonymous
 registry token, so the host needs no `docker login` and no pull secret.
 
+**main has since moved ahead of the images.** Deploy `v0.1.0` as written —
+it is complete and not insecure — but know what differs. Most later
+commits touch only documentation, systemd units and host scripts, none of
+which are baked into an image. One is image-affecting: `nginx.conf` now
+re-includes the security headers inside the `/api/v1/` block, which
+nginx's `add_header` inheritance rule had been dropping there. Those
+headers still reach the client in `v0.1.0` because the API's helmet
+middleware sets them too, so this hardens a latent dependency rather than
+closing an open hole — which is why it does not justify a release of its
+own. It takes effect on the next release, whose web smoke test validates
+the config before anything is pushed.
+
 The release pipeline ran green end to end — build, `migrate deploy`
 against the smoke database, the API and web-tier smoke tests, then six
 pushes. The published images were then pulled back down and run through
