@@ -1,12 +1,26 @@
 # MarineOps Hub — Production Runbook
 
-**Version:** 2.2.0  
-**Date:** 2026-08-28
+**Version:** 2.3.0  
+**Date:** 2026-09-14  
+**Release:** v0.1.0 (`1779c9b`)
 
 > Every command, path and default in this document has been checked against
-> the repository. Where a documented procedure does **not** work (image-based
-> seeding) or has **not** been executed (`nginx -t`, a live Redis run), that
-> is stated explicitly rather than implied to work.
+> the repository, and where a documented procedure does **not** work
+> (image-based seeding) that is stated explicitly rather than implied to
+> work.
+>
+> Two caveats this note used to carry are now settled. **nginx's config is
+> validated** — the release job's web smoke test starts the real container,
+> and nginx refuses to start on an invalid config, which is the `nginx -t`
+> that cannot run at image build time. **Redis runs for real** — the
+> published stack reports `"cacheBackend":"redis"` and `Redis connected` on
+> startup, so the shared-cache path is exercised rather than assumed.
+>
+> What remains genuinely unexercised needs infrastructure this repository
+> cannot create: **Let's Encrypt issuance** (needs a real domain), a
+> **managed PostgreSQL over private networking** (validated against a local
+> PostgreSQL 16 stand-in), and the **offsite backup leg** (needs a
+> destination). Those are called out where they appear.
 
 ---
 
