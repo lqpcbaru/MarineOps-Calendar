@@ -42,6 +42,8 @@ ADRs 0006–0010 were created for the MarineOps Calendar v1.0.0 baseline. They a
 
 ### MarineOps Hub (active)
 
-| ADR                                                 | Title                                                    | Status                |
-| --------------------------------------------------- | -------------------------------------------------------- | --------------------- |
-| [0011](ADR-0011-project-direction-change-to-hub.md) | Project direction change — Calendar archived, Hub active | Accepted (2026-07-31) |
+| ADR                                                   | Title                                                      | Status                |
+| ----------------------------------------------------- | ---------------------------------------------------------- | --------------------- |
+| [0011](ADR-0011-project-direction-change-to-hub.md)   | Project direction change — Calendar archived, Hub active   | Accepted (2026-07-31) |
+| [0012](ADR-0012-station-module.md)                    | Station module — central operational location architecture | Accepted (2026-08-06) |
+| [0013](ADR-0013-playwright-mcp-tooling-dependency.md) | Playwright MCP as a pinned alpha tooling dependency        | Proposed (2026-09-18) |
