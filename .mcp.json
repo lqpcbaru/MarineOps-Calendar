@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "playwright": {
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "C:\\Users\\PERIKANAN\\AppData\\Roaming\\npm\\node_modules\\@playwright\\mcp\\cli.js",
+        "--browser",
+        "chrome",
+        "--isolated"
+      ],
+      "env": {}
+    }
+  }
+}
