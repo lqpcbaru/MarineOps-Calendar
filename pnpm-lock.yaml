@@ -13,6 +13,9 @@ importers:
       '@eslint/js':
         specifier: ^9.22.0
         version: 9.39.5
+      '@playwright/mcp':
+        specifier: 0.0.81
+        version: 0.0.81
       eslint:
         specifier: ^9.22.0
         version: 9.39.5(jiti@2.7.0)
@@ -1512,6 +1515,14 @@ packages:
         integrity: sha512-+1VkjdD0QBLPodGrJUeqarH8VAIvQODIbwh9XpP5Syisf7YoQgsJKPNFoqqLQlu+VQ/tVSshMR6loPMn8U+dPg==,
       }
     engines: { node: '>=14' }
+
+  '@playwright/mcp@0.0.81':
+    resolution:
+      {
+        integrity: sha512-c4eVex1nS53IzLHlwAm0J9ZISDTvA7RndFX8oVcQOrmvIrKSkByazpq79lZHWJuWTB7Gpk0sLBQoRepyIgmneA==,
+      }
+    engines: { node: '>=18' }
+    hasBin: true
 
   '@prisma/client@6.19.3':
     resolution:
@@ -5321,6 +5332,22 @@ packages:
         integrity: sha512-y+ichcgc2LrADuhLNAx8DFjVfgz91pRxfZdI3UDhxHvcVEZsenLO+7XaU5vOp0u/7V/wZ+plyuQxtrDlZJ+yeg==,
       }
 
+  playwright-core@1.64.0-alpha-2026-09-14:
+    resolution:
+      {
+        integrity: sha512-VCqlQ8lEKS8NAfEU/sWx3KP7gL2oCWd/DAGzPDZncGV7dUNNHpaVxHd2LWe2pc5y53h0Hqu3SWzRiPqKqkrYQA==,
+      }
+    engines: { node: '>=20' }
+    hasBin: true
+
+  playwright@1.64.0-alpha-2026-09-14:
+    resolution:
+      {
+        integrity: sha512-CdpbZ03/Iq4HMth9RP2NHBv/gv9exDLkR3eJEDvS2fKdAjZSNYvL2PrJum3wHe8qOSFR8KzWuyKUx3AZ5vZc4w==,
+      }
+    engines: { node: '>=20' }
+    hasBin: true
+
   pluralize@8.0.0:
     resolution:
       {
@@ -7285,6 +7312,11 @@ snapshots:
 
   '@pkgjs/parseargs@0.11.0':
     optional: true
+
+  '@playwright/mcp@0.0.81':
+    dependencies:
+      playwright: 1.64.0-alpha-2026-09-14
+      playwright-core: 1.64.0-alpha-2026-09-14
 
   '@prisma/client@6.19.3(prisma@6.19.3(magicast@0.3.5)(typescript@5.9.3))(typescript@5.9.3)':
     optionalDependencies:
@@ -9492,6 +9524,12 @@ snapshots:
       confbox: 0.2.4
       exsolve: 1.1.1
       pathe: 2.0.3
+
+  playwright-core@1.64.0-alpha-2026-09-14: {}
+
+  playwright@1.64.0-alpha-2026-09-14:
+    dependencies:
+      playwright-core: 1.64.0-alpha-2026-09-14
 
   pluralize@8.0.0: {}
 
