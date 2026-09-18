@@ -40,6 +40,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.22.0",
+    "@playwright/mcp": "0.0.81",
     "eslint": "^9.22.0",
     "eslint-config-prettier": "^10.1.1",
     "globals": "^16.0.0",
