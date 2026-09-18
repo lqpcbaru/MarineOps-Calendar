@@ -1,7 +1,7 @@
 # ADR-0013: Playwright MCP as a Pinned Alpha Tooling Dependency
 
 **Date:** 2026-09-18  
-**Status:** Proposed  
+**Status:** Accepted  
 **Deciders:** Chief Software Architect  
 **Related:** ADR-0009 (technology stack reconfirmation), `CLAUDE.md` (tooling ownership table)
 
