@@ -32,24 +32,24 @@ function TodaySummary({ data }: { data: TideDataPoint[] }) {
       <SectionTitle>Ringkasan Hari Ini</SectionTitle>
       <MarineSummaryGrid columns={4}>
         <MarineConditionCard
-          icon="🌊"
+          icon="tide"
           title="Jenis Air"
           value={todayPoints.length > 0 ? (high ? 'Pasang' : 'Surut') : '—'}
         />
         <MarineConditionCard
-          icon="⬆️"
+          icon="arrow-up"
           title="Pasang Tinggi"
           value={high ? `${high.height}m` : '—'}
           subtitle={high?.time ?? ''}
         />
         <MarineConditionCard
-          icon="⬇️"
+          icon="arrow-down"
           title="Surut Rendah"
           value={low ? `${low.height}m` : '—'}
           subtitle={low?.time ?? ''}
         />
         <MarineConditionCard
-          icon="📊"
+          icon="gauge"
           title="Titik Data"
           value={String(todayPoints.length)}
           subtitle="hari ini"
@@ -82,7 +82,7 @@ function TideTable({ data }: { data: TideDataPoint[] }) {
               <AppTable.Row key={i}>
                 <AppTable.Td>{p.date}</AppTable.Td>
                 <AppTable.Td>{p.time}</AppTable.Td>
-                <AppTable.Td>{p.type === 'HIGH' ? '🟢 Pasang' : '🔴 Surut'}</AppTable.Td>
+                <AppTable.Td>{p.type === 'HIGH' ? 'Pasang' : 'Surut'}</AppTable.Td>
                 <AppTable.Td>{p.height}</AppTable.Td>
               </AppTable.Row>
             ))}
@@ -137,14 +137,12 @@ export function PasangSurutPage() {
       <TodaySummary data={points} />
       <TideTable data={points} />
       <section aria-label="Cadangan operasi" className="mb-8">
-        <div className="card-flat flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm text-text-secondary">
-            Semakan status dan cadangan operasi tersedia di Amaran Marin.
-          </p>
-          <Link to="/amaran-marin" className="btn-primary" aria-label="Ke halaman Amaran Marin">
-            Amaran Marin
-          </Link>
-        </div>
+        <Link
+          to="/amaran-marin"
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-text-accent hover:text-ocean-300"
+        >
+          Semakan status dan cadangan operasi
+        </Link>
       </section>
       <section aria-label="Petunjuk status" className="mb-8">
         <OperationalLegend />

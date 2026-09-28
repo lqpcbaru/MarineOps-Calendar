@@ -12,6 +12,7 @@ import {
   MarineConditionCard,
   MarineSummaryGrid,
   OperationalLegend,
+  StationSelect,
 } from '../../shared/components';
 import { formatDuration, formatStationTime } from '../../shared/format/station-time';
 import { getStations } from '../stesen/stesen.api';
@@ -36,22 +37,22 @@ function RingkasanHariIni({
       <SectionTitle>Ringkasan Hari Ini</SectionTitle>
       <MarineSummaryGrid columns={4}>
         <MarineConditionCard
-          icon="🌅"
+          icon="sun"
           title="Matahari Terbit"
           value={formatStationTime(data?.sunrise, timezone)}
         />
         <MarineConditionCard
-          icon="🌇"
+          icon="sun"
           title="Matahari Terbenam"
           value={formatStationTime(data?.sunset, timezone)}
         />
         <MarineConditionCard
-          icon="☀️"
+          icon="sun"
           title="Tengah Hari"
           value={formatStationTime(data?.solarNoon, timezone)}
         />
         <MarineConditionCard
-          icon="⏱️"
+          icon="clock"
           title="Tempoh Siang"
           value={formatDuration(data?.daylightDuration)}
         />
@@ -126,22 +127,19 @@ export function MatahariPage() {
 
   const stationPicker =
     stations.length > 0 ? (
-      <div className="card-flat mb-6">
-        <label htmlFor="sun-station" className="mb-1 block text-sm text-text-secondary">
+      <div className="mb-6">
+        <label
+          htmlFor="sun-station"
+          className="mb-1 block text-xs uppercase tracking-wide text-text-muted"
+        >
           Stesen
         </label>
-        <select
+        <StationSelect
           id="sun-station"
-          className="w-full rounded-lg border border-marine-600 bg-surface-raised px-3 py-2 text-text-primary focus:border-ocean-400 focus:outline-none sm:max-w-sm"
+          stations={stations}
           value={selectedStationId ?? ''}
           onChange={(e) => setStationId(e.target.value)}
-        >
-          {stations.map((station) => (
-            <option key={station.id} value={station.id}>
-              {station.code} — {station.name}
-            </option>
-          ))}
-        </select>
+        />
       </div>
     ) : null;
 
@@ -191,14 +189,12 @@ export function MatahariPage() {
       <RingkasanHariIni data={sunData} timezone={selectedTimezone} />
       <JadualHarian data={sunData} timezone={selectedTimezone} />
       <section className="mb-8">
-        <div className="card-flat flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm text-text-secondary">
-            Semakan status dan cadangan operasi tersedia di Amaran Marin.
-          </p>
-          <Link to="/amaran-marin" className="btn-primary" aria-label="Ke halaman Amaran Marin">
-            Amaran Marin
-          </Link>
-        </div>
+        <Link
+          to="/amaran-marin"
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-text-accent hover:text-ocean-300"
+        >
+          Semakan status dan cadangan operasi
+        </Link>
       </section>
       <section className="mb-8">
         <OperationalLegend />

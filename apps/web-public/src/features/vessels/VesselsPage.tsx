@@ -94,7 +94,7 @@ function PositionBlock({ position }: { position: VesselPosition | null }) {
     return <div className="mt-3 text-sm text-text-muted">Kedudukan terakhir tidak tersedia.</div>;
   }
   return (
-    <div className="mt-3 rounded-lg border border-marine-600 p-3 text-sm">
+    <div className="mt-3 rounded-md border border-border-subtle p-3 text-sm">
       <p className="mb-2 font-semibold text-text-secondary">Kedudukan Terakhir</p>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
         <div>
@@ -241,7 +241,7 @@ export function VesselsPage() {
               if (e.key === 'Enter') handleSubmit();
             }}
             placeholder="Cari kapal (nama, MMSI, IMO)..."
-            className="flex-1 rounded-lg border border-marine-600 bg-surface-raised px-4 py-2.5 text-text-primary placeholder-text-muted focus:border-ocean-400 focus:outline-none"
+            className="h-11 flex-1 rounded-sm border border-border-subtle bg-surface-raised px-4 text-text-primary placeholder-text-muted focus:border-ocean-400 focus:outline-none"
             aria-label="Carian kapal"
           />
           <button
@@ -289,7 +289,7 @@ export function VesselsPage() {
                   key={v.id}
                   type="button"
                   onClick={() => setSelectedId(v.id)}
-                  className="card-flat flex w-full items-center justify-between text-left transition-colors hover:border-marine-500"
+                  className="surface-hairline flex w-full items-center justify-between px-4 py-3 text-left transition-colors hover:border-border-strong"
                 >
                   <div>
                     <p className="font-semibold text-text-primary">{v.name ?? 'Tidak Dikenali'}</p>

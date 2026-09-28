@@ -1,7 +1,14 @@
-@import "tailwindcss";
+@import '@fontsource-variable/inter';
+@import 'tailwindcss';
 
+/*
+ * MarineOps — design tokens (public portal)
+ * Kept intentionally identical to apps/web-admin so both portals read as one
+ * product. Visual language: restrained marine operations console — surfaces,
+ * not cards; typography over decoration; colour only for meaning.
+ */
 @theme {
-  /* Marine Dark Theme — Color System */
+  /* ── Marine neutrals ── */
   --color-marine-950: #060b14;
   --color-marine-900: #0a0f1e;
   --color-marine-800: #0f1629;
@@ -14,95 +21,108 @@
   --color-marine-100: #c0d8f5;
   --color-marine-50: #e8f1fc;
 
-  /* Accent — Ocean */
+  /* ── Accent (used sparingly: primary action + selection only) ── */
   --color-ocean-400: #00b4d8;
   --color-ocean-300: #48cae4;
   --color-ocean-200: #90e0ef;
   --color-ocean-100: #caf0f8;
 
-  /* Accent — Tide */
-  --color-tide-400: #06d6a0;
-  --color-tide-300: #4ee4b8;
-
-  /* Accent — Warning */
-  --color-warning-400: #ffd166;
-  --color-warning-300: #ffe08a;
-
-  /* Accent — Danger */
-  --color-danger-400: #ef476f;
-
-  /* Neutral */
+  /* ── Surfaces & text ── */
   --color-surface: #0a0f1e;
   --color-surface-raised: #111a2e;
   --color-surface-overlay: #1a2540;
 
-  /* Text */
   --color-text-primary: #e2e8f0;
   --color-text-secondary: #94a3b8;
   --color-text-muted: #64748b;
   --color-text-accent: #00b4d8;
 
-  /* Status colors */
+  /* ── Borders / elevation ── */
+  --color-border-subtle: #1a2540;
+  --color-border-strong: #2a4a7f;
+
+  /* ── Semantic status (green / amber / red) — colour only for meaning ── */
   --color-status-safe: #06d6a0;
   --color-status-caution: #ffd166;
   --color-status-danger: #ef476f;
 
-  /* Typography */
-  --font-sans: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
-  --font-display: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+  /* Status surface triples: bg / border / text — legible, not alpha-diluted */
+  --color-safe-bg: #0c2a24;
+  --color-safe-border: #11584a;
+  --color-safe-text: #4ee4b8;
+  --color-caution-bg: #2a2410;
+  --color-caution-border: #6b5a1a;
+  --color-caution-text: #ffe08a;
+  --color-danger-bg: #2a111c;
+  --color-danger-border: #6b1f36;
+  --color-danger-text: #ff7d9b;
 
-  /* Border radius */
-  --radius-card: 0.75rem;
+  /* ── Typography ── */
+  --font-sans: 'Inter Variable', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --font-display: 'Inter Variable', 'Segoe UI', system-ui, -apple-system, sans-serif;
+
+  /* ── Radii: two sizes only ── */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+
+  /* ── Spacing rhythm (semantic section spacing) ── */
+  --spacing-section: 2rem;
 }
 
-/* Light theme overrides */
+/* Light theme overrides — faithful, higher-contrast equivalent */
 @media (prefers-color-scheme: light) {
   :root {
     --color-surface: #f1f5f9;
     --color-surface-raised: #ffffff;
     --color-surface-overlay: #e2e8f0;
+    --color-border-subtle: #e2e8f0;
+    --color-border-strong: #cbd5e1;
+
     --color-text-primary: #0f172a;
     --color-text-secondary: #475569;
     --color-text-muted: #94a3b8;
     --color-text-accent: #0077a3;
+
     --color-marine-900: #1e293b;
     --color-marine-800: #334155;
     --color-marine-700: #475569;
-    --color-marine-600: #64748b;
-    --color-marine-500: #3b82f6;
-    --color-marine-400: #60a5fa;
+    --color-marine-600: #cbd5e1;
+    --color-marine-500: #2563eb;
+    --color-marine-400: #3b82f6;
     --color-marine-300: #93c5fd;
     --color-marine-200: #bfdbfe;
     --color-marine-100: #dbeafe;
     --color-marine-50: #eff6ff;
+
     --color-ocean-400: #0284c7;
     --color-ocean-300: #0ea5e9;
     --color-ocean-200: #7dd3fc;
     --color-ocean-100: #e0f2fe;
-    --color-tide-400: #059669;
-    --color-tide-300: #10b981;
-    --color-warning-400: #d97706;
-    --color-warning-300: #f59e0b;
-    --color-danger-400: #dc2626;
+
     --color-status-safe: #059669;
     --color-status-caution: #d97706;
     --color-status-danger: #dc2626;
+
+    --color-safe-bg: #ecfdf5;
+    --color-safe-border: #a7f3d0;
+    --color-safe-text: #047857;
+    --color-caution-bg: #fffbeb;
+    --color-caution-border: #fde68a;
+    --color-caution-text: #b45309;
+    --color-danger-bg: #fef2f2;
+    --color-danger-border: #fecaca;
+    --color-danger-text: #b91c1c;
   }
 
   html {
     color-scheme: light;
   }
-
-  body {
-    background-color: var(--color-surface);
-    color: var(--color-text-primary);
-  }
 }
 
-/* Base styles */
 @layer base {
   html {
     font-family: var(--font-sans);
+    color-scheme: dark;
   }
 
   body {
@@ -112,22 +132,27 @@
     -moz-osx-font-smoothing: grayscale;
   }
 
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     font-family: var(--font-display);
-    font-weight: 700;
+    font-weight: 650;
     line-height: 1.2;
-    letter-spacing: -0.02em;
+    letter-spacing: -0.01em;
   }
 
-  /* Focus visible — accessibility */
   :focus-visible {
     outline: 2px solid var(--color-ocean-400);
     outline-offset: 2px;
   }
 
-  /* Reduced motion */
   @media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after {
+    *,
+    *::before,
+    *::after {
       animation-duration: 0.01ms !important;
       animation-iteration-count: 1 !important;
       transition-duration: 0.01ms !important;
@@ -135,51 +160,58 @@
   }
 }
 
-/* Utility classes */
+@layer utilities {
+  /* Tabular figures for operational/metric data (times, coordinates, speeds). */
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
 @layer components {
-  .card {
+  /* ── Surfaces (replaces the old "everything is a bordered card") ── */
+  .surface {
     background-color: var(--color-surface-raised);
-    border: 1px solid var(--color-marine-700);
-    border-radius: var(--radius-card);
-    padding: 1.5rem;
-    transition: border-color 0.2s ease;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-md);
   }
 
-  .card:hover {
-    border-color: var(--color-marine-500);
-  }
-
-  .card-flat {
+  .surface-hairline {
     background-color: var(--color-surface-raised);
-    border: 1px solid var(--color-marine-700);
-    border-radius: var(--radius-card);
-    padding: 1.5rem;
+    border-top: 1px solid var(--color-border-subtle);
+    border-bottom: 1px solid var(--color-border-subtle);
   }
 
+  /* ── Buttons ── */
   .btn-primary {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 0.625rem 1.25rem;
+    gap: 0.5rem;
+    min-height: 2.5rem;
+    padding: 0.5rem 1rem;
     background-color: var(--color-marine-500);
     color: #ffffff;
     font-weight: 600;
     font-size: 0.875rem;
-    border-radius: 0.5rem;
+    line-height: 1;
+    border-radius: var(--radius-sm);
     border: 1px solid transparent;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: background-color 0.15s ease;
   }
-
   .btn-primary:hover {
     background-color: var(--color-marine-400);
   }
-
   .btn-primary:focus-visible {
     outline: 2px solid var(--color-ocean-400);
     outline-offset: 2px;
   }
+  .btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
 
+  /* ── Navigation ── */
   .nav-link {
     display: inline-flex;
     align-items: center;
@@ -187,20 +219,19 @@
     font-size: 0.875rem;
     font-weight: 500;
     color: var(--color-text-secondary);
-    border-radius: 0.375rem;
-    transition: all 0.15s ease;
+    border-radius: var(--radius-sm);
+    transition:
+      background-color 0.12s ease,
+      color 0.12s ease;
   }
-
   .nav-link:hover {
     color: var(--color-text-primary);
     background-color: var(--color-marine-800);
   }
-
   .nav-link.active {
     color: var(--color-ocean-400);
     background-color: var(--color-marine-800);
   }
-
   .nav-link:focus-visible {
     outline: 2px solid var(--color-ocean-400);
     outline-offset: 2px;
@@ -212,175 +243,70 @@
     left: 1rem;
     padding: 0.5rem 1rem;
     background-color: var(--color-ocean-400);
-    color: #ffffff;
+    color: var(--color-marine-950);
     font-weight: 600;
-    border-radius: 0.375rem;
+    border-radius: var(--radius-sm);
     z-index: 100;
     transition: top 0.2s ease;
   }
-
   .skip-link:focus {
     top: 0.5rem;
   }
 
-  /* ── Sprint 2.2: Pusat Operasi components ── */
+  /* ── Section heading (calm eyebrow, not a big h2) ── */
+  .section-heading {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+    margin-bottom: 0.75rem;
+  }
 
-  /* Status badge */
+  /* ── Status badge (semantic, legible) ── */
   .status-badge {
     display: inline-flex;
     align-items: center;
-    gap: 0.5rem;
-    padding: 0.375rem 0.875rem;
-    font-size: 0.875rem;
+    gap: 0.375rem;
+    padding: 0.1875rem 0.5rem;
+    font-size: 0.75rem;
     font-weight: 600;
+    line-height: 1.4;
     border-radius: 9999px;
+    border: 1px solid transparent;
   }
 
   .status-badge-safe {
-    background-color: color-mix(in srgb, var(--color-status-safe) 15%, transparent);
-    color: var(--color-status-safe);
-    border: 1px solid var(--color-status-safe);
+    background-color: var(--color-safe-bg);
+    color: var(--color-safe-text);
+    border-color: var(--color-safe-border);
   }
-
   .status-badge-caution {
-    background-color: color-mix(in srgb, var(--color-status-caution) 15%, transparent);
-    color: var(--color-status-caution);
-    border: 1px solid var(--color-status-caution);
+    background-color: var(--color-caution-bg);
+    color: var(--color-caution-text);
+    border-color: var(--color-caution-border);
   }
-
   .status-badge-danger {
-    background-color: color-mix(in srgb, var(--color-status-danger) 15%, transparent);
-    color: var(--color-status-danger);
-    border: 1px solid var(--color-status-danger);
+    background-color: var(--color-danger-bg);
+    color: var(--color-danger-text);
+    border-color: var(--color-danger-border);
   }
 
-  /* Large status card */
-  .status-card {
-    background-color: var(--color-surface-raised);
-    border: 2px solid var(--color-marine-700);
-    border-radius: var(--radius-card);
-    padding: 2rem;
-    text-align: center;
-    transition: border-color 0.2s ease;
-  }
-
-  .status-card-safe {
-    border-color: var(--color-status-safe);
-  }
-
-  .status-card-caution {
-    border-color: var(--color-status-caution);
-  }
-
-  .status-card-danger {
-    border-color: var(--color-status-danger);
-  }
-
-  .status-card-icon {
-    font-size: 3rem;
-    line-height: 1;
-    margin-bottom: 0.75rem;
-  }
-
-  .status-card-title {
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: var(--color-text-primary);
-    margin-bottom: 0.5rem;
-  }
-
-  .status-card-subtitle {
-    font-size: 0.95rem;
-    color: var(--color-text-secondary);
-  }
-
-  /* Quick nav button */
-  .quick-nav-btn {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    padding: 1.25rem 1rem;
-    background-color: var(--color-surface-raised);
-    border: 1px solid var(--color-marine-700);
-    border-radius: var(--radius-card);
-    cursor: pointer;
-    transition: all 0.15s ease;
-    min-height: 5.5rem;
-    text-align: center;
-  }
-
-  .quick-nav-btn:hover {
-    background-color: var(--color-marine-800);
-    border-color: var(--color-marine-500);
-  }
-
-  .quick-nav-btn:focus-visible {
-    outline: 2px solid var(--color-ocean-400);
-    outline-offset: 2px;
-  }
-
-  .quick-nav-btn-icon {
-    font-size: 1.5rem;
-    line-height: 1;
-  }
-
-  .quick-nav-btn-label {
-    font-size: 0.8rem;
-    font-weight: 500;
-    color: var(--color-text-primary);
-    line-height: 1.3;
-  }
-
-  /* Section heading */
-  .section-heading {
-    font-size: 1.125rem;
-    font-weight: 600;
-    color: var(--color-text-primary);
-    margin-bottom: 0.75rem;
-  }
-
-  /* Legend dot */
+  /* ── Legend dot ── */
   .legend-dot {
     display: inline-block;
-    width: 0.75rem;
-    height: 0.75rem;
+    width: 0.625rem;
+    height: 0.625rem;
     border-radius: 9999px;
-    margin-right: 0.5rem;
-    vertical-align: middle;
+    flex-shrink: 0;
   }
-
   .legend-dot-safe {
     background-color: var(--color-status-safe);
   }
-
   .legend-dot-caution {
     background-color: var(--color-status-caution);
   }
-
   .legend-dot-danger {
     background-color: var(--color-status-danger);
-  }
-
-  /* Info panel */
-  .info-panel {
-    background-color: var(--color-surface-raised);
-    border: 1px solid var(--color-marine-700);
-    border-radius: var(--radius-card);
-    padding: 1.5rem;
-  }
-
-  .info-panel-title {
-    font-size: 1rem;
-    font-weight: 600;
-    color: var(--color-text-primary);
-    margin-bottom: 0.5rem;
-  }
-
-  .info-panel-text {
-    font-size: 0.95rem;
-    color: var(--color-text-secondary);
-    line-height: 1.7;
   }
 }

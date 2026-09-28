@@ -27,20 +27,24 @@ function RingkasanHariIni({ data }: { data: WindWaveDataPoint[] }) {
     <section aria-label="Ringkasan angin dan ombak" className="mb-8">
       <SectionTitle>Ringkasan Hari Ini</SectionTitle>
       <MarineSummaryGrid columns={4}>
-        <MarineConditionCard icon="🧭" title="Arah Angin" value={current?.windDirection ?? '—'} />
         <MarineConditionCard
-          icon="💨"
+          icon="compass"
+          title="Arah Angin"
+          value={current?.windDirection ?? '—'}
+        />
+        <MarineConditionCard
+          icon="wind"
           title="Kelajuan Angin"
           value={current ? `${current.windSpeed} kn` : '—'}
           subtitle={current ? `Gust ${current.windGusts} kn` : ''}
         />
         <MarineConditionCard
-          icon="🌊"
+          icon="tide"
           title="Ketinggian Ombak"
           value={current ? `${current.waveHeight} m` : '—'}
         />
         <MarineConditionCard
-          icon="⏱️"
+          icon="clock"
           title="Tempoh Ombak"
           value={current ? `${current.wavePeriod}s` : '—'}
         />
@@ -121,14 +125,12 @@ export function AnginOmbakPage() {
       <RingkasanHariIni data={points} />
       <JadualRamalan data={points} />
       <section className="mb-8">
-        <div className="card-flat flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm text-text-secondary">
-            Semakan status dan cadangan operasi tersedia di Amaran Marin.
-          </p>
-          <Link to="/amaran-marin" className="btn-primary" aria-label="Ke halaman Amaran Marin">
-            Amaran Marin
-          </Link>
-        </div>
+        <Link
+          to="/amaran-marin"
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-text-accent hover:text-ocean-300"
+        >
+          Semakan status dan cadangan operasi
+        </Link>
       </section>
       <section className="mb-8">
         <OperationalLegend />

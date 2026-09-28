@@ -12,8 +12,8 @@ export function ErrorState({
   onRetry,
 }: ErrorStateProps) {
   return (
-    <div role="alert" className="card border-danger-400/40 p-5">
-      <h2 className="text-base font-semibold text-danger-400">{title}</h2>
+    <div role="alert" className="rounded-md border border-danger-border bg-danger-bg p-5">
+      <h2 className="text-base font-semibold text-danger-text">{title}</h2>
       <p className="mt-1 text-sm text-text-secondary">{message}</p>
       {onRetry ? (
         <AppButton variant="secondary" className="mt-3" onClick={onRetry}>

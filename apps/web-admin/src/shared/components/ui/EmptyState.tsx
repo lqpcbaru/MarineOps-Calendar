@@ -3,5 +3,9 @@ export interface EmptyStateProps {
 }
 
 export function EmptyState({ message }: EmptyStateProps) {
-  return <div className="card p-6 text-center text-sm text-text-secondary">{message}</div>;
+  return (
+    <div className="rounded-md border border-dashed border-border-subtle p-6 text-center text-sm text-text-secondary">
+      {message}
+    </div>
+  );
 }

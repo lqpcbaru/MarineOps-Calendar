@@ -1,5 +1,6 @@
 import type { HTMLAttributes } from 'react';
 import { AppCard } from '../ui/AppCard';
+import { Icon, type IconName } from '../ui/Icon';
 
 type RecommendationVariant = 'placeholder' | 'warning' | 'information';
 
@@ -9,35 +10,37 @@ interface OperationalRecommendationCardProps extends HTMLAttributes<HTMLDivEleme
   message?: string;
 }
 
-const config: Record<RecommendationVariant, { icon: string; defaultTitle: string; defaultMessage: string; cardVariant: 'flat' | 'warning' | 'highlight' }> = {
+const config: Record<
+  RecommendationVariant,
+  {
+    icon: IconName;
+    defaultTitle: string;
+    defaultMessage: string;
+    cardVariant: 'flat' | 'warning' | 'accent';
+  }
+> = {
   placeholder: {
-    icon: '📋',
+    icon: 'info',
     defaultTitle: 'Cadangan Operasi',
     defaultMessage: 'Maklumat operasi akan dipaparkan di sini.',
     cardVariant: 'flat',
   },
   warning: {
-    icon: '⚠️',
+    icon: 'alert',
     defaultTitle: 'Amaran Operasi',
     defaultMessage: 'Sila ambil perhatian terhadap keadaan semasa sebelum beroperasi.',
     cardVariant: 'warning',
   },
   information: {
-    icon: 'ℹ️',
+    icon: 'info',
     defaultTitle: 'Maklumat Operasi',
     defaultMessage: 'Maklumat tambahan berkaitan operasi akan dipaparkan di sini.',
-    cardVariant: 'highlight',
+    cardVariant: 'accent',
   },
 };
 
 /**
- * Displays operational recommendations in a professional card.
- * Used by all marine modules for consistent recommendation display.
- *
- * Variants:
- * - placeholder: default state, no data available
- * - warning: caution needed
- * - information: general information
+ * Operational recommendation, surfaced with a left semantic rail.
  */
 export function OperationalRecommendationCard({
   variant = 'placeholder',
@@ -49,16 +52,12 @@ export function OperationalRecommendationCard({
   const cfg = config[variant];
 
   return (
-    <AppCard variant={cfg.cardVariant} className={className} {...rest}>
-      <div className="flex items-start gap-3">
-        <span aria-hidden="true" className="mt-0.5 text-2xl">
-          {cfg.icon}
-        </span>
+    <AppCard variant={cfg.cardVariant} className={`px-4 py-3 ${className}`} {...rest}>
+      <div className="flex items-start gap-2.5">
+        <Icon name={cfg.icon} size={18} className="mt-0.5 shrink-0 text-text-muted" />
         <div>
-          <h3 className="text-base font-semibold text-text-primary">
-            {title ?? cfg.defaultTitle}
-          </h3>
-          <p className="mt-1 text-sm leading-relaxed text-text-secondary">
+          <h3 className="text-sm font-semibold text-text-primary">{title ?? cfg.defaultTitle}</h3>
+          <p className="mt-0.5 text-sm leading-relaxed text-text-secondary">
             {message ?? cfg.defaultMessage}
           </p>
         </div>

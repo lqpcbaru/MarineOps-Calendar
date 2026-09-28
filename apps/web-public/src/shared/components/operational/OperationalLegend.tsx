@@ -1,5 +1,4 @@
 import type { HTMLAttributes } from 'react';
-import { AppCard } from '../ui/AppCard';
 
 interface LegendItem {
   color: 'hijau' | 'kuning' | 'merah';
@@ -25,12 +24,7 @@ const defaultItems: LegendItem[] = [
 ];
 
 /**
- * Reusable legend component explaining status colours.
- * Used by all marine modules to explain the meaning of
- * green / yellow / red indicators.
- *
- * Accepts custom items or falls back to the default
- * Sesuai / Berwaspada / Tidak Disyorkan set.
+ * Reusable legend explaining status colours (green / yellow / red).
  */
 export function OperationalLegend({
   title = 'Petunjuk Status',
@@ -39,15 +33,12 @@ export function OperationalLegend({
   ...rest
 }: OperationalLegendProps) {
   return (
-    <AppCard variant="flat" className={className} {...rest}>
-      <h3 className="mb-3 text-sm font-semibold text-text-primary">{title}</h3>
-      <ul className="flex flex-wrap gap-x-6 gap-y-2" role="list">
+    <div className={className} {...rest}>
+      <h3 className="text-xs font-semibold uppercase tracking-wide text-text-muted">{title}</h3>
+      <ul className="mt-2 flex flex-wrap gap-x-6 gap-y-2" role="list">
         {items.map((item) => (
-          <li key={item.label} className="flex items-start">
-            <span
-              className={`legend-dot mt-1 ${dotClasses[item.color]}`}
-              aria-hidden="true"
-            />
+          <li key={item.label} className="flex items-start gap-2">
+            <span className={`legend-dot mt-1 ${dotClasses[item.color]}`} aria-hidden="true" />
             <span className="text-sm text-text-secondary">
               <span className="font-medium text-text-primary">{item.label}</span>
               {item.description && (
@@ -57,6 +48,6 @@ export function OperationalLegend({
           </li>
         ))}
       </ul>
-    </AppCard>
+    </div>
   );
 }

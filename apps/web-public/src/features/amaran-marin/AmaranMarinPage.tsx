@@ -7,6 +7,7 @@ import {
   ErrorState,
   LoadingState,
   StatusBadge,
+  Icon,
 } from '../../shared/components';
 import {
   getRecommendation,
@@ -173,9 +174,10 @@ export function AmaranMarinPage() {
                   {rec.warnings.map((w, i) => (
                     <div
                       key={i}
-                      className="rounded-lg border border-danger-400/30 bg-danger-400/5 px-4 py-3 text-sm text-text-primary"
+                      className="flex items-start gap-2.5 rounded-md border border-danger-border bg-danger-bg px-3 py-2.5 text-sm text-danger-text"
                     >
-                      ⚠️ {w}
+                      <Icon name="alert" size={16} className="mt-0.5 shrink-0" />
+                      <span>{w}</span>
                     </div>
                   ))}
                 </div>
@@ -190,9 +192,10 @@ export function AmaranMarinPage() {
                   {rec.advisories.map((a, i) => (
                     <div
                       key={i}
-                      className="rounded-lg border border-warning-400/30 bg-warning-400/5 px-4 py-3 text-sm text-text-primary"
+                      className="flex items-start gap-2.5 rounded-md border border-caution-border bg-caution-bg px-3 py-2.5 text-sm text-caution-text"
                     >
-                      ℹ️ {a}
+                      <Icon name="info" size={16} className="mt-0.5 shrink-0" />
+                      <span>{a}</span>
                     </div>
                   ))}
                 </div>

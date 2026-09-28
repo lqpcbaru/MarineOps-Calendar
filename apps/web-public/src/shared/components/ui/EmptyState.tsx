@@ -17,12 +17,12 @@ export function EmptyState({
 }: EmptyStateProps) {
   return (
     <div
-      className={`flex flex-col items-center justify-center rounded-lg border border-dashed border-marine-600 px-6 py-12 text-center ${className}`}
+      className={`flex flex-col items-center justify-center rounded-md border border-dashed border-border-subtle px-6 py-12 text-center ${className}`}
       role="status"
       {...rest}
     >
       <svg
-        className="mb-3 h-10 w-10 text-text-muted"
+        className="mb-3 h-8 w-8 text-text-muted"
         fill="none"
         viewBox="0 0 24 24"
         strokeWidth="1.5"

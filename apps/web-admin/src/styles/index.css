@@ -1,3 +1,4 @@
+@import '@fontsource-variable/inter';
 @import 'tailwindcss';
 
 /*
@@ -7,7 +8,6 @@
  * not duplicated here.
  */
 @theme {
-  /* Marine Dark Theme — Color System */
   --color-marine-950: #060b14;
   --color-marine-900: #0a0f1e;
   --color-marine-800: #0f1629;
@@ -27,10 +27,8 @@
 
   --color-tide-400: #06d6a0;
   --color-tide-300: #4ee4b8;
-
   --color-warning-400: #ffd166;
   --color-warning-300: #ffe08a;
-
   --color-danger-400: #ef476f;
 
   --color-surface: #0a0f1e;
@@ -42,28 +40,51 @@
   --color-text-muted: #64748b;
   --color-text-accent: #00b4d8;
 
+  --color-border-subtle: #1a2540;
+  --color-border-strong: #2a4a7f;
+
   --color-status-safe: #06d6a0;
   --color-status-caution: #ffd166;
   --color-status-danger: #ef476f;
 
-  --font-sans: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
-  --font-display: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --color-safe-bg: #0c2a24;
+  --color-safe-border: #11584a;
+  --color-safe-text: #4ee4b8;
+  --color-caution-bg: #2a2410;
+  --color-caution-border: #6b5a1a;
+  --color-caution-text: #ffe08a;
+  --color-danger-bg: #2a111c;
+  --color-danger-border: #6b1f36;
+  --color-danger-text: #ff7d9b;
 
-  --radius-card: 0.75rem;
+  --font-sans: 'Inter Variable', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --font-display: 'Inter Variable', 'Segoe UI', system-ui, -apple-system, sans-serif;
+
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+
+  --spacing-section: 2rem;
 }
 
 @layer base {
+  html {
+    color-scheme: dark;
+  }
+
   body {
     background-color: var(--color-surface);
     color: var(--color-text-primary);
     font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   h1,
   h2,
   h3 {
     font-family: var(--font-display);
-    letter-spacing: -0.015em;
+    font-weight: 650;
+    letter-spacing: -0.01em;
   }
 
   :focus-visible {
@@ -81,11 +102,17 @@
   }
 }
 
+@layer utilities {
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
 @layer components {
-  .card {
+  .surface {
     background-color: var(--color-surface-raised);
-    border: 1px solid var(--color-marine-600);
-    border-radius: var(--radius-card);
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-md);
   }
 
   .skip-link {
@@ -96,17 +123,16 @@
     background-color: var(--color-ocean-400);
     color: var(--color-marine-950);
     padding: 0.5rem 1rem;
-    border-radius: 0 0 0.5rem 0;
+    border-radius: 0 0 var(--radius-sm) 0;
     font-weight: 600;
   }
   .skip-link:focus {
     left: 0;
   }
 
-  /* Sidebar / top navigation */
   .nav-link {
     display: block;
-    border-radius: 0.5rem;
+    border-radius: var(--radius-sm);
     padding: 0.5rem 0.75rem;
     font-size: 0.875rem;
     font-weight: 500;
@@ -124,7 +150,6 @@
     color: var(--color-text-primary);
   }
 
-  /* Form controls — used by every admin form. */
   .field-label {
     display: block;
     margin-bottom: 0.25rem;
@@ -136,7 +161,7 @@
   .field-input {
     width: 100%;
     min-height: 2.75rem;
-    border-radius: 0.5rem;
+    border-radius: var(--radius-sm);
     border: 1px solid var(--color-marine-600);
     background-color: var(--color-marine-800);
     padding: 0.5rem 0.75rem;
@@ -149,7 +174,7 @@
     outline-offset: 1px;
   }
   .field-input[aria-invalid='true'] {
-    border-color: var(--color-danger-400);
+    border-color: var(--color-status-danger);
   }
   .field-input:disabled {
     opacity: 0.5;
@@ -159,10 +184,9 @@
   .field-error {
     margin-top: 0.25rem;
     font-size: 0.8125rem;
-    color: var(--color-danger-400);
+    color: var(--color-status-danger);
   }
 
-  /* Dense data table */
   .admin-table {
     width: 100%;
     border-collapse: collapse;
@@ -171,14 +195,17 @@
   .admin-table th {
     text-align: left;
     padding: 0.625rem 0.75rem;
+    font-size: 0.75rem;
     font-weight: 600;
-    color: var(--color-text-secondary);
-    border-bottom: 1px solid var(--color-marine-600);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+    border-bottom: 1px solid var(--color-border-strong);
     white-space: nowrap;
   }
   .admin-table td {
     padding: 0.625rem 0.75rem;
-    border-bottom: 1px solid var(--color-marine-700);
+    border-bottom: 1px solid var(--color-border-subtle);
     vertical-align: middle;
   }
   .admin-table tbody tr:hover {

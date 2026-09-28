@@ -7,8 +7,7 @@ interface ErrorStateProps extends HTMLAttributes<HTMLDivElement> {
 }
 
 /**
- * Government-style error component.
- * Professional, clear, actionable.
+ * Error component. Left-aligned, clear, actionable.
  */
 export function ErrorState({
   title = 'Ralat Sistem',
@@ -19,12 +18,12 @@ export function ErrorState({
 }: ErrorStateProps) {
   return (
     <div
-      className={`flex flex-col items-center justify-center rounded-lg border border-danger-400/30 bg-danger-400/5 px-6 py-12 text-center ${className}`}
+      className={`flex flex-col items-start justify-center rounded-md border border-danger-border bg-danger-bg px-5 py-8 ${className}`}
       role="alert"
       {...rest}
     >
       <svg
-        className="mb-3 h-10 w-10 text-danger-400"
+        className="mb-3 h-8 w-8 text-danger-text"
         fill="none"
         viewBox="0 0 24 24"
         strokeWidth="1.5"
@@ -40,11 +39,7 @@ export function ErrorState({
       <p className="text-sm font-semibold text-text-primary">{title}</p>
       <p className="mt-1 text-sm text-text-secondary">{message}</p>
       {onRetry && (
-        <button
-          type="button"
-          onClick={onRetry}
-          className="btn-primary mt-4"
-        >
+        <button type="button" onClick={onRetry} className="btn-primary mt-4">
           Cuba Semula
         </button>
       )}

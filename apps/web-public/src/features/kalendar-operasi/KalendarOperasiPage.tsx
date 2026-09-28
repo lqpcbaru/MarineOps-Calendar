@@ -1,31 +1,35 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
+  PageShell,
   PageHeader,
   SectionTitle,
-  AppTable,
-  InfoPanel,
   EmptyState,
   ErrorState,
   LoadingState,
-  MarineConditionCard,
-  MarineSummaryGrid,
+  StationSelect,
+  Icon,
 } from '../../shared/components';
 import { getCalendar, type DailyOperationalRecord } from './kalendar-operasi.api';
 import { formatStationTime } from '../../shared/format/station-time';
 import { getStations } from '../stesen/stesen.api';
 
 const DAYS_BM = ['Ahad', 'Isnin', 'Selasa', 'Rabu', 'Khamis', 'Jumaat', 'Sabtu'];
-
-function formatDate(dateStr: string): string {
-  const d = new Date(dateStr + 'T00:00:00');
-  return `${DAYS_BM[d.getDay()]}, ${d.getDate()}/${d.getMonth() + 1}`;
-}
-
-function formatDay(dateStr: string): string {
-  const d = new Date(dateStr + 'T00:00:00');
-  return DAYS_BM[d.getDay()] || dateStr;
-}
+const DAYS_BM_SHORT = ['Ahd', 'Isn', 'Sel', 'Rab', 'Kha', 'Jum', 'Sab'];
+const MONTHS_BM = [
+  'Januari',
+  'Februari',
+  'Mac',
+  'April',
+  'Mei',
+  'Jun',
+  'Julai',
+  'Ogos',
+  'September',
+  'Oktober',
+  'November',
+  'Disember',
+];
 
 function toLocalDateString(d: Date): string {
   const y = d.getFullYear();
@@ -34,175 +38,181 @@ function toLocalDateString(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
-/* ── Summary Cards ── */
-function RingkasanHariIni({ record }: { record: DailyOperationalRecord | null }) {
+function parseDay(dateStr: string): { dayNum: number; dayShort: string; monthShort: string } {
+  const d = new Date(dateStr + 'T00:00:00');
+  return {
+    dayNum: d.getDate(),
+    dayShort: DAYS_BM_SHORT[d.getDay()] ?? String(d.getDate()),
+    monthShort: (MONTHS_BM[d.getMonth()] ?? '').slice(0, 3),
+  };
+}
+
+function isToday(dateStr: string): boolean {
+  return dateStr === toLocalDateString(new Date());
+}
+
+/* ── Condensed indicator glyph inside a day cell ── */
+function CellIndicator({ label, value }: { label?: string; value?: string | null }) {
+  if (!value || value === '—') return null;
   return (
-    <section aria-label="Ringkasan hari ini" className="mb-8">
-      <SectionTitle>Ringkasan Hari Ini</SectionTitle>
-      <MarineSummaryGrid columns={4}>
-        <MarineConditionCard
-          icon="📅"
-          title="Tarikh Masihi"
-          value={record?.date ?? '—'}
-          subtitle={record ? formatDate(record.date) : ''}
-        />
-        <MarineConditionCard
-          icon="🕌"
-          title="Tarikh Hijrah"
-          value={record?.hijriDate !== '—' ? record!.hijriDate : 'Tidak Tersedia'}
-        />
-        <MarineConditionCard
-          icon="🌙"
-          title="Fasa Bulan"
-          value={record?.moon?.phaseName ?? 'Tidak Tersedia'}
-          subtitle={record?.moon ? `${record.moon.illumination}%` : ''}
-        />
-        <MarineConditionCard
-          icon="🌊"
-          title="Jenis Air"
-          value={record?.tide?.type ?? 'Tidak Tersedia'}
-        />
-      </MarineSummaryGrid>
-    </section>
+    <span className="truncate text-[11px] leading-tight text-text-secondary" title={label}>
+      {value}
+    </span>
   );
 }
 
-function RingkasanKeadaanLaut({
+/* ── Week strip: the calendar's focal surface ── */
+function WeekStrip({
+  records,
+  selected,
+  onSelect,
+  timezone,
+}: {
+  records: DailyOperationalRecord[];
+  selected: string;
+  onSelect: (date: string) => void;
+  timezone: string | undefined;
+}) {
+  return (
+    <div
+      className="grid grid-cols-7 gap-px overflow-x-auto rounded-md border border-border-subtle bg-border-subtle"
+      role="listbox"
+      aria-label="Minggu operasi"
+    >
+      {records.map((r) => {
+        const { dayNum, dayShort, monthShort } = parseDay(r.date);
+        const active = r.date === selected;
+        const today = isToday(r.date);
+
+        return (
+          <button
+            key={r.date}
+            type="button"
+            role="option"
+            aria-selected={active}
+            onClick={() => onSelect(r.date)}
+            className={`flex min-w-[5.5rem] flex-col gap-1 bg-surface-raised px-2 py-2.5 text-left transition-colors focus-visible:z-10 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ocean-400 ${
+              active ? 'bg-marine-800 ring-1 ring-inset ring-ocean-400' : 'hover:bg-marine-800/60'
+            }`}
+          >
+            <div className="flex items-baseline justify-between">
+              <span
+                className={`text-[11px] font-medium uppercase ${
+                  today ? 'text-ocean-400' : 'text-text-muted'
+                }`}
+              >
+                {dayShort}
+              </span>
+              <span className="text-sm font-semibold tabular-nums text-text-primary">{dayNum}</span>
+            </div>
+            <span className="text-[10px] uppercase tracking-wide text-text-muted">
+              {monthShort}
+            </span>
+
+            <div className="mt-1 flex flex-col gap-0.5">
+              {r.tide?.nextHigh && (
+                <CellIndicator label="Pasang tinggi" value={`▲ ${r.tide.nextHigh.height}m`} />
+              )}
+              {r.tide?.nextLow && (
+                <CellIndicator label="Surut rendah" value={`▼ ${r.tide.nextLow.height}m`} />
+              )}
+              {r.windWave && (
+                <CellIndicator
+                  label="Angin / ombak"
+                  value={`${r.windWave.windSpeed}kn · ${r.windWave.waveHeight}m`}
+                />
+              )}
+              {r.weather && <CellIndicator label="Suhu" value={`${r.weather.temperature}°C`} />}
+              {r.moon && (
+                <CellIndicator
+                  label="Bulan"
+                  value={`${r.moon.phaseName} ${r.moon.illumination}%`}
+                />
+              )}
+              {r.sun && (
+                <CellIndicator
+                  label="Matahari terbenam"
+                  value={formatStationTime(r.sun.sunset, timezone)}
+                />
+              )}
+            </div>
+
+            {today && (
+              <span className="mt-1 h-0.5 w-5 rounded-full bg-ocean-400" aria-hidden="true" />
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ── Selected-day detail ── */
+function DayDetail({
   record,
   timezone,
 }: {
-  record: DailyOperationalRecord | null;
+  record: DailyOperationalRecord;
   timezone: string | undefined;
 }) {
+  const { dayNum, monthShort } = parseDay(record.date);
+  const fullDay = DAYS_BM[new Date(record.date + 'T00:00:00').getDay()] ?? '';
+  const rows: { label: string; value: string }[] = [
+    { label: 'Tarikh Masihi', value: `${fullDay}, ${dayNum} ${monthShort}` },
+    {
+      label: 'Tarikh Hijrah',
+      value: record.hijriDate !== '—' ? record.hijriDate : 'Tidak Tersedia',
+    },
+    {
+      label: 'Pasang Surut',
+      value: record.tide
+        ? record.tide.nextHigh
+          ? `${record.tide.type} · Pasang ${record.tide.nextHigh.height}m @ ${record.tide.nextHigh.time}`
+          : record.tide.type
+        : '—',
+    },
+    {
+      label: 'Cuaca',
+      value: record.weather
+        ? `${record.weather.conditions} · ${record.weather.temperature}°C`
+        : '—',
+    },
+    {
+      label: 'Angin',
+      value: record.windWave
+        ? `${record.windWave.windDirection} ${record.windWave.windSpeed} kn (gust ${record.windWave.windGusts} kn)`
+        : '—',
+    },
+    {
+      label: 'Ombak',
+      value: record.windWave
+        ? `${record.windWave.waveHeight} m · tempoh ${record.windWave.wavePeriod}s`
+        : '—',
+    },
+    {
+      label: 'Fasa Bulan',
+      value: record.moon ? `${record.moon.phaseName} · ${record.moon.illumination}%` : '—',
+    },
+    {
+      label: 'Matahari',
+      value: record.sun
+        ? `${formatStationTime(record.sun.sunrise, timezone)} → ${formatStationTime(record.sun.sunset, timezone)}`
+        : '—',
+    },
+  ];
+
   return (
-    <section aria-label="Ringkasan keadaan laut" className="mb-8">
-      <SectionTitle>Ringkasan Keadaan Laut</SectionTitle>
-      <MarineSummaryGrid columns={4}>
-        <MarineConditionCard
-          icon="🌦️"
-          title="Cuaca"
-          value={record?.weather?.conditions ?? 'Tidak Tersedia'}
-          subtitle={record?.weather ? `${record.weather.temperature}°C` : ''}
-        />
-        <MarineConditionCard
-          icon="💨"
-          title="Angin"
-          value={record?.windWave ? `${record.windWave.windSpeed} kn` : 'Tidak Tersedia'}
-          subtitle={record?.windWave?.windDirection ?? ''}
-        />
-        <MarineConditionCard
-          icon="🌊"
-          title="Ombak"
-          value={record?.windWave ? `${record.windWave.waveHeight} m` : 'Tidak Tersedia'}
-        />
-        <MarineConditionCard
-          icon="☀️"
-          title="Matahari"
-          value={
-            record?.sun
-              ? `${formatStationTime(record.sun.sunrise, timezone)} → ${formatStationTime(record.sun.sunset, timezone)}`
-              : 'Tidak Tersedia'
-          }
-        />
-      </MarineSummaryGrid>
-    </section>
+    <dl className="grid grid-cols-1 gap-px overflow-hidden rounded-md border border-border-subtle bg-border-subtle sm:grid-cols-2 lg:grid-cols-4">
+      {rows.map((row) => (
+        <div key={row.label} className="bg-surface-raised px-4 py-3">
+          <dt className="text-xs uppercase tracking-wide text-text-muted">{row.label}</dt>
+          <dd className="mt-1 text-sm font-medium tabular-nums text-text-primary">{row.value}</dd>
+        </div>
+      ))}
+    </dl>
   );
 }
 
-/* ── Main Table ── */
-function JadualOperasiHarian({
-  data,
-  timezone,
-}: {
-  data: DailyOperationalRecord[];
-  timezone: string | undefined;
-}) {
-  if (data.length === 0) {
-    return (
-      <section aria-label="Jadual operasi harian" className="mb-8">
-        <SectionTitle>Jadual Operasi Harian</SectionTitle>
-        <EmptyState
-          title="Tiada Data"
-          message="Data kalendar operasi tidak tersedia buat masa ini."
-        />
-      </section>
-    );
-  }
-
-  return (
-    <section aria-label="Jadual operasi harian" className="mb-8">
-      <SectionTitle>Jadual Operasi Harian</SectionTitle>
-      <AppTable>
-        <AppTable.Head>
-          <AppTable.Row>
-            <AppTable.Th>Hari</AppTable.Th>
-            <AppTable.Th>Tarikh</AppTable.Th>
-            <AppTable.Th>Pasang Surut</AppTable.Th>
-            <AppTable.Th>Fasa Bulan</AppTable.Th>
-            <AppTable.Th>Cuaca</AppTable.Th>
-            <AppTable.Th>Angin</AppTable.Th>
-            <AppTable.Th>Ombak</AppTable.Th>
-            <AppTable.Th>Matahari</AppTable.Th>
-          </AppTable.Row>
-        </AppTable.Head>
-        <AppTable.Body>
-          {data.map((r) => (
-            <AppTable.Row key={r.date}>
-              <AppTable.Td>{formatDay(r.date)}</AppTable.Td>
-              <AppTable.Td>{r.date}</AppTable.Td>
-              <AppTable.Td>
-                {r.tide
-                  ? r.tide.nextHigh
-                    ? `${r.tide.nextHigh.height}m @ ${r.tide.nextHigh.time}`
-                    : r.tide.type
-                  : '—'}
-              </AppTable.Td>
-              <AppTable.Td>
-                {r.moon ? `${r.moon.phaseName} ${r.moon.illumination}%` : '—'}
-              </AppTable.Td>
-              <AppTable.Td>
-                {r.weather ? `${r.weather.conditions} ${r.weather.temperature}°C` : '—'}
-              </AppTable.Td>
-              <AppTable.Td>
-                {r.windWave ? `${r.windWave.windDirection} ${r.windWave.windSpeed}kn` : '—'}
-              </AppTable.Td>
-              <AppTable.Td>{r.windWave ? `${r.windWave.waveHeight}m` : '—'}</AppTable.Td>
-              <AppTable.Td>
-                {r.sun
-                  ? `${formatStationTime(r.sun.sunrise, timezone)} → ${formatStationTime(r.sun.sunset, timezone)}`
-                  : '—'}
-              </AppTable.Td>
-            </AppTable.Row>
-          ))}
-        </AppTable.Body>
-      </AppTable>
-    </section>
-  );
-}
-
-/* ── Info Panels ── */
-function InfoPanels() {
-  return (
-    <section aria-label="Maklumat kalendar operasi" className="mb-8 space-y-4">
-      <InfoPanel title="Bagaimana Menggunakan Kalendar Operasi">
-        <p>
-          Kalendar Operasi menggabungkan maklumat pasang surut, fasa bulan, cuaca, angin, ombak dan
-          waktu matahari dalam satu paparan harian. Pegawai boleh menyemak keadaan laut yang
-          dijangkakan sebelum merancang rondaan atau operasi.
-        </p>
-      </InfoPanel>
-      <InfoPanel title="Merancang Rondaan dan Operasi">
-        <p>
-          Gunakan Jadual Operasi Harian untuk menyemak maklumat keadaan marin yang dijangkakan.
-          Rujuk data pasang surut, kelajuan angin dan ketinggian ombak sebagai maklumat sokongan
-          sebelum merancang operasi.
-        </p>
-      </InfoPanel>
-    </section>
-  );
-}
-
-/* ── Main Page ── */
 export function KalendarOperasiPage() {
   const today = new Date();
   const dateFrom = toLocalDateString(today);
@@ -212,9 +222,6 @@ export function KalendarOperasiPage() {
     return toLocalDateString(d);
   })();
 
-  // The calendar's sun and moon columns are computed from the station's
-  // coordinates, so without one they can only ever read "Tidak Tersedia" —
-  // which is what this page showed for data that was in fact available.
   const [stationId, setStationId] = useState<string | undefined>(undefined);
 
   const stationsQuery = useQuery({
@@ -232,42 +239,25 @@ export function KalendarOperasiPage() {
     enabled: Boolean(selectedStationId),
   });
 
-  const stationPicker =
-    stations.length > 0 ? (
-      <div className="card-flat mb-6">
-        <label htmlFor="calendar-station" className="mb-1 block text-sm text-text-secondary">
-          Stesen
-        </label>
-        <select
-          id="calendar-station"
-          className="w-full rounded-lg border border-marine-600 bg-surface-raised px-3 py-2 text-text-primary focus:border-ocean-400 focus:outline-none sm:max-w-sm"
-          value={selectedStationId ?? ''}
-          onChange={(e) => setStationId(e.target.value)}
-        >
-          {stations.map((station) => (
-            <option key={station.id} value={station.id}>
-              {station.code} — {station.name}
-            </option>
-          ))}
-        </select>
-      </div>
-    ) : null;
+  const records = data?.data ?? [];
+  const [selectedDate, setSelectedDate] = useState<string | undefined>(undefined);
+  const selectedRecord = records.find((r) => r.date === selectedDate) ?? records[0] ?? null;
 
   if (stationsQuery.isLoading || (isLoading && Boolean(selectedStationId))) {
     return (
-      <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
+      <PageShell width="wide">
         <PageHeader
           title="Kalendar Operasi"
           subtitle="Ringkasan harian untuk membantu perancangan operasi laut."
         />
         <LoadingState lines={8} />
-      </div>
+      </PageShell>
     );
   }
 
   if (isError) {
     return (
-      <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
+      <PageShell width="wide">
         <PageHeader
           title="Kalendar Operasi"
           subtitle="Ringkasan harian untuk membantu perancangan operasi laut."
@@ -278,24 +268,67 @@ export function KalendarOperasiPage() {
             error instanceof Error ? error.message : 'Gagal mendapatkan data kalendar operasi.'
           }
         />
-      </div>
+      </PageShell>
     );
   }
 
-  const records = data?.data ?? [];
-  const firstRecord = records[0] ?? null;
-
   return (
-    <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
+    <PageShell width="wide">
       <PageHeader
         title="Kalendar Operasi"
         subtitle="Ringkasan harian untuk membantu perancangan operasi laut."
       />
-      {stationPicker}
-      <RingkasanHariIni record={firstRecord} />
-      <RingkasanKeadaanLaut record={firstRecord} timezone={selectedTimezone} />
-      <JadualOperasiHarian data={records} timezone={selectedTimezone} />
-      <InfoPanels />
-    </div>
+
+      {stations.length > 0 && (
+        <div className="mb-4">
+          <label
+            htmlFor="calendar-station"
+            className="mb-1 block text-xs uppercase tracking-wide text-text-muted"
+          >
+            Stesen
+          </label>
+          <StationSelect
+            id="calendar-station"
+            stations={stations}
+            value={selectedStationId ?? ''}
+            onChange={(e) => setStationId(e.target.value)}
+          />
+        </div>
+      )}
+
+      {records.length === 0 ? (
+        <EmptyState
+          title="Tiada Data"
+          message="Data kalendar operasi tidak tersedia buat masa ini."
+        />
+      ) : (
+        <>
+          <section aria-label="Minggu operasi" className="mb-6">
+            <div className="mb-2 flex items-baseline justify-between">
+              <SectionTitle>Minggu Operasi</SectionTitle>
+              <span className="text-xs text-text-muted">
+                {records[0]?.date} — {records[records.length - 1]?.date}
+              </span>
+            </div>
+            <WeekStrip
+              records={records}
+              selected={selectedRecord?.date ?? ''}
+              onSelect={setSelectedDate}
+              timezone={selectedTimezone}
+            />
+          </section>
+
+          {selectedRecord && (
+            <section aria-label="Butiran hari" className="mb-6">
+              <div className="mb-2 flex items-center gap-2">
+                <Icon name="calendar" size={14} className="text-text-muted" />
+                <SectionTitle>Butiran Hari Terpilih</SectionTitle>
+              </div>
+              <DayDetail record={selectedRecord} timezone={selectedTimezone} />
+            </section>
+          )}
+        </>
+      )}
+    </PageShell>
   );
 }

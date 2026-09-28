@@ -45,7 +45,7 @@ export function Modal({ open, title, onClose, children }: ModalProps) {
         aria-modal="true"
         aria-label={title}
         tabIndex={-1}
-        className="card w-full max-w-lg p-5 outline-none"
+        className="surface w-full max-w-lg p-5 outline-none"
       >
         <h2 className="mb-4 text-lg font-semibold text-text-primary">{title}</h2>
         {children}

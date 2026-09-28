@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
+  PageShell,
   PageHeader,
-  SectionTitle,
   AppTable,
   EmptyState,
   ErrorState,
@@ -56,19 +56,25 @@ export function StesenPage() {
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
+    <PageShell width="wide">
       <PageHeader title="Stesen" subtitle="Senarai stesen pemantauan marin yang aktif." />
 
       {/* Region filter */}
-      <section aria-label="Tapis wilayah" className="mb-6">
-        <SectionTitle>Tapis Wilayah</SectionTitle>
+      <section aria-label="Tapis wilayah" className="mb-4">
+        <label
+          htmlFor="station-region"
+          className="mb-1 block text-xs uppercase tracking-wide text-text-muted"
+        >
+          Wilayah
+        </label>
         <select
+          id="station-region"
           value={regionId}
           onChange={(e) => {
             setRegionId(e.target.value);
             setPage(1);
           }}
-          className="w-full rounded-lg border border-marine-600 bg-surface-raised px-4 py-2.5 text-text-primary focus:border-ocean-400 focus:outline-none sm:w-72"
+          className="h-10 w-full rounded-sm border border-border-subtle bg-surface-raised px-3 text-sm text-text-primary focus:border-ocean-400 focus:outline-none sm:w-72"
           aria-label="Pilih wilayah"
         >
           <option value="">Semua Wilayah</option>
@@ -117,7 +123,8 @@ export function StesenPage() {
                   <AppTable.Th>Kod</AppTable.Th>
                   <AppTable.Th>Nama</AppTable.Th>
                   <AppTable.Th>Wilayah</AppTable.Th>
-                  <AppTable.Th>Koordinat</AppTable.Th>
+                  <AppTable.ThNumeric>Latitud</AppTable.ThNumeric>
+                  <AppTable.ThNumeric>Longitud</AppTable.ThNumeric>
                 </AppTable.Row>
               </AppTable.Head>
               <AppTable.Body>
@@ -126,9 +133,8 @@ export function StesenPage() {
                     <AppTable.Td>{s.code}</AppTable.Td>
                     <AppTable.Td>{s.name}</AppTable.Td>
                     <AppTable.Td>{s.regionName ?? '—'}</AppTable.Td>
-                    <AppTable.Td>
-                      {s.latitude.toFixed(4)}, {s.longitude.toFixed(4)}
-                    </AppTable.Td>
+                    <AppTable.TdNumeric>{s.latitude.toFixed(4)}</AppTable.TdNumeric>
+                    <AppTable.TdNumeric>{s.longitude.toFixed(4)}</AppTable.TdNumeric>
                   </AppTable.Row>
                 ))}
               </AppTable.Body>
@@ -158,6 +164,6 @@ export function StesenPage() {
             )}
           </section>
         )}
-    </div>
+    </PageShell>
   );
 }

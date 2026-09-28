@@ -8,15 +8,14 @@ interface MarineSummaryGridProps extends HTMLAttributes<HTMLDivElement> {
 const colClasses: Record<number, string> = {
   2: 'grid-cols-2',
   3: 'grid-cols-2 sm:grid-cols-3',
-  4: 'grid-cols-2 sm:grid-cols-4',
+  4: 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4',
 };
 
 /**
  * Responsive grid for marine condition cards.
- * Wraps MarineConditionCard or AppCard in a consistent grid layout.
- *
- * - Mobile: always 2 columns
- * - Tablet (sm+): 3 or 4 columns depending on `columns` prop
+ * - Mobile: 2 columns
+ * - sm+: 3 columns
+ * - lg+: 4 columns (when columns=4)
  */
 export function MarineSummaryGrid({
   children,
@@ -25,7 +24,7 @@ export function MarineSummaryGrid({
   ...rest
 }: MarineSummaryGridProps) {
   return (
-    <div className={`grid gap-3 ${colClasses[columns]} ${className}`} {...rest}>
+    <div className={`grid gap-2 ${colClasses[columns]} ${className}`} {...rest}>
       {children}
     </div>
   );

@@ -5,8 +5,7 @@ interface LoadingStateProps extends HTMLAttributes<HTMLDivElement> {
 }
 
 /**
- * Simple skeleton loading state.
- * No spinner — uses pulsing placeholder blocks.
+ * Skeleton loading state. No spinner — pulsing placeholder blocks.
  */
 export function LoadingState({ lines = 3, className = '', ...rest }: LoadingStateProps) {
   return (
@@ -14,7 +13,7 @@ export function LoadingState({ lines = 3, className = '', ...rest }: LoadingStat
       {Array.from({ length: lines }, (_, i) => (
         <div
           key={i}
-          className="h-4 animate-pulse rounded bg-marine-700"
+          className="h-4 animate-pulse rounded-sm bg-marine-800"
           style={{ width: `${85 - i * 10}%` }}
         />
       ))}

@@ -28,14 +28,18 @@ function RingkasanHariIni({ data }: { data: WeatherDataPoint[] }) {
     <section aria-label="Ringkasan cuaca hari ini" className="mb-8">
       <SectionTitle>Ringkasan Hari Ini</SectionTitle>
       <MarineSummaryGrid columns={3}>
-        <MarineConditionCard icon="🌤️" title="Keadaan Cuaca" value={current?.conditions ?? '—'} />
         <MarineConditionCard
-          icon="🌡️"
+          icon="weather"
+          title="Keadaan Cuaca"
+          value={current?.conditions ?? '—'}
+        />
+        <MarineConditionCard
+          icon="thermometer"
           title="Suhu"
           value={current ? `${current.temperature}°C` : '—'}
         />
         <MarineConditionCard
-          icon="👁️"
+          icon="eye"
           title="Jarak Penglihatan"
           value={current && current.visibility !== null ? `${current.visibility} km` : '—'}
         />
@@ -120,14 +124,12 @@ export function CuacaPage() {
       <RingkasanHariIni data={points} />
       <RamalanCuaca data={points} />
       <section className="mb-8">
-        <div className="card-flat flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm text-text-secondary">
-            Semakan status dan cadangan operasi tersedia di Amaran Marin.
-          </p>
-          <Link to="/amaran-marin" className="btn-primary" aria-label="Ke halaman Amaran Marin">
-            Amaran Marin
-          </Link>
-        </div>
+        <Link
+          to="/amaran-marin"
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-text-accent hover:text-ocean-300"
+        >
+          Semakan status dan cadangan operasi
+        </Link>
       </section>
       <section className="mb-8">
         <InfoPanel title="Mengapa Cuaca Penting">

@@ -23,12 +23,13 @@ interface SummaryCardProps {
 
 function SummaryCard({ label, value, to, hint }: SummaryCardProps) {
   return (
-    <Link to={to} className="block focus-visible:outline-2 focus-visible:outline-ocean-400">
-      <AppCard className="h-full transition-colors hover:border-ocean-400">
-        <p className="text-sm text-text-secondary">{label}</p>
-        <p className="mt-1 text-2xl font-semibold text-text-primary">{value}</p>
-        {hint ? <p className="mt-1 text-xs text-text-muted">{hint}</p> : null}
-      </AppCard>
+    <Link
+      to={to}
+      className="group block rounded-md border border-border-subtle bg-surface-raised px-4 py-3 transition-colors hover:border-border-strong focus-visible:outline-2 focus-visible:outline-ocean-400"
+    >
+      <p className="text-xs uppercase tracking-wide text-text-muted">{label}</p>
+      <p className="mt-1 text-2xl font-semibold tabular-nums text-text-primary">{value}</p>
+      {hint ? <p className="mt-1 text-xs text-text-muted">{hint}</p> : null}
     </Link>
   );
 }

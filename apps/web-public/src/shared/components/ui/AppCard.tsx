@@ -1,6 +1,6 @@
 import type { ReactNode, HTMLAttributes } from 'react';
 
-type AppCardVariant = 'default' | 'flat' | 'highlight' | 'warning';
+type AppCardVariant = 'surface' | 'flat' | 'accent' | 'warning' | 'danger';
 
 interface AppCardProps extends HTMLAttributes<HTMLDivElement> {
   variant?: AppCardVariant;
@@ -8,22 +8,23 @@ interface AppCardProps extends HTMLAttributes<HTMLDivElement> {
 }
 
 const variantClasses: Record<AppCardVariant, string> = {
-  default: 'card',
-  flat: 'card-flat',
-  highlight: 'card border-ocean-400/40',
-  warning: 'card border-warning-400/40',
+  surface: 'surface',
+  flat: 'surface-hairline',
+  accent: 'surface border-l-2 border-l-ocean-400',
+  warning: 'surface border-l-2 border-l-status-caution',
+  danger: 'surface border-l-2 border-l-status-danger',
 };
 
 /**
- * Standard content card.
+ * Content surface. Defaults to a quiet raised surface with a hairline
+ * border rather than a decorative card.
  *
  * Variants:
- * - default: hover border transition
- * - flat: no hover effect
- * - highlight: accent border (ocean)
- * - warning: caution border (amber)
+ * - surface: raised surface, subtle border
+ * - flat: hairline-only (no full border)
+ * - accent / warning / danger: left semantic rail for alerting content
  */
-export function AppCard({ variant = 'default', children, className = '', ...rest }: AppCardProps) {
+export function AppCard({ variant = 'surface', children, className = '', ...rest }: AppCardProps) {
   return (
     <div className={`${variantClasses[variant]} ${className}`} {...rest}>
       {children}

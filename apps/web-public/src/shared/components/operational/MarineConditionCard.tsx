@@ -1,17 +1,17 @@
 import type { HTMLAttributes } from 'react';
 import { AppCard } from '../ui/AppCard';
+import { Icon, type IconName } from '../ui/Icon';
 
 interface MarineConditionCardProps extends HTMLAttributes<HTMLDivElement> {
-  icon: string;
+  icon: IconName;
   title: string;
   value: string;
   subtitle?: string;
 }
 
 /**
- * Reusable summary card for a single marine condition.
- * Used by all marine modules (tide, weather, wind, wave, etc.)
- * to display a single data point with icon, title, value, and optional subtitle.
+ * Compact, left-aligned marine metric — information-dense and tabular.
+ * Used by all marine modules (tide, weather, wind, wave, etc.).
  */
 export function MarineConditionCard({
   icon,
@@ -22,17 +22,17 @@ export function MarineConditionCard({
   ...rest
 }: MarineConditionCardProps) {
   return (
-    <AppCard variant="flat" className={`text-center ${className}`} {...rest}>
-      <span aria-hidden="true" className="mb-1 block text-2xl">
-        {icon}
-      </span>
-      <p className="text-xs font-medium uppercase tracking-wider text-text-muted">
-        {title}
-      </p>
-      <p className="mt-1 text-xl font-bold text-text-primary">{value}</p>
-      {subtitle && (
-        <p className="mt-1 text-xs text-text-secondary">{subtitle}</p>
-      )}
+    <AppCard variant="flat" className={`px-4 py-3 ${className}`} {...rest}>
+      <div className="flex items-start gap-2.5">
+        <Icon name={icon} size={16} className="mt-0.5 shrink-0 text-text-muted" />
+        <div className="min-w-0">
+          <p className="text-xs font-medium uppercase tracking-wide text-text-muted">{title}</p>
+          <p className="mt-0.5 truncate text-base font-semibold tabular-nums text-text-primary">
+            {value}
+          </p>
+          {subtitle && <p className="mt-0.5 truncate text-xs text-text-secondary">{subtitle}</p>}
+        </div>
+      </div>
     </AppCard>
   );
 }

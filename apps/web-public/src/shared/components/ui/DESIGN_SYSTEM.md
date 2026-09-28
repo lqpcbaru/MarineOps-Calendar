@@ -1,7 +1,7 @@
 # MarineOps Design System — Komponen UI
 
-**Versi:** 1.0.0
-**Tarikh:** 2026-08-05
+**Versi:** 2.0.0
+**Tarikh:** 2026-09-28
 **Status:** Aktif
 **Bahasa:** Bahasa Melayu
 
@@ -9,268 +9,99 @@
 
 ## Prinsip Reka Bentuk
 
-- **Ringkas** — Tiada elemen hiasan berlebihan
-- **Profesional** — Gaya kerajaan yang bersih dan teratur
-- **Boleh diakses** — WCAG AA, navigasi papan kekunci, sasaran sentuhan besar
-- **Responsif** — Mobile-first, berfungsi pada semua saiz skrin
-- **Tiada kaca** — Tiada glassmorphism, neon, atau kesan futuristik
+- **Profesional** — Konsol operasi marin, bukan templat papan pemuka
+- **Ringkas** — Tiada elemen hiasan berlebihan, tiada emoji, tiada kaca/neon
+- **Tipografi dahulu** — Hierarki melalui saiz/berat/ruang, bukan hiasan
+- **Permukaan, bukan kad** — `surface` (semua sempadan) bukan kad berbingkai untuk segala-galanya
+- **Warna untuk makna** — Hijau/Kuning/Merah hanya untuk status; sian untuk tindakan utama
+- **Boleh diakses** — WCAG AA, papan kekunci, sasaran sentuhan 44px, reduced-motion
+- **Responsif** — Mobile-first
 
 ---
 
-## 1. AppCard
+## Token Reka Bentuk
 
-Kad kandungan standard.
+Token ditakrifkan dalam `src/styles/index.css` (`@theme`), dan **sama** antara
+`web-public` dan `web-admin`.
 
-### Varian
-
-| Varian | Kelas CSS | Kegunaan |
-|--------|-----------|----------|
-| `default` | `.card` | Kad biasa dengan kesan hover |
-| `flat` | `.card-flat` | Kad tanpa kesan hover |
-| `highlight` | `.card` + border ocean | Kad dengan sempadan aksen |
-| `warning` | `.card` + border warning | Kad dengan sempadan amaran |
-
-### Contoh
-
-```tsx
-import { AppCard } from '@/shared/components';
-
-<AppCard variant="default">
-  <p>Kandungan kad</p>
-</AppCard>
-
-<AppCard variant="warning">
-  <p>Amaran</p>
-</AppCard>
-```
+| Kategori           | Token                                          | Catatan                           |
+| ------------------ | ---------------------------------------------- | --------------------------------- |
+| Neutrals           | `marine-950…50`                                | Latar, permukaan, sempadan        |
+| Permukaan          | `surface`, `surface-raised`, `surface-overlay` | Tiga aras ketinggian              |
+| Sempadan           | `border-subtle`, `border-strong`               | Garisan halus                     |
+| Teks               | `text-primary`, `text-secondary`, `text-muted` | Tiga aras keutamaan               |
+| Aksen              | `ocean-400`                                    | Tindakan utama / pemilihan SAHAJA |
+| Status (warna)     | `status-safe/caution/danger`                   | Titik/rel sebenar                 |
+| Status (permukaan) | `safe/caution/danger-{bg,border,text}`         | Triple untuk legibility           |
+| Jejari             | `radius-sm` (0.375rem), `radius-md` (0.5rem)   | DUA saiz sahaja                   |
+| Fon                | `font-sans` = Inter Variable (dimuat sendiri)  | `tabular-nums` untuk data         |
 
 ---
 
-## 2. StatusBadge
+## Ikon
 
-Lencana status dengan warna semantik.
+Semua ikon UI guna **`<Icon name="…" />`** (`ui/Icon.tsx`) — monokrom SVG
+berasaskan `lucide-react`, strok 1.5px, diwarnai melalui `currentColor`.
+**Tiada emoji** dalam UI operasi.
 
-### Varian
-
-| Varian | Warna | Maksud |
-|--------|-------|--------|
-| `hijau` | Hijau (`--color-status-safe`) | Sesuai |
-| `kuning` | Kuning (`--color-status-caution`) | Berwaspada |
-| `merah` | Merah (`--color-status-danger`) | Tidak Disyorkan |
-| `neutral` | Kelabu | Tiada maksud semantik |
-
-### Contoh
-
-```tsx
-import { StatusBadge } from '@/shared/components';
-
-<StatusBadge variant="hijau">Sesuai</StatusBadge>
-<StatusBadge variant="kuning">Berwaspada</StatusBadge>
-<StatusBadge variant="merah">Tidak Disyorkan</StatusBadge>
-```
+Nama ikon tersedia: `calendar`, `tide`, `weather`, `wind`, `moon`, `hijri`,
+`sun`, `station`, `alert`, `vessel`, `compass`, `gauge`, `info`, `arrow-up`,
+`arrow-down`, `droplets`, `clock`, `eye`, `thermometer`.
 
 ---
 
-## 3. SectionTitle
+## Komponen Utama
 
-Tajuk bahagian standard.
+### AppCard (`ui/AppCard.tsx`)
 
-### Contoh
+Permukaan kandungan. Varian: `surface` (lalai), `flat` (hairline),
+`accent`/`warning`/`danger` (rel semantik kiri).
 
-```tsx
-import { SectionTitle } from '@/shared/components';
+### MarineConditionCard (`operational/MarineConditionCard.tsx`)
 
-<SectionTitle>Ringkasan Pasang Surut</SectionTitle>
-```
+Metrik marin padat, sejajar kiri, tabular. Prop `icon` menerima `IconName`
+(bukan emoji).
 
----
+### OperationalStatusCard (`operational/OperationalStatusCard.tsx`)
 
-## 4. EmptyState
+**Wira status**: sepanduk mendatar dengan rel semantik kiri + tajuk +
+sebab + metrik skor.
 
-Mesej keadaan kosong yang profesional.
+### AppTable (`ui/AppTable.tsx`)
 
-### Peraturan
+Jadual padat. `TdNumeric`/`ThNumeric` untuk sel angka (sejajar kanan,
+tabular). Pengepala melekit.
 
-- **Jangan** gunakan "Coming Soon"
-- **Gunakan** "Maklumat akan dipaparkan selepas modul ini disepadukan."
+### StatusBadge (`ui/StatusBadge.tsx`)
 
-### Contoh
+Lencana status. Varian: `hijau`/`kuning`/`merah`/`neutral`.
 
-```tsx
-import { EmptyState } from '@/shared/components';
+### PageHeader / PageShell
 
-<EmptyState />
-<EmptyState title="Tiada Data" message="Data belum tersedia untuk stesen ini." />
-```
+`PageHeader` — tajuk halaman konsisten (garis tunggal). `PageShell`
+(`width: narrow|default|wide`) — bekas halaman standard.
 
----
+### Keadaan (Loading/Empty/Error)
 
-## 5. LoadingState
-
-Kerangka pemuatan ringkas (skeleton).
-
-### Ciri
-
-- Tiada spinner
-- Blok berdenyut (pulse)
-- `role="status"` untuk pembaca skrin
-
-### Contoh
-
-```tsx
-import { LoadingState } from '@/shared/components';
-
-<LoadingState />
-<LoadingState lines={5} />
-```
+Skeleton (bukan spinner), keadaan kosong & ralat profesional, `role`
+yang betul.
 
 ---
 
-## 6. ErrorState
+## Konvensyen
 
-Komponen ralat gaya kerajaan.
-
-### Ciri
-
-- `role="alert"` untuk pembaca skrin
-- Butang "Cuba Semula" pilihan
-- Warna merah yang jelas
-
-### Contoh
-
-```tsx
-import { ErrorState } from '@/shared/components';
-
-<ErrorState />
-<ErrorState
-  title="Ralat Rangkaian"
-  message="Sambungan ke pelayan gagal."
-  onRetry={() => window.location.reload()}
-/>
-```
-
----
-
-## 7. AppTable
-
-Jadual responsif dengan pengepala melekit.
-
-### Ciri
-
-- Boleh skrol mendatar (overflow-x)
-- Pengepala melekit (sticky header)
-- Baris hover
-- Jarak standard
-
-### Contoh
-
-```tsx
-import { AppTable } from '@/shared/components';
-
-<AppTable>
-  <AppTable.Head>
-    <AppTable.Row>
-      <AppTable.Th>Hari</AppTable.Th>
-      <AppTable.Th>Tarikh</AppTable.Th>
-    </AppTable.Row>
-  </AppTable.Head>
-  <AppTable.Body>
-    <AppTable.Row>
-      <AppTable.Td>Isnin</AppTable.Td>
-      <AppTable.Td>5 Ogos 2026</AppTable.Td>
-    </AppTable.Row>
-  </AppTable.Body>
-</AppTable>
-```
-
----
-
-## 8. AppButton
-
-Butang standard dengan sasaran sentuhan besar.
-
-### Varian
-
-| Varian | Warna | Kegunaan |
-|--------|-------|----------|
-| `primary` | Marine 500 | Tindakan utama |
-| `secondary` | Marine 800 | Tindakan alternatif |
-| `ghost` | Telus | Tindakan ringan |
-| `danger` | Merah | Tindakan pemusnahan |
-
-### Ciri
-
-- Minimum ketinggian `2.75rem` (44px) — WCAG sasaran sentuhan
-- Fokus yang jelas (`focus-visible`)
-- `disabled` state
-
-### Contoh
-
-```tsx
-import { AppButton } from '@/shared/components';
-
-<AppButton variant="primary">Simpan</AppButton>
-<AppButton variant="secondary">Batal</AppButton>
-<AppButton variant="ghost">Lihat</AppButton>
-<AppButton variant="danger">Padam</AppButton>
-```
-
----
-
-## 9. InfoPanel
-
-Panel penerangan untuk kandungan maklumat.
-
-### Contoh
-
-```tsx
-import { InfoPanel } from '@/shared/components';
-
-<InfoPanel title="Apa itu Air Besar">
-  <p>Air Besar berlaku apabila paras air laut berada di tahap tertinggi...</p>
-</InfoPanel>
-```
-
----
-
-## 10. PageHeader
-
-Pengepala halaman yang konsisten.
-
-### Props
-
-| Prop | Jenis | Keterangan |
-|------|-------|------------|
-| `title` | `string` | Tajuk halaman (wajib) |
-| `subtitle` | `string?` | Huraian ringkas |
-| `action` | `ReactNode?` | Slot tindakan (butang, dsb.) |
-
-### Contoh
-
-```tsx
-import { PageHeader, AppButton } from '@/shared/components';
-
-<PageHeader
-  title="Pasang Surut"
-  subtitle="Maklumat pasang surut air laut mengikut stesen dan tarikh."
-/>
-
-<PageHeader
-  title="Stesen"
-  subtitle="Senarai stesen pemantauan."
-  action={<AppButton variant="primary">Tambah Stesen</AppButton>}
-/>
-```
+- Gunakan `PageShell` (bukan `mx-auto max-w-*` tulisan tangan).
+- Sejajar angka ke kanan dengan `tabular-nums` (masa, koordinat, kelajuan).
+- Amaran/notis guna triple `danger-bg/border/text`, bukan alpha `/5`.
+- `SectionTitle` ialah eyebrow huruf besar senyap, bukan tajuk besar.
+- Pautan "Amaran Marin" kontekstual ialah pautan teks nipis, bukan kad butang.
 
 ---
 
 ## Aksesibiliti
 
-Semua komponen mematuhi:
-
-- **WCAG AA** — Kontras warna minimum 4.5:1
-- **Navigasi papan kekunci** — Semua elemen interaktif boleh difokuskan
-- **Focus visible** — Garis panduan fokus yang jelas
-- **Sasaran sentuhan** — Minimum 44×44px untuk butang
-- **Reduced motion** — Menghormati `prefers-reduced-motion`
-- **Pembaca skrin** — `role`, `aria-label`, `aria-hidden` yang betul
+- WCAG AA, kontras 4.5:1
+- `:focus-visible`, skip-link, navigasi papan kekunci
+- Sasaran sentuhan 44px
+- `prefers-reduced-motion`
+- `role="status"` / `role="alert"` pada keadaan

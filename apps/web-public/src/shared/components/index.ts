@@ -4,6 +4,7 @@ export { Header } from './Header';
 export { Footer } from './Footer';
 export { Navigation } from './Navigation';
 export { PageContainer } from './PageContainer';
+export { PageShell } from './PageShell';
 export { NotFoundPage } from './NotFoundPage';
 export { RouteErrorPage } from './RouteErrorPage';
 
@@ -18,11 +19,15 @@ export { AppTable } from './ui/AppTable';
 export { AppButton } from './ui/AppButton';
 export { InfoPanel } from './ui/InfoPanel';
 export { PageHeader } from './ui/PageHeader';
+export { Icon } from './ui/Icon';
+export type { IconName } from './ui/Icon';
+export { StationSelect } from './ui/StationSelect';
 
 /* ── Operational components (shared by marine modules) ── */
 export { OperationalStatusCard } from './operational/OperationalStatusCard';
 export { OperationalRecommendationCard } from './operational/OperationalRecommendationCard';
 export { MarineConditionCard } from './operational/MarineConditionCard';
 export { MarineSummaryGrid } from './operational/MarineSummaryGrid';
+export { QuickNav } from './operational/QuickNav';
 export { RiskBadge } from './operational/RiskBadge';
 export { OperationalLegend } from './operational/OperationalLegend';
