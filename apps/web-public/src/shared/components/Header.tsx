@@ -12,7 +12,6 @@ const mobileNavItems = [
   { to: '/kalendar-operasi', label: 'Kalendar Operasi' },
   { to: '/stesen', label: 'Stesen' },
   { to: '/amaran-marin', label: 'Amaran Marin' },
-  { to: '/perisikan-kapal', label: 'Perisikan Kapal' },
   { to: '/mengenai', label: 'Mengenai' },
 ] as const;
 

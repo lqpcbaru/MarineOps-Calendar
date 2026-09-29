@@ -183,12 +183,11 @@ topology: 2 with the TLS overlay, 1 with the web container alone.
 
 Sourced data needs **two** things per provider. A key alone does nothing.
 
-| Provider             | Credential            | Per-station code     | Serves                  |
-| -------------------- | --------------------- | -------------------- | ----------------------- |
-| MET Malaysia         | `METMALAYSIA_API_KEY` | `config.marineArea`  | `/api/public/weather`   |
-| JUPEM                | `JUPEM_API_KEY`       | `config.stationCode` | `/api/public/tide`      |
-| Marine forecast      | —                     | `config.marineArea`  | `/api/public/wind-wave` |
-| Global Fishing Watch | `GFW_API_TOKEN`       | —                    | `/api/public/vessels/*` |
+| Provider        | Credential            | Per-station code     | Serves                  |
+| --------------- | --------------------- | -------------------- | ----------------------- |
+| MET Malaysia    | `METMALAYSIA_API_KEY` | `config.marineArea`  | `/api/public/weather`   |
+| JUPEM           | `JUPEM_API_KEY`       | `config.stationCode` | `/api/public/tide`      |
+| Marine forecast | —                     | `config.marineArea`  | `/api/public/wind-wave` |
 
 Until both are supplied those endpoints return **503
 `PROVIDER_CONFIG_ERROR`**. That is a supported state, not a fault:

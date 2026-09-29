@@ -12,7 +12,6 @@ import { KalendarOperasiPage } from '../features/kalendar-operasi/KalendarOperas
 import { StesenPage } from '../features/stesen/StesenPage';
 import { AmaranMarinPage } from '../features/amaran-marin/AmaranMarinPage';
 import { MengenaiPage } from '../features/mengenai/MengenaiPage';
-import { VesselsPage } from '../features/vessels/VesselsPage';
 
 const rootRoute = createRootRoute({
   component: Layout,
@@ -80,12 +79,6 @@ const mengenaiRoute = createRoute({
   component: MengenaiPage,
 });
 
-const vesselsRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/perisikan-kapal',
-  component: VesselsPage,
-});
-
 const routeTree = rootRoute.addChildren([
   indexRoute,
   pasangSurutRoute,
@@ -97,7 +90,6 @@ const routeTree = rootRoute.addChildren([
   stesenRoute,
   amaranMarinRoute,
   mengenaiRoute,
-  vesselsRoute,
 ]);
 
 export const router = createRouter({ routeTree });

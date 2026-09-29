@@ -85,8 +85,6 @@ happens to set.
 | `SEED_ADMIN_PASSWORD`    | Yes (to seed)       | dev-only fallback        | `pnpm db:seed` **refuses to run** without it when `NODE_ENV≠development` |
 | `METMALAYSIA_API_KEY`    | Per feature         | —                        | Weather **and** wind/wave. Absent ⇒ those endpoints error per request    |
 | `JUPEM_API_KEY`          | Per feature         | —                        | Tide. Absent ⇒ tide endpoints error per request                          |
-| `GFW_API_TOKEN`          | Per feature         | —                        | Vessels/AIS. Absent ⇒ vessel endpoints error per request                 |
-| `GFW_API_BASE_URL`       | No                  | GFW production gateway   | Override only to target a non-default GFW environment                    |
 
 > **`S3_*` variables are NOT implemented.** `.env.example` still lists them
 > because object storage appears in the DEPLOYMENT.md topology as planned
@@ -103,7 +101,7 @@ happens to set.
 > startup when it detects this state — check the first lines of the log
 > after any deploy.
 
-> **Secret handling:** All secrets (`JWT_*`, `DATABASE_URL`, `SEED_ADMIN_PASSWORD`, `GFW_API_TOKEN`, `METMALAYSIA_API_KEY`, `JUPEM_API_KEY`) must be supplied through the deployment secret manager / environment. Never commit real secrets to the repository. No default production credentials exist. Note the code does **not** enforce a minimum secret length — generate at least 32 random bytes yourself.
+> **Secret handling:** All secrets (`JWT_*`, `DATABASE_URL`, `SEED_ADMIN_PASSWORD`, `METMALAYSIA_API_KEY`, `JUPEM_API_KEY`) must be supplied through the deployment secret manager / environment. Never commit real secrets to the repository. No default production credentials exist. Note the code does **not** enforce a minimum secret length — generate at least 32 random bytes yourself.
 
 > **CORS / `APP_URL`:** `APP_URL` is the authoritative CORS origin. In `NODE_ENV=production` the API **fails to start** if `APP_URL` is unset (it will not silently fall back to a development origin). Note this check keys on `production` exactly — `NODE_ENV=staging` does **not** enforce it, so set `APP_URL` explicitly in staging or CORS will point at localhost.
 
@@ -422,8 +420,7 @@ The seed creates one mapping row per station per data type with
 scaffolding, not working configuration. Until real codes are supplied:
 
 - `/api/public/weather`, `/tide`, `/wind-wave` return **503** with code
-  `PROVIDER_CONFIG_ERROR`. `/api/public/vessels/*` does the same while
-  `GFW_API_TOKEN` is unset.
+  `PROVIDER_CONFIG_ERROR`.
 - `/api/public/moon`, `/sun`, `/stations`, `/dashboard`, `/calendar` and
   `/recommendation` work normally (computed locally or served from the
   database).

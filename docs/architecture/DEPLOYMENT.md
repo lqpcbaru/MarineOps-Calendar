@@ -38,7 +38,6 @@ flowchart TB
         MET["MET Malaysia<br/>(weather)"]
         JUPEM["JUPEM<br/>(tide)"]
         MARINE["Marine forecast<br/>(wind/wave)"]
-        GFW["Global Fishing Watch<br/>(vessel AIS)"]
     end
 
     PUB --> LB
@@ -54,7 +53,6 @@ flowchart TB
     API -.->|"adapter ports (HTTPS, on demand)"| MET
     API -.-> JUPEM
     API -.-> MARINE
-    API -.-> GFW
 ```
 
 **Provider data is fetched on demand and cached** — there is no background

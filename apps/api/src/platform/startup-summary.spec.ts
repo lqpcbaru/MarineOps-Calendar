@@ -10,7 +10,6 @@ const PROD_ENV: NodeJS.ProcessEnv = {
   LOGIN_RATE_LIMIT_MAX: '5',
   METMALAYSIA_API_KEY: 'super-secret-met-key',
   JUPEM_API_KEY: 'super-secret-jupem-key',
-  GFW_API_TOKEN: 'super-secret-gfw-token',
 };
 
 describe('buildStartupSummary', () => {
@@ -33,7 +32,6 @@ describe('buildStartupSummary', () => {
     expect(s.providerCredentials).toEqual({
       METMALAYSIA_API_KEY: true,
       JUPEM_API_KEY: true,
-      GFW_API_TOKEN: true,
     });
 
     // The summary is logged verbatim, so assert against its full
@@ -41,7 +39,6 @@ describe('buildStartupSummary', () => {
     const serialized = JSON.stringify(s);
     expect(serialized).not.toContain('super-secret-met-key');
     expect(serialized).not.toContain('super-secret-jupem-key');
-    expect(serialized).not.toContain('super-secret-gfw-token');
   });
 
   it('does not leak DATABASE_URL or JWT secrets even though they are set', () => {
@@ -78,12 +75,9 @@ describe('buildStartupWarnings', () => {
   });
 
   it('names exactly the provider credentials that are missing in production', () => {
-    const warnings = buildStartupWarnings(
-      buildStartupSummary({ ...PROD_ENV, JUPEM_API_KEY: '', GFW_API_TOKEN: '' }),
-    );
+    const warnings = buildStartupWarnings(buildStartupSummary({ ...PROD_ENV, JUPEM_API_KEY: '' }));
     const joined = warnings.join(' ');
     expect(joined).toContain('JUPEM_API_KEY');
-    expect(joined).toContain('GFW_API_TOKEN');
     expect(joined).not.toContain('METMALAYSIA_API_KEY');
   });
 });

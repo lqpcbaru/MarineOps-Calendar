@@ -92,13 +92,10 @@ This document is the **canonical route table** for both portals (frontend) and b
 
 **Implemented but not originally in this table** (added per DoD §4 — these exist in `apps/api/src/api/public/` today):
 
-| Method | Path                                   | Module              | Returns                                                                                            |
-| ------ | -------------------------------------- | ------------------- | -------------------------------------------------------------------------------------------------- |
-| GET    | `/api/public/wind-wave`                | WindWave            | Combined wind + wave data + freshness — shipped instead of the separate `/wind`/`/wave` rows above |
-| GET    | `/api/public/vessels/search`           | Vessel Intelligence | GFW-derived vessel search (see [VESSEL_INTELLIGENCE_API](../api/VESSEL_INTELLIGENCE_API.md))       |
-| GET    | `/api/public/vessels/:vesselId`        | Vessel Intelligence | Vessel profile                                                                                     |
-| GET    | `/api/public/vessels/:vesselId/events` | Vessel Intelligence | Vessel event history                                                                               |
-| GET    | `/api/public/recommendation`           | Recommendation      | Operational recommendation for a station/date                                                      |
+| Method | Path                         | Module         | Returns                                                                                            |
+| ------ | ---------------------------- | -------------- | -------------------------------------------------------------------------------------------------- |
+| GET    | `/api/public/wind-wave`      | WindWave       | Combined wind + wave data + freshness — shipped instead of the separate `/wind`/`/wave` rows above |
+| GET    | `/api/public/recommendation` | Recommendation | Operational recommendation for a station/date                                                      |
 
 **Rules:**
 
@@ -196,3 +193,4 @@ This document is the **canonical route table** for both portals (frontend) and b
 | 2.0.0   | 2026-07-31 | Hub route table — public vs admin split (ADR-0011)                                                                                                                                                                                                         |
 | 2.0.1   | 2026-08-27 | Added `/api/public/wind-wave`, `/api/public/vessels/*`, `/api/public/recommendation` — implemented in prior sprints but never added here (DoD §4 catch-up). No routes removed; the rest of this table remains the v2.0.0 target, most of it still unbuilt. |
 | 2.0.2   | 2026-08-27 | Corrected the admin-surface rules: `AuthorizeUseCase` is implemented but not currently called by any write use-case — `PermissionsGuard` is the sole enforcement layer today, verified directly against the code.                                          |
+| 2.1.0   | 2026-09-29 | Removed `/api/public/vessels/*` (Vessel Intelligence / GFW AIS). VMS/AIS/Vessel Intelligence is split out as a separate future application.                                                                                                                |

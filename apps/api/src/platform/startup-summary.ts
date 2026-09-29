@@ -49,7 +49,6 @@ export function buildStartupSummary(env: NodeJS.ProcessEnv = process.env): Start
     providerCredentials: {
       METMALAYSIA_API_KEY: Boolean(env['METMALAYSIA_API_KEY']),
       JUPEM_API_KEY: Boolean(env['JUPEM_API_KEY']),
-      GFW_API_TOKEN: Boolean(env['GFW_API_TOKEN']),
     },
   };
 }

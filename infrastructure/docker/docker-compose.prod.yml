@@ -85,7 +85,6 @@ services:
       # everything else serves normally.
       METMALAYSIA_API_KEY: ${METMALAYSIA_API_KEY:-}
       JUPEM_API_KEY: ${JUPEM_API_KEY:-}
-      GFW_API_TOKEN: ${GFW_API_TOKEN:-}
     deploy:
       resources:
         limits:
