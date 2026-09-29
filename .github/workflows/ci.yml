@@ -122,27 +122,48 @@ jobs:
           echo "web=ghcr.io/${owner}/marineops-web" >> "$GITHUB_OUTPUT"
           echo "sha=sha-$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
 
-      - name: Build Docker image
-        run: |
-          docker build -f apps/api/Dockerfile \
-            --label org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }} \
-            --label org.opencontainers.image.revision=${{ github.sha }} \
-            --label org.opencontainers.image.version=${{ github.ref_name }} \
-            -t marineops-api:${{ github.ref_name }} .
-      - name: Tag as latest
-        run: docker tag marineops-api:${{ github.ref_name }} marineops-api:latest
+      # Buildx builder + QEMU binfmt so the amd64 runner can cross-build the
+      # arm64 image in the same job, then publish a single multi-arch manifest.
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-qemu-action@v3
+
+      # Build the amd64 image locally so the smoke tests below can `docker run`
+      # a real image on this runner. buildx `load` only carries ONE platform
+      # into the local daemon, so the arm64 image is not loaded here — it is
+      # built again (from cache) in the publish step, which pushes the full
+      # amd64 + arm64 manifest. This keeps the smoke test meaningful while the
+      # published artifact remains multi-arch.
+      - name: Build API image (amd64, load for smoke test)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/api/Dockerfile
+          platforms: linux/amd64
+          load: true
+          tags: marineops-api:latest
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ github.ref_name }}
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,scope=api,mode=max
 
       # The web tier (both portals + nginx). Without this the front-ends
       # have no deployable artifact — only zip files on a CI run.
-      - name: Build web Docker image
-        run: |
-          docker build -f infrastructure/docker/Dockerfile.web \
-            --label org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }} \
-            --label org.opencontainers.image.revision=${{ github.sha }} \
-            --label org.opencontainers.image.version=${{ github.ref_name }} \
-            -t marineops-web:${{ github.ref_name }} .
-      - name: Tag web as latest
-        run: docker tag marineops-web:${{ github.ref_name }} marineops-web:latest
+      - name: Build web Docker image (amd64, load for smoke test)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: infrastructure/docker/Dockerfile.web
+          platforms: linux/amd64
+          load: true
+          tags: marineops-web:latest
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ github.ref_name }}
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,scope=web,mode=max
 
       # This job gets its OWN postgres service, separate from the `test`
       # job's, and nothing had ever created a schema in it. The web smoke
@@ -298,25 +319,49 @@ jobs:
       # `release` by the job-level `if:` — pull requests (including from
       # forks) build and smoke-test but never authenticate or push.
       - name: Log in to GHCR
-        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Push images to GHCR
-        run: |
-          set -euo pipefail
-          # Three deterministic tags each: the release tag (human-facing),
-          # the commit SHA (immutable — what a rollback should pin to), and
-          # `latest` (moving pointer for the current release). The API and
-          # web images share tags so a rollback moves both together.
-          for tag in '${{ github.ref_name }}' '${{ steps.image.outputs.sha }}' latest; do
-            docker tag marineops-api:latest '${{ steps.image.outputs.repo }}':"${tag}"
-            docker push '${{ steps.image.outputs.repo }}':"${tag}"
-            echo "Pushed ${{ steps.image.outputs.repo }}:${tag}"
+      # Three deterministic tags each: the release tag (human-facing), the
+      # commit SHA (immutable — what a rollback should pin to), and `latest`
+      # (moving pointer for the current release). The API and web images share
+      # tags so a rollback moves both together. Each push publishes a
+      # multi-arch manifest containing BOTH amd64 and arm64.
+      - name: Push multi-arch API image to GHCR
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/api/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ${{ steps.image.outputs.repo }}:${{ github.ref_name }}
+            ${{ steps.image.outputs.repo }}:${{ steps.image.outputs.sha }}
+            ${{ steps.image.outputs.repo }}:latest
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ github.ref_name }}
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,scope=api,mode=max
 
-            docker tag marineops-web:latest '${{ steps.image.outputs.web }}':"${tag}"
-            docker push '${{ steps.image.outputs.web }}':"${tag}"
-            echo "Pushed ${{ steps.image.outputs.web }}:${tag}"
-          done
-
-      - name: Log out of GHCR
-        if: always()
-        run: docker logout ghcr.io || true
+      - name: Push multi-arch web image to GHCR
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: infrastructure/docker/Dockerfile.web
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ${{ steps.image.outputs.web }}:${{ github.ref_name }}
+            ${{ steps.image.outputs.web }}:${{ steps.image.outputs.sha }}
+            ${{ steps.image.outputs.web }}:latest
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ github.ref_name }}
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,scope=web,mode=max
