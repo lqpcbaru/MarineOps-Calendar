@@ -95,8 +95,8 @@ Blocks everything after it.
 - A **managed PostgreSQL 16** database. Deliberately not a container: it
   is the only state that matters, and it should not share a disk or a
   lifecycle with the stateless tier.
-- Outbound HTTPS from the host to MET Malaysia, JUPEM and Global Fishing
-  Watch.
+- Outbound HTTPS from the host to the external data providers: MET
+  Malaysia (weather) and JUPEM (tide).
 
 Sizing is modest — the API is capped at 512 MB and the web tier at
 128 MB in `docker-compose.prod.yml`, and both are stateless.

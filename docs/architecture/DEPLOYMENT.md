@@ -89,11 +89,11 @@ nothing that is required):
 
 ## 3. Environments
 
-| Environment  | Purpose               | API URL                                 | DB                           | Notes                                                        |
-| ------------ | --------------------- | --------------------------------------- | ---------------------------- | ------------------------------------------------------------ |
-| `local`      | Developer machine     | `http://localhost:3000`                 | Docker Compose PostgreSQL    | `NODE_ENV=development`; cookie `Secure=false` for local HTTP |
-| `staging`    | Pre-prod verification | `https://staging-api.marineops.example` | Managed Postgres (staging)   | Mirrors prod shape; synthetic data                           |
-| `production` | Live                  | `https://api.marineops.example`         | Managed Postgres (prod) + S3 | `NODE_ENV=production`; TLS; cookie `Secure=true`             |
+| Environment  | Purpose               | API URL                                 | DB                         | Notes                                                        |
+| ------------ | --------------------- | --------------------------------------- | -------------------------- | ------------------------------------------------------------ |
+| `local`      | Developer machine     | `http://localhost:3000`                 | Docker Compose PostgreSQL  | `NODE_ENV=development`; cookie `Secure=false` for local HTTP |
+| `staging`    | Pre-prod verification | `https://staging-api.marineops.example` | Managed Postgres (staging) | Mirrors prod shape; synthetic data                           |
+| `production` | Live                  | `https://api.marineops.example`         | Managed Postgres (prod)    | `NODE_ENV=production`; TLS; cookie `Secure=true`             |
 
 Configuration is 12-factor: all environment-specific values via env vars (`.env.example` committed; `.env` never committed).
 
@@ -108,7 +108,6 @@ flowchart LR
         API1["api container #1<br/>NestJS"]
         API2["api container #2<br/>NestJS"]
         PG[("postgres container<br/>v16")]
-        S3[("minio container<br/>(local S3)")]
     end
 
     INTERNET --> RP
@@ -116,12 +115,10 @@ flowchart LR
     RP -->|"/api + static"| API2
     API1 --> PG
     API2 --> PG
-    API1 --> S3
-    API2 --> S3
 ```
 
-- In `local`: `docker compose -f infrastructure/docker/docker-compose.yml up` starts Postgres (+ MinIO) and the API runs via `pnpm dev:api`.
-- In `staging`/`prod`: API containers scale horizontally behind the reverse proxy; Postgres and S3 are managed services. Cron runs inside **each** API container but jobs are idempotent (re-fetch on startup) so duplicate runs across replicas are safe for Phase 1 (ADR-0009 §"Additional: scheduled tasks").
+- In `local`: `docker compose -f infrastructure/docker/docker-compose.yml up` starts Postgres and the API runs via `pnpm dev:api`.
+- In `staging`/`prod`: API containers scale horizontally behind the reverse proxy; Postgres is a managed service. There is no object storage — nothing in the API reads or writes S3, and no artefacts are stored outside PostgreSQL.
 
 ---
 
@@ -133,7 +130,6 @@ flowchart LR
 | Admin read                    | Browser → CDN → `/api/v1` (JWT) → API → Postgres → response                         |
 | Admin write                   | Browser → `/api/v1` (JWT + RBAC) → use-case → Postgres + Audit event                |
 | External fetch (on read miss) | API → adapter port → external API → cache write → response                          |
-| Scheduled refresh             | Cron (in API) → use-case → cache check → external API → cache upsert                |
 | Stale fallback                | External API fails → serve cached row with `stale` flag → emit `DataStaleDetected`  |
 
 ---
@@ -160,7 +156,7 @@ flowchart LR
 - API is stateless (JWT self-validating) → horizontal scale behind the proxy.
 - Postgres is the single shared store; scale vertically first. Cross-module joins are avoided by design (§9) to keep queries indexable.
 - CDN absorbs the bulk of public read traffic, so API load is dominated by admin + cache misses.
-- Future: if cron or heavy exports outgrow the API process, introduce BullMQ + Redis via a new ADR (ADR-0009 §"Additional").
+- Future: if background refresh or heavy exports are ever introduced and outgrow the API process, introduce BullMQ + Redis via a new ADR (ADR-0009 §"Additional"). Nothing is scheduled today — see §1.
 
 ---
 
