@@ -45,7 +45,9 @@ export function Header() {
           </div>
 
           {/* Desktop Navigation */}
-          <Navigation />
+          <div className="mx-3 hidden min-w-0 flex-1 md:block">
+            <Navigation />
+          </div>
 
           {/* Mobile menu button */}
           <button

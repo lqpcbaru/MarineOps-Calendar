@@ -16,8 +16,11 @@ const navItems = [
 
 export function Navigation() {
   return (
-    <nav aria-label="Navigasi utama" className="hidden md:block">
-      <ul className="flex items-center gap-1">
+    <nav
+      aria-label="Navigasi utama"
+      className="scrollbar-none hidden min-w-0 flex-1 overflow-x-auto md:block"
+    >
+      <ul className="flex w-max items-center gap-0.5">
         {navItems.map((item) => (
           <li key={item.to}>
             <Link
