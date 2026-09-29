@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import {
+  PageShell,
   PageHeader,
   SectionTitle,
   AppTable,
@@ -91,17 +92,17 @@ export function CuacaPage() {
 
   if (isLoading)
     return (
-      <div className="mx-auto max-w-6xl px-4 py-6">
+      <PageShell>
         <PageHeader
           title="Cuaca Marin"
           subtitle="Keadaan cuaca semasa dan ramalan ringkas untuk operasi laut."
         />
         <LoadingState lines={5} />
-      </div>
+      </PageShell>
     );
   if (isError)
     return (
-      <div className="mx-auto max-w-6xl px-4 py-6">
+      <PageShell>
         <PageHeader
           title="Cuaca Marin"
           subtitle="Keadaan cuaca semasa dan ramalan ringkas untuk operasi laut."
@@ -110,13 +111,13 @@ export function CuacaPage() {
           title="Ralat Memuatkan Cuaca"
           message={error instanceof Error ? error.message : 'Gagal mendapatkan data.'}
         />
-      </div>
+      </PageShell>
     );
 
   const points = data?.data ?? [];
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
+    <PageShell>
       <PageHeader
         title="Cuaca Marin"
         subtitle="Keadaan cuaca semasa dan ramalan ringkas untuk operasi laut."
@@ -136,6 +137,6 @@ export function CuacaPage() {
           <p>Cuaca adalah faktor utama yang mempengaruhi keselamatan operasi di laut.</p>
         </InfoPanel>
       </section>
-    </div>
+    </PageShell>
   );
 }

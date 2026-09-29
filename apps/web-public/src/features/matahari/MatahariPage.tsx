@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import {
+  PageShell,
   PageHeader,
   SectionTitle,
   AppTable,
@@ -145,7 +146,7 @@ export function MatahariPage() {
 
   if (stationsQuery.isError)
     return (
-      <div className="mx-auto max-w-6xl px-4 py-6">
+      <PageShell>
         <PageHeader title="Matahari" subtitle="Maklumat waktu matahari." />
         <ErrorState
           title="Ralat Memuatkan Senarai Stesen"
@@ -155,32 +156,32 @@ export function MatahariPage() {
               : 'Gagal mendapatkan senarai stesen.'
           }
         />
-      </div>
+      </PageShell>
     );
 
   if (stationsQuery.isLoading || (isLoading && Boolean(selectedStationId)))
     return (
-      <div className="mx-auto max-w-6xl px-4 py-6">
+      <PageShell>
         <PageHeader title="Matahari" subtitle="Maklumat waktu matahari." />
         <LoadingState lines={5} />
-      </div>
+      </PageShell>
     );
   if (isError)
     return (
-      <div className="mx-auto max-w-6xl px-4 py-6">
+      <PageShell>
         <PageHeader title="Matahari" subtitle="Maklumat waktu matahari." />
         {stationPicker}
         <ErrorState
           title="Ralat Memuatkan Matahari"
           message={error instanceof Error ? error.message : 'Gagal mendapatkan data.'}
         />
-      </div>
+      </PageShell>
     );
 
   const sunData = data?.data ?? null;
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
+    <PageShell>
       <PageHeader
         title="Matahari"
         subtitle="Maklumat waktu matahari untuk membantu perancangan operasi laut."
@@ -210,6 +211,6 @@ export function MatahariPage() {
           </p>
         </InfoPanel>
       </section>
-    </div>
+    </PageShell>
   );
 }

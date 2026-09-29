@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
+  PageShell,
   PageHeader,
   SectionTitle,
   AppCard,
@@ -227,7 +228,7 @@ export function VesselsPage() {
   };
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
+    <PageShell>
       <PageHeader title="Perisikan Kapal" subtitle="Maklumat kapal daripada sumber data awam." />
 
       {/* Search */}
@@ -355,6 +356,6 @@ export function VesselsPage() {
           )}
         </section>
       )}
-    </div>
+    </PageShell>
   );
 }

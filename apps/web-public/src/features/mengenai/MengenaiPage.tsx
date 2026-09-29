@@ -1,8 +1,9 @@
-import { PageContainer } from '../../shared/components';
+import { PageShell, PageHeader } from '../../shared/components';
 
 export function MengenaiPage() {
   return (
-    <PageContainer title="Mengenai" description="Maklumat mengenai MarineOps Hub dan misi kami.">
+    <PageShell width="narrow">
+      <PageHeader title="Mengenai" subtitle="Maklumat mengenai MarineOps Hub dan misi kami." />
       <div className="surface px-5 py-4">
         <p className="text-text-secondary">
           MarineOps Hub ialah platform perancangan operasi marin yang menggabungkan data keadaan
@@ -10,6 +11,6 @@ export function MengenaiPage() {
           paparan bersepadu untuk membantu perancangan operasi laut.
         </p>
       </div>
-    </PageContainer>
+    </PageShell>
   );
 }

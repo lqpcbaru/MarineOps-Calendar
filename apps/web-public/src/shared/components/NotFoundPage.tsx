@@ -1,4 +1,5 @@
 import { Link } from '@tanstack/react-router';
+import { PageShell } from './PageShell';
 import { PageHeader } from './ui/PageHeader';
 import { ErrorState } from './ui/ErrorState';
 import { AppButton } from './ui/AppButton';
@@ -10,7 +11,7 @@ import { AppButton } from './ui/AppButton';
  */
 export function NotFoundPage() {
   return (
-    <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 lg:px-8">
+    <PageShell width="narrow">
       <PageHeader title="Halaman Tidak Dijumpai" subtitle="404" />
       <ErrorState
         title="Halaman Tidak Wujud"
@@ -21,6 +22,6 @@ export function NotFoundPage() {
           <AppButton variant="primary">Kembali ke Laman Utama</AppButton>
         </Link>
       </div>
-    </div>
+    </PageShell>
   );
 }

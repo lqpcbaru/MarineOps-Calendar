@@ -1,5 +1,6 @@
 import type { ErrorComponentProps } from '@tanstack/react-router';
 import { Link } from '@tanstack/react-router';
+import { PageShell } from './PageShell';
 import { PageHeader } from './ui/PageHeader';
 import { ErrorState } from './ui/ErrorState';
 import { AppButton } from './ui/AppButton';
@@ -15,7 +16,7 @@ export function RouteErrorPage({ error, reset }: ErrorComponentProps) {
   const message = error instanceof Error ? error.message : 'Ralat tidak dijangka berlaku.';
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 lg:px-8">
+    <PageShell width="narrow">
       <PageHeader title="Ralat Aplikasi" />
       <ErrorState title="Sesuatu Telah Tidak Kena" message={message} onRetry={reset} />
       <div className="mt-6 flex justify-center">
@@ -23,6 +24,6 @@ export function RouteErrorPage({ error, reset }: ErrorComponentProps) {
           <AppButton variant="secondary">Kembali ke Laman Utama</AppButton>
         </Link>
       </div>
-    </div>
+    </PageShell>
   );
 }

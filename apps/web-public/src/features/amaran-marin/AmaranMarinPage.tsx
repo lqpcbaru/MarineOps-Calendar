@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import {
+  PageShell,
   PageHeader,
   SectionTitle,
   AppCard,
@@ -113,7 +114,7 @@ export function AmaranMarinPage() {
   });
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 lg:px-8">
+    <PageShell width="narrow">
       <PageHeader
         title="Amaran Marin"
         subtitle="Amaran dan notis keselamatan marin yang sedang berkuat kuasa."
@@ -221,6 +222,6 @@ export function AmaranMarinPage() {
             <RuleDetails rules={rec.ruleResults} />
           </div>
         ))}
-    </div>
+    </PageShell>
   );
 }

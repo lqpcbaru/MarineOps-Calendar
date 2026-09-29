@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import {
+  PageShell,
   PageHeader,
   SectionTitle,
   AppTable,
@@ -138,7 +139,7 @@ export function FasaBulanPage() {
 
   if (stationsQuery.isError)
     return (
-      <div className="mx-auto max-w-6xl px-4 py-6">
+      <PageShell>
         <PageHeader title="Fasa Bulan" subtitle="Maklumat fasa bulan." />
         <ErrorState
           title="Ralat Memuatkan Senarai Stesen"
@@ -148,32 +149,32 @@ export function FasaBulanPage() {
               : 'Gagal mendapatkan senarai stesen.'
           }
         />
-      </div>
+      </PageShell>
     );
 
   if (stationsQuery.isLoading || (isLoading && Boolean(selectedStationId)))
     return (
-      <div className="mx-auto max-w-6xl px-4 py-6">
+      <PageShell>
         <PageHeader title="Fasa Bulan" subtitle="Maklumat fasa bulan." />
         <LoadingState lines={5} />
-      </div>
+      </PageShell>
     );
   if (isError)
     return (
-      <div className="mx-auto max-w-6xl px-4 py-6">
+      <PageShell>
         <PageHeader title="Fasa Bulan" subtitle="Maklumat fasa bulan." />
         {stationPicker}
         <ErrorState
           title="Ralat Memuatkan Fasa Bulan"
           message={error instanceof Error ? error.message : 'Gagal mendapatkan data.'}
         />
-      </div>
+      </PageShell>
     );
 
   const moonData = data?.data ?? null;
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
+    <PageShell>
       <PageHeader
         title="Fasa Bulan"
         subtitle="Maklumat fasa bulan untuk membantu memahami keadaan pasang surut dan operasi laut."
@@ -200,6 +201,6 @@ export function FasaBulanPage() {
           <p>Air Mati berlaku apabila bulan berada dalam fasa suku pertama dan suku ketiga.</p>
         </InfoPanel>
       </section>
-    </div>
+    </PageShell>
   );
 }

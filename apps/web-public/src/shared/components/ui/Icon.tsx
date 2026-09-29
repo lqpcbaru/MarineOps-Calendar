@@ -18,6 +18,8 @@ import {
   Clock,
   Eye,
   Thermometer,
+  ChevronLeft,
+  ChevronRight,
   type LucideProps,
 } from 'lucide-react';
 import type { ComponentType } from 'react';
@@ -46,7 +48,9 @@ export type IconName =
   | 'droplets'
   | 'clock'
   | 'eye'
-  | 'thermometer';
+  | 'thermometer'
+  | 'chevron-left'
+  | 'chevron-right';
 
 const ICONS: Record<IconName, ComponentType<LucideProps>> = {
   calendar: CalendarDays,
@@ -68,6 +72,8 @@ const ICONS: Record<IconName, ComponentType<LucideProps>> = {
   clock: Clock,
   eye: Eye,
   thermometer: Thermometer,
+  'chevron-left': ChevronLeft,
+  'chevron-right': ChevronRight,
 };
 
 interface IconProps extends Omit<LucideProps, 'ref'> {

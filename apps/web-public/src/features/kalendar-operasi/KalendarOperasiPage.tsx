@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   PageShell,
@@ -8,6 +8,7 @@ import {
   ErrorState,
   LoadingState,
   StationSelect,
+  AppButton,
   Icon,
 } from '../../shared/components';
 import { getCalendar, type DailyOperationalRecord } from './kalendar-operasi.api';
@@ -31,6 +32,8 @@ const MONTHS_BM = [
   'Disember',
 ];
 
+const WEEK_DAYS = 7;
+
 function toLocalDateString(d: Date): string {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, '0');
@@ -49,6 +52,35 @@ function parseDay(dateStr: string): { dayNum: number; dayShort: string; monthSho
 
 function isToday(dateStr: string): boolean {
   return dateStr === toLocalDateString(new Date());
+}
+
+/* ── Semantic data-freshness status, derived from the record's contract ── */
+type FreshnessStatus = 'fresh' | 'stale' | 'unavailable';
+
+function freshnessStatus(r: DailyOperationalRecord): FreshnessStatus {
+  return r.freshness?.status ?? 'unavailable';
+}
+
+function freshnessLabel(status: FreshnessStatus): string {
+  switch (status) {
+    case 'fresh':
+      return 'Data segar';
+    case 'stale':
+      return 'Data lama';
+    case 'unavailable':
+      return 'Tiada data';
+  }
+}
+
+function freshnessDotClass(status: FreshnessStatus): string {
+  switch (status) {
+    case 'fresh':
+      return 'bg-status-safe';
+    case 'stale':
+      return 'bg-status-caution';
+    case 'unavailable':
+      return 'bg-text-muted';
+  }
 }
 
 /* ── Condensed indicator glyph inside a day cell ── */
@@ -83,6 +115,7 @@ function WeekStrip({
         const { dayNum, dayShort, monthShort } = parseDay(r.date);
         const active = r.date === selected;
         const today = isToday(r.date);
+        const fresh = freshnessStatus(r);
 
         return (
           <button
@@ -90,8 +123,9 @@ function WeekStrip({
             type="button"
             role="option"
             aria-selected={active}
+            aria-label={`${dayShort} ${dayNum} ${monthShort}${today ? ' (hari ini)' : ''}`}
             onClick={() => onSelect(r.date)}
-            className={`flex min-w-[5.5rem] flex-col gap-1 bg-surface-raised px-2 py-2.5 text-left transition-colors focus-visible:z-10 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ocean-400 ${
+            className={`flex min-w-[5.25rem] flex-col gap-1 bg-surface-raised px-2 py-2.5 text-left transition-colors focus-visible:z-10 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ocean-400 ${
               active ? 'bg-marine-800 ring-1 ring-inset ring-ocean-400' : 'hover:bg-marine-800/60'
             }`}
           >
@@ -137,9 +171,15 @@ function WeekStrip({
               )}
             </div>
 
-            {today && (
-              <span className="mt-1 h-0.5 w-5 rounded-full bg-ocean-400" aria-hidden="true" />
-            )}
+            {/* Footer: today marker + semantic data-freshness dot */}
+            <span className="mt-auto flex items-center gap-1 pt-1">
+              <span
+                className={`h-1.5 w-1.5 rounded-full ${freshnessDotClass(fresh)}`}
+                title={freshnessLabel(fresh)}
+                aria-hidden="true"
+              />
+              {today && <span className="h-0.5 w-5 rounded-full bg-ocean-400" aria-hidden="true" />}
+            </span>
           </button>
         );
       })}
@@ -213,12 +253,30 @@ function DayDetail({
   );
 }
 
+/* ── Week-range label (e.g. "08 — 14 September 2026") ── */
+function formatWeekRange(from: string, to: string): string {
+  const a = new Date(from + 'T00:00:00');
+  const b = new Date(to + 'T00:00:00');
+  if (a.getMonth() === b.getMonth() && a.getFullYear() === b.getFullYear()) {
+    return `${a.getDate()} — ${b.getDate()} ${MONTHS_BM[a.getMonth()]} ${a.getFullYear()}`;
+  }
+  if (a.getFullYear() === b.getFullYear()) {
+    return `${a.getDate()} ${MONTHS_BM[a.getMonth()]} — ${b.getDate()} ${MONTHS_BM[b.getMonth()]} ${a.getFullYear()}`;
+  }
+  return `${a.getDate()} ${MONTHS_BM[a.getMonth()]} ${a.getFullYear()} — ${b.getDate()} ${
+    MONTHS_BM[b.getMonth()]
+  } ${b.getFullYear()}`;
+}
+
 export function KalendarOperasiPage() {
-  const today = new Date();
-  const dateFrom = toLocalDateString(today);
+  // The visible week is anchored on a movable date, defaulting to today.
+  const [anchor, setAnchor] = useState<Date>(() => new Date());
+  const anchorDate = toLocalDateString(anchor);
+
+  const dateFrom = anchorDate;
   const dateTo = (() => {
-    const d = new Date(today);
-    d.setDate(d.getDate() + 6);
+    const d = new Date(anchor);
+    d.setDate(d.getDate() + (WEEK_DAYS - 1));
     return toLocalDateString(d);
   })();
 
@@ -242,6 +300,25 @@ export function KalendarOperasiPage() {
   const records = data?.data ?? [];
   const [selectedDate, setSelectedDate] = useState<string | undefined>(undefined);
   const selectedRecord = records.find((r) => r.date === selectedDate) ?? records[0] ?? null;
+
+  const weekLabel =
+    records.length > 0 ? formatWeekRange(records[0]!.date, records[records.length - 1]!.date) : '';
+
+  const shiftWeek = (delta: number) => {
+    setAnchor((prev) => {
+      const next = new Date(prev);
+      next.setDate(next.getDate() + delta * WEEK_DAYS);
+      return next;
+    });
+    setSelectedDate(undefined);
+  };
+
+  const goToToday = () => {
+    setAnchor(new Date());
+    setSelectedDate(undefined);
+  };
+
+  const isCurrentWeek = useMemo(() => anchorDate === toLocalDateString(new Date()), [anchorDate]);
 
   if (stationsQuery.isLoading || (isLoading && Boolean(selectedStationId))) {
     return (
@@ -279,22 +356,39 @@ export function KalendarOperasiPage() {
         subtitle="Ringkasan harian untuk membantu perancangan operasi laut."
       />
 
-      {stations.length > 0 && (
-        <div className="mb-4">
-          <label
-            htmlFor="calendar-station"
-            className="mb-1 block text-xs uppercase tracking-wide text-text-muted"
-          >
-            Stesen
-          </label>
-          <StationSelect
-            id="calendar-station"
-            stations={stations}
-            value={selectedStationId ?? ''}
-            onChange={(e) => setStationId(e.target.value)}
-          />
+      {/* Station + week navigation controls */}
+      <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+        {stations.length > 0 && (
+          <div>
+            <label
+              htmlFor="calendar-station"
+              className="mb-1 block text-xs uppercase tracking-wide text-text-muted"
+            >
+              Stesen
+            </label>
+            <StationSelect
+              id="calendar-station"
+              stations={stations}
+              value={selectedStationId ?? ''}
+              onChange={(e) => setStationId(e.target.value)}
+            />
+          </div>
+        )}
+
+        <div className="flex flex-wrap items-center gap-2">
+          <AppButton variant="secondary" size="sm" onClick={() => shiftWeek(-1)}>
+            <Icon name="chevron-left" size={16} />
+            <span className="sr-only sm:not-sr-only">Minggu lepas</span>
+          </AppButton>
+          <AppButton variant="secondary" size="sm" onClick={() => shiftWeek(1)}>
+            <span className="sr-only sm:not-sr-only">Minggu depan</span>
+            <Icon name="chevron-right" size={16} />
+          </AppButton>
+          <AppButton variant="ghost" size="sm" onClick={goToToday} disabled={isCurrentWeek}>
+            Hari Ini
+          </AppButton>
         </div>
-      )}
+      </div>
 
       {records.length === 0 ? (
         <EmptyState
@@ -306,9 +400,7 @@ export function KalendarOperasiPage() {
           <section aria-label="Minggu operasi" className="mb-6">
             <div className="mb-2 flex items-baseline justify-between">
               <SectionTitle>Minggu Operasi</SectionTitle>
-              <span className="text-xs text-text-muted">
-                {records[0]?.date} — {records[records.length - 1]?.date}
-              </span>
+              <span className="text-xs text-text-muted">{weekLabel}</span>
             </div>
             <WeekStrip
               records={records}

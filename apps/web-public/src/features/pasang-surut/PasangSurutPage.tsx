@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import {
+  PageShell,
   PageHeader,
   SectionTitle,
   AppTable,
@@ -102,18 +103,18 @@ export function PasangSurutPage() {
 
   if (isLoading) {
     return (
-      <div className="mx-auto max-w-6xl px-4 py-6">
+      <PageShell>
         <PageHeader
           title="Pasang Surut"
           subtitle="Maklumat pasang surut air laut mengikut stesen dan tarikh."
         />
         <LoadingState lines={5} />
-      </div>
+      </PageShell>
     );
   }
   if (isError) {
     return (
-      <div className="mx-auto max-w-6xl px-4 py-6">
+      <PageShell>
         <PageHeader
           title="Pasang Surut"
           subtitle="Maklumat pasang surut air laut mengikut stesen dan tarikh."
@@ -122,14 +123,14 @@ export function PasangSurutPage() {
           title="Ralat Memuatkan Pasang Surut"
           message={error instanceof Error ? error.message : 'Gagal mendapatkan data.'}
         />
-      </div>
+      </PageShell>
     );
   }
 
   const points = data?.data ?? [];
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
+    <PageShell>
       <PageHeader
         title="Pasang Surut"
         subtitle="Maklumat pasang surut air laut mengikut stesen dan tarikh."
@@ -155,6 +156,6 @@ export function PasangSurutPage() {
           </p>
         </InfoPanel>
       </section>
-    </div>
+    </PageShell>
   );
 }
