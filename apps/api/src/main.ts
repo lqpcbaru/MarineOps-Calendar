@@ -1,72 +1,14 @@
-import { NestFactory } from '@nestjs/core';
-import { RequestMethod } from '@nestjs/common';
-import type { NestExpressApplication } from '@nestjs/platform-express';
-import cookieParser from 'cookie-parser';
-import helmet from 'helmet';
-import compression from 'compression';
-import rateLimit from 'express-rate-limit';
-import { AppModule } from './app.module';
+import { createApp } from './create-app';
 import { LoggingService } from './platform/logging.service';
-import { correlationIdMiddleware } from './platform/correlation-id.middleware';
-import { createLoginRateLimiter } from './platform/login-rate-limit';
 import { buildStartupSummary, buildStartupWarnings } from './platform/startup-summary';
-import { resolveTrustedProxyHops } from './platform/trusted-proxy-hops';
 
 async function bootstrap() {
   const logger = new LoggingService('Bootstrap');
-  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
-    logger: ['log', 'error', 'warn'],
-  });
+  const app = await createApp();
 
-  // How many proxies append to X-Forwarded-For before a request reaches
-  // us. Must match the deployment: too low and req.ip becomes a proxy's
-  // own address, so every client shares one rate-limit bucket; too high
-  // and a client can forge req.ip and step around the limiter. Defaults
-  // to 1 (the web container alone); the TLS overlay sets 2.
-  // See platform/trusted-proxy-hops.ts.
-  app.set('trust proxy', resolveTrustedProxyHops());
-
-  app.use(correlationIdMiddleware);
-  app.use(cookieParser());
-  app.use(helmet());
-  app.use(compression());
-
-  app.use(
-    rateLimit({
-      windowMs: 60_000,
-      max: parseInt(process.env['RATE_LIMIT_MAX'] || '100', 10),
-      standardHeaders: true,
-      legacyHeaders: false,
-    }),
-  );
-
-  app.use('/api/v1/auth/login', createLoginRateLimiter());
-
-  // CORS origin is authoritative from APP_URL. In development we allow a
-  // localhost fallback; in production APP_URL is required and we fail fast
-  // rather than silently trusting a development origin.
-  const isProduction = process.env.NODE_ENV === 'production';
-  const appUrl = process.env.APP_URL;
-  if (isProduction && !appUrl) {
-    throw new Error('APP_URL is required in production (CORS origin)');
-  }
-
-  app.enableCors({
-    origin: appUrl || 'http://localhost:5173',
-    credentials: true,
-  });
-
-  // Routing:
-  //   /api/public/*  → public controllers (anonymous, read-only)
-  //   /api/v1/*      → admin controllers (JWT + RBAC)
-  //   /health/*      → health endpoints (excluded from the "api" prefix)
-  // `health/(.*)` is the pre-path-to-regexp-8 spelling. Nest 11 still
-  // accepts it but logs a deprecation warning on every boot and
-  // auto-converts it to exactly the form below, so write it directly
-  // rather than depend on a conversion that a future major may drop.
-  app.setGlobalPrefix('api', {
-    exclude: [{ path: 'health/{*path}', method: RequestMethod.ALL }],
-  });
+  // Graceful shutdown hooks are only meaningful for a long-running process.
+  // The serverless entry (vercel.ts) initialises the app via app.init()
+  // instead and must NOT register process signal handlers.
   app.enableShutdownHooks();
 
   const port = parseInt(process.env.PORT || '3000', 10);

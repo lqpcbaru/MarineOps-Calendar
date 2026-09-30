@@ -1,0 +1,35 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "installCommand": "pnpm install --frozen-lockfile",
+  "buildCommand": "pnpm --filter @marineops/api exec prisma generate && pnpm build && node scripts/prepare-vercel-output.mjs",
+  "outputDirectory": "apps/web-public/dist",
+  "functions": {
+    "api/index.js": {
+      "memory": 1024
+    }
+  },
+  "routes": [
+    {
+      "src": "/(.*)",
+      "headers": {
+        "X-Content-Type-Options": "nosniff",
+        "X-Frame-Options": "DENY",
+        "Referrer-Policy": "strict-origin-when-cross-origin"
+      },
+      "continue": true
+    },
+    {
+      "src": "/((?!api/|health/).*)",
+      "headers": {
+        "Content-Security-Policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests",
+        "Strict-Transport-Security": "max-age=31536000; includeSubDomains"
+      },
+      "continue": true
+    },
+    { "handle": "filesystem" },
+    { "src": "/api/(.*)", "dest": "/api/index" },
+    { "src": "/health/(.*)", "dest": "/api/index" },
+    { "src": "/admin/(.*)", "dest": "/admin/index.html" },
+    { "src": "/(.*)", "dest": "/index.html" }
+  ]
+}
