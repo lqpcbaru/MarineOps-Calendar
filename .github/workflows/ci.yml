@@ -30,15 +30,14 @@ jobs:
     name: Tests
     runs-on: ubuntu-latest
     needs: lint
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_USER: marineops
-          POSTGRES_PASSWORD: test
-          POSTGRES_DB: marineops_test
-        ports: ['5432:5432']
-        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+    # No Postgres service here: both the unit suite (vitest) and the e2e
+    # suite use in-memory test doubles (see apps/api/tests/e2e/*.e2e-spec.ts
+    # and apps/api/src/**/test-doubles). No test connects to a real database,
+    # so there is nothing to migrate — `prisma migrate deploy` was previously
+    # run here only to prepare a schema that no test ever consumed, and it now
+    # fails because the schema requires DIRECT_URL (introduced for Supabase).
+    # Production migration is exercised separately by the release-gated
+    # `docker` job below.
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -46,11 +45,8 @@ jobs:
         with: { node-version: 22, cache: pnpm }
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @marineops/api exec prisma generate
-      - run: pnpm run db:migrate
-        env: { DATABASE_URL: postgresql://marineops:test@localhost:5432/marineops_test }
       - run: pnpm run test
         env:
-          DATABASE_URL: postgresql://marineops:test@localhost:5432/marineops_test
           JWT_ACCESS_SECRET: ci-test-secret
           JWT_REFRESH_SECRET: ci-test-refresh-secret
       - run: pnpm run test:e2e
@@ -181,6 +177,7 @@ jobs:
         run: |
           docker run --rm --network host \
             -e DATABASE_URL=postgresql://marineops:test@localhost:5432/marineops_test \
+            -e DIRECT_URL=postgresql://marineops:test@localhost:5432/marineops_test \
             marineops-api:latest ./node_modules/.bin/prisma migrate deploy
 
       # A clean `docker build` only proves the image compiles — it says
