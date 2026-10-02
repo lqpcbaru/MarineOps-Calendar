@@ -316,7 +316,7 @@ jobs:
       # `release` by the job-level `if:` — pull requests (including from
       # forks) build and smoke-test but never authenticate or push.
       - name: Log in to GHCR
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
