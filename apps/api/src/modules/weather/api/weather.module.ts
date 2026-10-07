@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { WeatherService, WEATHER_PROVIDER } from '../application/weather.service';
-import { MetMalaysiaWeatherProvider } from '../infrastructure/met-malaysia/met-malaysia-weather.provider';
+import { OpenMeteoWeatherProvider } from '../infrastructure/open-meteo/open-meteo-weather.provider';
 import { StationsModule } from '../../stations/api/stations.module';
 import { CacheService } from '../../../shared/cache/cache.service';
 import { createCacheStore } from '../../../shared/cache/create-cache-store';
@@ -10,7 +10,7 @@ import { createCachePolicy } from '../../../shared/cache/cache-policy';
   imports: [StationsModule],
   providers: [
     WeatherService,
-    { provide: WEATHER_PROVIDER, useClass: MetMalaysiaWeatherProvider },
+    { provide: WEATHER_PROVIDER, useClass: OpenMeteoWeatherProvider },
     {
       provide: 'CACHE_SERVICE',
       useFactory: () =>

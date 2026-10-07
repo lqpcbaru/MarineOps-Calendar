@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { WindWaveService, WIND_WAVE_PROVIDER } from '../application/wind-wave.service';
-import { MarineForecastProvider } from '../infrastructure/marine/marine-forecast.provider';
+import { OpenMeteoMarineProvider } from '../infrastructure/open-meteo/open-meteo-marine.provider';
 import { StationsModule } from '../../stations/api/stations.module';
 import { CacheService } from '../../../shared/cache/cache.service';
 import { createCacheStore } from '../../../shared/cache/create-cache-store';
@@ -10,7 +10,7 @@ import { createCachePolicy } from '../../../shared/cache/cache-policy';
   imports: [StationsModule],
   providers: [
     WindWaveService,
-    { provide: WIND_WAVE_PROVIDER, useClass: MarineForecastProvider },
+    { provide: WIND_WAVE_PROVIDER, useClass: OpenMeteoMarineProvider },
     {
       provide: 'CACHE_SERVICE',
       useFactory: () =>
