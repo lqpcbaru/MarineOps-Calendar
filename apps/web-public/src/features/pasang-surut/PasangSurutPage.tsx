@@ -12,7 +12,9 @@ import {
   MarineConditionCard,
   MarineSummaryGrid,
   OperationalLegend,
+  StationSelect,
 } from '../../shared/components';
+import { useStationPicker } from '../../shared/hooks/use-station-picker';
 import { getTide, type TideDataPoint } from './pasang-surut.api';
 
 function toLocalDateString(date: Date): string {
@@ -96,12 +98,33 @@ function TideTable({ data }: { data: TideDataPoint[] }) {
 
 export function PasangSurutPage() {
   const today = toLocalDateString(new Date());
+  const picker = useStationPicker('pasang-surut');
   const { data, isLoading, isError, error } = useQuery({
-    queryKey: ['public-tide', today],
-    queryFn: () => getTide(undefined, today, today),
+    queryKey: ['public-tide', picker.selectedStationId, today],
+    queryFn: () => getTide(picker.selectedStationId, today, today),
+    enabled: Boolean(picker.selectedStationId),
   });
 
-  if (isLoading) {
+  if (picker.isError) {
+    return (
+      <PageShell>
+        <PageHeader
+          title="Pasang Surut"
+          subtitle="Maklumat pasang surut air laut mengikut stesen dan tarikh."
+        />
+        <ErrorState
+          title="Ralat Memuatkan Senarai Stesen"
+          message={
+            picker.error instanceof Error
+              ? picker.error.message
+              : 'Gagal mendapatkan senarai stesen.'
+          }
+        />
+      </PageShell>
+    );
+  }
+
+  if (picker.isLoading || (isLoading && Boolean(picker.selectedStationId))) {
     return (
       <PageShell>
         <PageHeader
@@ -135,6 +158,20 @@ export function PasangSurutPage() {
         title="Pasang Surut"
         subtitle="Maklumat pasang surut air laut mengikut stesen dan tarikh."
       />
+      <div className="mb-6">
+        <label
+          htmlFor="tide-station"
+          className="mb-1 block text-xs uppercase tracking-wide text-text-muted"
+        >
+          Stesen
+        </label>
+        <StationSelect
+          id="tide-station"
+          stations={picker.stations}
+          value={picker.selectedStationId ?? ''}
+          onChange={(e) => picker.setStationId(e.target.value)}
+        />
+      </div>
       <TodaySummary data={points} />
       <TideTable data={points} />
       <section aria-label="Cadangan operasi" className="mb-8">

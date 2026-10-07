@@ -11,7 +11,9 @@ import {
   LoadingState,
   MarineConditionCard,
   MarineSummaryGrid,
+  StationSelect,
 } from '../../shared/components';
+import { useStationPicker } from '../../shared/hooks/use-station-picker';
 import { getWeather, type WeatherDataPoint } from './cuaca.api';
 
 function toLocalDateString(date: Date): string {
@@ -85,12 +87,32 @@ function RamalanCuaca({ data }: { data: WeatherDataPoint[] }) {
 
 export function CuacaPage() {
   const today = toLocalDateString(new Date());
+  const picker = useStationPicker('cuaca');
   const { data, isLoading, isError, error } = useQuery({
-    queryKey: ['public-weather', today],
-    queryFn: () => getWeather(undefined, today, today),
+    queryKey: ['public-weather', picker.selectedStationId, today],
+    queryFn: () => getWeather(picker.selectedStationId, today, today),
+    enabled: Boolean(picker.selectedStationId),
   });
 
-  if (isLoading)
+  if (picker.isError)
+    return (
+      <PageShell>
+        <PageHeader
+          title="Cuaca Marin"
+          subtitle="Keadaan cuaca semasa dan ramalan ringkas untuk operasi laut."
+        />
+        <ErrorState
+          title="Ralat Memuatkan Senarai Stesen"
+          message={
+            picker.error instanceof Error
+              ? picker.error.message
+              : 'Gagal mendapatkan senarai stesen.'
+          }
+        />
+      </PageShell>
+    );
+
+  if (picker.isLoading || (isLoading && Boolean(picker.selectedStationId)))
     return (
       <PageShell>
         <PageHeader
@@ -122,6 +144,20 @@ export function CuacaPage() {
         title="Cuaca Marin"
         subtitle="Keadaan cuaca semasa dan ramalan ringkas untuk operasi laut."
       />
+      <div className="mb-6">
+        <label
+          htmlFor="cuaca-station"
+          className="mb-1 block text-xs uppercase tracking-wide text-text-muted"
+        >
+          Stesen
+        </label>
+        <StationSelect
+          id="cuaca-station"
+          stations={picker.stations}
+          value={picker.selectedStationId ?? ''}
+          onChange={(e) => picker.setStationId(e.target.value)}
+        />
+      </div>
       <RingkasanHariIni data={points} />
       <RamalanCuaca data={points} />
       <section className="mb-8">

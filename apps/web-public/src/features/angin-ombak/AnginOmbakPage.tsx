@@ -12,7 +12,9 @@ import {
   MarineConditionCard,
   MarineSummaryGrid,
   OperationalLegend,
+  StationSelect,
 } from '../../shared/components';
+import { useStationPicker } from '../../shared/hooks/use-station-picker';
 import { getWindWave, type WindWaveDataPoint } from './angin-ombak.api';
 
 function toLocalDateString(date: Date): string {
@@ -92,12 +94,29 @@ function JadualRamalan({ data }: { data: WindWaveDataPoint[] }) {
 
 export function AnginOmbakPage() {
   const today = toLocalDateString(new Date());
+  const picker = useStationPicker('angin-ombak');
   const { data, isLoading, isError, error } = useQuery({
-    queryKey: ['public-wind-wave', today],
-    queryFn: () => getWindWave(undefined, today, today),
+    queryKey: ['public-wind-wave', picker.selectedStationId, today],
+    queryFn: () => getWindWave(picker.selectedStationId, today, today),
+    enabled: Boolean(picker.selectedStationId),
   });
 
-  if (isLoading)
+  if (picker.isError)
+    return (
+      <PageShell>
+        <PageHeader title="Angin & Ombak" subtitle="Maklumat keadaan angin dan ombak." />
+        <ErrorState
+          title="Ralat Memuatkan Senarai Stesen"
+          message={
+            picker.error instanceof Error
+              ? picker.error.message
+              : 'Gagal mendapatkan senarai stesen.'
+          }
+        />
+      </PageShell>
+    );
+
+  if (picker.isLoading || (isLoading && Boolean(picker.selectedStationId)))
     return (
       <PageShell>
         <PageHeader title="Angin & Ombak" subtitle="Maklumat keadaan angin dan ombak." />
@@ -123,6 +142,20 @@ export function AnginOmbakPage() {
         title="Angin & Ombak"
         subtitle="Maklumat keadaan angin dan ombak untuk membantu operasi di laut."
       />
+      <div className="mb-6">
+        <label
+          htmlFor="angin-ombak-station"
+          className="mb-1 block text-xs uppercase tracking-wide text-text-muted"
+        >
+          Stesen
+        </label>
+        <StationSelect
+          id="angin-ombak-station"
+          stations={picker.stations}
+          value={picker.selectedStationId ?? ''}
+          onChange={(e) => picker.setStationId(e.target.value)}
+        />
+      </div>
       <RingkasanHariIni data={points} />
       <JadualRamalan data={points} />
       <section className="mb-8">

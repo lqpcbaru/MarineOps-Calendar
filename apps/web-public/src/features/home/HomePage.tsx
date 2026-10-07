@@ -12,7 +12,9 @@ import {
   LoadingState,
   ErrorState,
   EmptyState,
+  StationSelect,
 } from '../../shared/components';
+import { useStationPicker } from '../../shared/hooks/use-station-picker';
 import { getPublicDashboard } from './dashboard.api';
 
 const DAYS_BM = ['Ahad', 'Isnin', 'Selasa', 'Rabu', 'Khamis', 'Jumaat', 'Sabtu'];
@@ -78,13 +80,31 @@ const quickNavItems = [
 ] as const;
 
 export function HomePage() {
+  const picker = useStationPicker('dashboard');
   const { data, isLoading, isError, error } = useQuery({
-    queryKey: ['public-dashboard'],
-    queryFn: () => getPublicDashboard(),
+    queryKey: ['public-dashboard', picker.selectedStationId],
+    queryFn: () => getPublicDashboard(picker.selectedStationId),
+    enabled: Boolean(picker.selectedStationId),
     refetchInterval: 5 * 60 * 1000,
   });
 
-  if (isLoading) {
+  if (picker.isError) {
+    return (
+      <PageShell width="narrow">
+        <PageHeader title="Pusat Operasi" subtitle="Ringkasan keadaan marin hari ini" />
+        <ErrorState
+          title="Ralat Memuatkan Senarai Stesen"
+          message={
+            picker.error instanceof Error
+              ? picker.error.message
+              : 'Gagal mendapatkan senarai stesen.'
+          }
+        />
+      </PageShell>
+    );
+  }
+
+  if (picker.isLoading || (isLoading && Boolean(picker.selectedStationId))) {
     return (
       <PageShell width="narrow">
         <PageHeader title="Pusat Operasi" subtitle="Ringkasan keadaan marin hari ini" />
@@ -117,6 +137,21 @@ export function HomePage() {
   return (
     <PageShell width="narrow">
       <PageHeader title="Pusat Operasi" subtitle={formatDate(data.date)} />
+
+      <div className="mb-6">
+        <label
+          htmlFor="dashboard-station"
+          className="mb-1 block text-xs uppercase tracking-wide text-text-muted"
+        >
+          Stesen
+        </label>
+        <StationSelect
+          id="dashboard-station"
+          stations={picker.stations}
+          value={picker.selectedStationId ?? ''}
+          onChange={(e) => picker.setStationId(e.target.value)}
+        />
+      </div>
 
       {/* Hero: operational status */}
       <section aria-label="Status operasi" className="mb-6">
