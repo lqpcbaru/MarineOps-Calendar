@@ -5,3 +5,5 @@ export { MarineSummaryGrid } from './MarineSummaryGrid';
 export { QuickNav } from './QuickNav';
 export { RiskBadge } from './RiskBadge';
 export { OperationalLegend } from './OperationalLegend';
+export { TideChart } from './TideChart';
+export { MoonPhaseVisual } from './MoonPhaseVisual';

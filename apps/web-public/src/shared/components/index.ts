@@ -31,3 +31,5 @@ export { MarineSummaryGrid } from './operational/MarineSummaryGrid';
 export { QuickNav } from './operational/QuickNav';
 export { RiskBadge } from './operational/RiskBadge';
 export { OperationalLegend } from './operational/OperationalLegend';
+export { TideChart } from './operational/TideChart';
+export { MoonPhaseVisual } from './operational/MoonPhaseVisual';

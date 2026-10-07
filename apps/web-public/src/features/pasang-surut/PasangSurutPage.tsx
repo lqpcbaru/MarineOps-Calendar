@@ -13,6 +13,7 @@ import {
   MarineSummaryGrid,
   OperationalLegend,
   StationSelect,
+  TideChart,
 } from '../../shared/components';
 import { useStationPicker } from '../../shared/hooks/use-station-picker';
 import { getTide, type TideDataPoint } from './pasang-surut.api';
@@ -172,6 +173,12 @@ export function PasangSurutPage() {
           onChange={(e) => picker.setStationId(e.target.value)}
         />
       </div>
+      <section aria-label="Graf pasang surut" className="mb-8">
+        <SectionTitle>Graf Pasang Surut Hari Ini</SectionTitle>
+        <div className="surface px-3 py-4">
+          <TideChart data={points} />
+        </div>
+      </section>
       <TodaySummary data={points} />
       <TideTable data={points} />
       <section aria-label="Cadangan operasi" className="mb-8">

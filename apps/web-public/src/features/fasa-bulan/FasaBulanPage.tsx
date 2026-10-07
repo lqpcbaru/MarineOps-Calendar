@@ -14,6 +14,7 @@ import {
   MarineSummaryGrid,
   OperationalLegend,
   StationSelect,
+  MoonPhaseVisual,
 } from '../../shared/components';
 import { formatStationTime } from '../../shared/format/station-time';
 import { getStations } from '../stesen/stesen.api';
@@ -180,6 +181,13 @@ export function FasaBulanPage() {
         subtitle="Maklumat fasa bulan untuk membantu memahami keadaan pasang surut dan operasi laut."
       />
       {stationPicker}
+      {moonData && (
+        <section aria-label="Visual fasa bulan" className="mb-8">
+          <div className="surface px-3 py-4">
+            <MoonPhaseVisual phaseName={moonData.phaseName} illumination={moonData.illumination} />
+          </div>
+        </section>
+      )}
       <RingkasanHariIni data={moonData} timezone={selectedTimezone} />
       <JadualFasa data={moonData} timezone={selectedTimezone} />
       <section className="mb-8">
