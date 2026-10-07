@@ -1,28 +1,26 @@
 import { describe, expect, it } from 'vitest';
-import { mapExtreme, mapExtremes } from './worldtides-tide-mapper';
+import { mapExtreme, mapExtremes } from './stormglass-tide-mapper';
 
-describe('WorldTidesTideMapper', () => {
+describe('StormGlassTideMapper', () => {
   describe('mapExtreme', () => {
-    it('maps a High tide event', () => {
+    it('maps a high tide event', () => {
       const point = mapExtreme({
-        dt: 1760396400,
-        date: '2026-10-14',
+        time: '2026-10-14T00:00:00+00:00',
         height: 2.34,
-        type: 'High',
+        type: 'high',
       });
 
       expect(point.type).toBe('HIGH');
       expect(point.height).toBe(2.34);
-      expect(point.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-      expect(point.time).toMatch(/Z$/);
+      expect(point.date).toBe('2026-10-14');
+      expect(point.time).toBe('2026-10-14T00:00:00+00:00');
     });
 
-    it('maps a Low tide event', () => {
+    it('maps a low tide event', () => {
       const point = mapExtreme({
-        dt: 1760425200,
-        date: '2026-10-14',
+        time: '2026-10-14T06:00:00+00:00',
         height: 0.42,
-        type: 'Low',
+        type: 'low',
       });
 
       expect(point.type).toBe('LOW');
@@ -33,8 +31,8 @@ describe('WorldTidesTideMapper', () => {
   describe('mapExtremes', () => {
     it('maps an array of extremes', () => {
       const points = mapExtremes([
-        { dt: 1760396400, date: '2026-10-14', height: 2.34, type: 'High' },
-        { dt: 1760425200, date: '2026-10-14', height: 0.42, type: 'Low' },
+        { time: '2026-10-14T00:00:00+00:00', height: 2.34, type: 'high' },
+        { time: '2026-10-14T06:00:00+00:00', height: 0.42, type: 'low' },
       ]);
 
       expect(points).toHaveLength(2);
