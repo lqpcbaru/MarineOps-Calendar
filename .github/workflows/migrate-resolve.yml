@@ -41,7 +41,9 @@ jobs:
         run: pnpm --filter @marineops/api exec prisma generate
 
       - name: Check migration status (before)
-        run: pnpm --filter @marineops/api exec prisma migrate status
+        # `migrate status` exits 1 when migrations are pending, which is the
+        # expected pre-baseline state here — do not fail the job on it.
+        run: pnpm --filter @marineops/api exec prisma migrate status || true
         env:
           DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
           DIRECT_URL: ${{ secrets.SUPABASE_DIRECT_URL }}
@@ -65,6 +67,7 @@ jobs:
           DIRECT_URL: ${{ secrets.SUPABASE_DIRECT_URL }}
 
       - name: Check migration status (after)
+        # After baselining, status should report "up to date" (exit 0).
         run: pnpm --filter @marineops/api exec prisma migrate status
         env:
           DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
