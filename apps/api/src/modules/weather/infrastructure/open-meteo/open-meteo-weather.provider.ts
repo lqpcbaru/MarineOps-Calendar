@@ -87,13 +87,12 @@ export class OpenMeteoWeatherProvider implements WeatherProviderPort {
 
     try {
       const { latitude, longitude } = await this.resolveCoordinates(stationId);
-      const days = this.computeDays(dateFrom, dateTo);
       const response = await this.retry.execute(
         () =>
           this.fetchJson<OpenMeteoWeatherResponse>(
             `${OPEN_METEO_BASE_URL}?latitude=${latitude}&longitude=${longitude}` +
               '&daily=temperature_2m_max,temperature_2m_min,weather_code,precipitation_sum' +
-              `&timezone=auto&forecast_days=${days}&start_date=${dateFrom}&end_date=${dateTo}`,
+              `&timezone=auto&start_date=${dateFrom}&end_date=${dateTo}`,
           ),
         'OpenMeteo',
         this.logger,
@@ -130,15 +129,6 @@ export class OpenMeteoWeatherProvider implements WeatherProviderPort {
       throw new ProviderConfigurationError('OpenMeteo', `stesen ${stationId} tidak dijumpai`);
     }
     return { latitude: station.latitude, longitude: station.longitude };
-  }
-
-  private computeDays(dateFrom: string, dateTo: string): number {
-    const from = Date.parse(dateFrom);
-    const to = Date.parse(dateTo);
-    if (Number.isNaN(from) || Number.isNaN(to) || to < from) return 7;
-    const diffDays = Math.round((to - from) / 86_400_000) + 1;
-    // Open-Meteo caps free forecast_days; clamp to a sane maximum.
-    return Math.max(1, Math.min(diffDays, 16));
   }
 
   private fromCurrentWeather(response: OpenMeteoWeatherResponse, date: string): WeatherDataPoint {
