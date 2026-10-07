@@ -1,0 +1,46 @@
+name: Seed Production Database
+
+# Manual workflow to seed initial reference data into the Supabase
+# production database (admin user, roles, regions, stations, provider
+# mappings). The seed is idempotent — every write is an `upsert` keyed on a
+# stable natural key (email, code, name, or the compound station/dataType
+# key), so re-running it is safe and will not duplicate records.
+#
+# Required secrets (add under Settings → Secrets and variables → Actions):
+#   SUPABASE_DATABASE_URL   — pooled runtime connection (port 6543)
+#   SUPABASE_DIRECT_URL     — direct connection (port 5432)
+#   SEED_ADMIN_PASSWORD     — password for admin@marineops.local
+#
+# Run manually from the Actions tab, or via CLI:
+#   gh workflow run seed-production.yml --ref main
+
+on:
+  workflow_dispatch:
+
+jobs:
+  seed:
+    name: Seed Supabase production database
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: pnpm --filter @marineops/api exec prisma generate
+
+      - name: Seed database
+        run: pnpm --filter @marineops/api db:seed
+        env:
+          DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.SUPABASE_DIRECT_URL }}
+          NODE_ENV: production
+          SEED_ADMIN_PASSWORD: ${{ secrets.SEED_ADMIN_PASSWORD }}
