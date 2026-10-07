@@ -1,0 +1,71 @@
+name: Migrate Resolve (Production Baseline)
+
+# One-off manual workflow to baseline Prisma migration history against an
+# already-migrated Supabase production database.
+#
+# The three migration SQL files were applied manually via the Supabase SQL
+# Editor, so the application tables exist but `_prisma_migrations` does not.
+# `prisma migrate resolve --applied` records each migration as applied in the
+# `_prisma_migrations` table WITHOUT running any SQL — it only writes metadata.
+# This reconciles Prisma's view of the world with the live schema and is safe
+# to run because it never creates/drops tables or changes data.
+#
+# Required secrets (add under Settings → Secrets and variables → Actions):
+#   SUPABASE_DATABASE_URL  — pooled runtime connection (port 6543)
+#   SUPABASE_DIRECT_URL    — direct connection used by migrate (port 5432)
+#
+# Run manually from the Actions tab, or via CLI:
+#   gh workflow run migrate-resolve.yml --ref main
+
+on:
+  workflow_dispatch:
+
+jobs:
+  migrate-resolve:
+    name: Baseline migrations on Supabase
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: pnpm --filter @marineops/api exec prisma generate
+
+      - name: Check migration status (before)
+        run: pnpm --filter @marineops/api exec prisma migrate status
+        env:
+          DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.SUPABASE_DIRECT_URL }}
+
+      - name: Resolve migration 1 — init
+        run: pnpm --filter @marineops/api exec prisma migrate resolve --applied 20260731070906_init
+        env:
+          DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.SUPABASE_DIRECT_URL }}
+
+      - name: Resolve migration 2 — add_users_roles_stations
+        run: pnpm --filter @marineops/api exec prisma migrate resolve --applied 20260817000000_add_users_roles_stations
+        env:
+          DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.SUPABASE_DIRECT_URL }}
+
+      - name: Resolve migration 3 — add_audit_log_user_id_index
+        run: pnpm --filter @marineops/api exec prisma migrate resolve --applied 20260827120000_add_audit_log_user_id_index
+        env:
+          DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.SUPABASE_DIRECT_URL }}
+
+      - name: Check migration status (after)
+        run: pnpm --filter @marineops/api exec prisma migrate status
+        env:
+          DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.SUPABASE_DIRECT_URL }}
