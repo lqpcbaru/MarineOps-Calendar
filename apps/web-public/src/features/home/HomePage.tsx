@@ -13,6 +13,7 @@ import {
   StationSelect,
 } from '../../shared/components';
 import { useStationPicker } from '../../shared/hooks/use-station-picker';
+import { formatStationTime } from '../../shared/format/station-time';
 import { getPublicDashboard } from './dashboard.api';
 
 const DAYS_BM = ['Ahad', 'Isnin', 'Selasa', 'Rabu', 'Khamis', 'Jumaat', 'Sabtu'];
@@ -77,7 +78,7 @@ export function HomePage() {
 
   if (picker.isError) {
     return (
-      <PageShell width="narrow">
+      <PageShell width="default">
         <PageHeader title="Pusat Operasi" subtitle="Ringkasan keadaan marin hari ini" />
         <ErrorState
           title="Ralat Memuatkan Senarai Stesen"
@@ -93,7 +94,7 @@ export function HomePage() {
 
   if (picker.isLoading || (isLoading && Boolean(picker.selectedStationId))) {
     return (
-      <PageShell width="narrow">
+      <PageShell width="default">
         <PageHeader title="Pusat Operasi" subtitle="Ringkasan keadaan marin hari ini" />
         <LoadingState lines={6} />
       </PageShell>
@@ -102,7 +103,7 @@ export function HomePage() {
 
   if (isError) {
     return (
-      <PageShell width="narrow">
+      <PageShell width="default">
         <PageHeader title="Pusat Operasi" subtitle="Ringkasan keadaan marin hari ini" />
         <ErrorState
           title="Ralat Memuatkan Dashboard"
@@ -114,7 +115,7 @@ export function HomePage() {
 
   if (!data) {
     return (
-      <PageShell width="narrow">
+      <PageShell width="default">
         <PageHeader title="Pusat Operasi" subtitle="Ringkasan keadaan marin hari ini" />
         <EmptyState title="Tiada Data" message="Data dashboard tidak tersedia buat masa ini." />
       </PageShell>
@@ -122,7 +123,7 @@ export function HomePage() {
   }
 
   return (
-    <PageShell width="narrow">
+    <PageShell width="default">
       <PageHeader
         title="Pusat Operasi"
         subtitle={`${data.station.name ?? ''}${data.station.regionName ? ` · ${data.station.regionName}` : ''} · ${formatDate(data.date)}`}
@@ -165,7 +166,7 @@ export function HomePage() {
             value={data.tide ? data.tide.type : '—'}
             subtitle={
               data.tide
-                ? `Pasang ${data.tide.nextHigh?.height ?? '—'}m · Surut ${data.tide.nextLow?.height ?? '—'}m`
+                ? `Pasang ${formatStationTime(data.tide.nextHigh?.time, picker.selectedTimezone)} · Surut ${formatStationTime(data.tide.nextLow?.time, picker.selectedTimezone)}`
                 : 'Data tidak tersedia'
             }
           />
@@ -198,8 +199,12 @@ export function HomePage() {
           />
           <MarineConditionCard
             title="Matahari"
-            value={data.sun ? data.sun.sunrise : '—'}
-            subtitle={data.sun ? `Terbenam ${data.sun.sunset}` : 'Data tidak tersedia'}
+            value={data.sun ? formatStationTime(data.sun.sunrise, picker.selectedTimezone) : '—'}
+            subtitle={
+              data.sun
+                ? `Terbenam ${formatStationTime(data.sun.sunset, picker.selectedTimezone)}`
+                : 'Data tidak tersedia'
+            }
           />
         </MarineSummaryGrid>
       </section>
