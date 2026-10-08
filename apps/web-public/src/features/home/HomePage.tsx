@@ -123,7 +123,10 @@ export function HomePage() {
 
   return (
     <PageShell width="narrow">
-      <PageHeader title="Pusat Operasi" subtitle={formatDate(data.date)} />
+      <PageHeader
+        title="Pusat Operasi"
+        subtitle={`${data.station.name ?? ''}${data.station.regionName ? ` · ${data.station.regionName}` : ''} · ${formatDate(data.date)}`}
+      />
 
       <div className="mb-6">
         <label
@@ -184,10 +187,27 @@ export function HomePage() {
         </MarineSummaryGrid>
       </section>
 
-      {/* Alerts */}
-      {data.warnings.length > 0 && (
-        <section aria-label="Amaran" className="mb-8">
-          <SectionTitle>Amaran Marin</SectionTitle>
+      {/* Supporting environmental information */}
+      <section aria-label="Maklumat sokongan" className="mb-8">
+        <SectionTitle>Maklumat Sokongan</SectionTitle>
+        <MarineSummaryGrid columns={2}>
+          <MarineConditionCard
+            title="Fasa Bulan"
+            value={data.moon ? data.moon.phaseName : '—'}
+            subtitle={data.moon ? `Pencahayaan ${data.moon.illumination}%` : 'Data tidak tersedia'}
+          />
+          <MarineConditionCard
+            title="Matahari"
+            value={data.sun ? data.sun.sunrise : '—'}
+            subtitle={data.sun ? `Terbenam ${data.sun.sunset}` : 'Data tidak tersedia'}
+          />
+        </MarineSummaryGrid>
+      </section>
+
+      {/* Alerts & advisories */}
+      {(data.warnings.length > 0 || data.advisories.length > 0) && (
+        <section aria-label="Amaran dan nasihat" className="mb-8">
+          <SectionTitle>Amaran & Nasihat</SectionTitle>
           <ul className="space-y-2">
             {data.warnings.map((w, i) => (
               <li
@@ -196,6 +216,15 @@ export function HomePage() {
               >
                 <Icon name="alert" size={16} className="mt-0.5 shrink-0" />
                 <span>{w}</span>
+              </li>
+            ))}
+            {data.advisories.map((a, i) => (
+              <li
+                key={`a-${i}`}
+                className="flex items-start gap-2.5 rounded-md border border-caution-border bg-caution-bg px-3 py-2.5 text-sm text-caution-text"
+              >
+                <Icon name="info" size={16} className="mt-0.5 shrink-0" />
+                <span>{a}</span>
               </li>
             ))}
           </ul>
