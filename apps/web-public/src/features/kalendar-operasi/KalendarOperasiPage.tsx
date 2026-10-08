@@ -145,10 +145,16 @@ function WeekStrip({
 
             <div className="mt-1 flex flex-col gap-0.5">
               {r.tide?.nextHigh && (
-                <CellIndicator label="Pasang tinggi" value={`▲ ${r.tide.nextHigh.height}m`} />
+                <CellIndicator
+                  label="Pasang tinggi"
+                  value={`▲ ${formatStationTime(r.tide.nextHigh.time, timezone)} ${r.tide.nextHigh.height}m`}
+                />
               )}
               {r.tide?.nextLow && (
-                <CellIndicator label="Surut rendah" value={`▼ ${r.tide.nextLow.height}m`} />
+                <CellIndicator
+                  label="Surut rendah"
+                  value={`▼ ${formatStationTime(r.tide.nextLow.time, timezone)} ${r.tide.nextLow.height}m`}
+                />
               )}
               {r.windWave && (
                 <CellIndicator
@@ -207,7 +213,7 @@ function DayDetail({
       label: 'Pasang Surut',
       value: record.tide
         ? record.tide.nextHigh
-          ? `${record.tide.type} · Pasang ${record.tide.nextHigh.height}m @ ${record.tide.nextHigh.time}`
+          ? `Pasang ${record.tide.nextHigh.height}m @ ${formatStationTime(record.tide.nextHigh.time, timezone)}`
           : record.tide.type
         : '—',
     },

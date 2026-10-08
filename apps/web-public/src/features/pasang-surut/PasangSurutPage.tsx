@@ -16,7 +16,7 @@ import {
   TideChart,
 } from '../../shared/components';
 import { useStationPicker } from '../../shared/hooks/use-station-picker';
-import { formatDateDDMMYYYY } from '../../shared/format/station-time';
+import { formatDateDDMMYYYY, formatStationTime } from '../../shared/format/station-time';
 import { getTide, type TideDataPoint } from './pasang-surut.api';
 
 function toLocalDateString(date: Date): string {
@@ -26,7 +26,7 @@ function toLocalDateString(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
-function TodaySummary({ data }: { data: TideDataPoint[] }) {
+function TodaySummary({ data, timezone }: { data: TideDataPoint[]; timezone?: string }) {
   const today = toLocalDateString(new Date());
   const todayPoints = data.filter((p) => p.date === today);
   const high = todayPoints.find((p) => p.type === 'HIGH');
@@ -45,13 +45,13 @@ function TodaySummary({ data }: { data: TideDataPoint[] }) {
           icon="arrow-up"
           title="Pasang Tinggi"
           value={high ? `${high.height}m` : '—'}
-          subtitle={high?.time ?? ''}
+          subtitle={high ? formatStationTime(high.time, timezone) : ''}
         />
         <MarineConditionCard
           icon="arrow-down"
           title="Surut Rendah"
           value={low ? `${low.height}m` : '—'}
-          subtitle={low?.time ?? ''}
+          subtitle={low ? formatStationTime(low.time, timezone) : ''}
         />
         <MarineConditionCard
           icon="gauge"
@@ -64,7 +64,7 @@ function TodaySummary({ data }: { data: TideDataPoint[] }) {
   );
 }
 
-function TideTable({ data }: { data: TideDataPoint[] }) {
+function TideTable({ data, timezone }: { data: TideDataPoint[]; timezone?: string }) {
   const rows = data.slice(0, 14);
 
   return (
@@ -86,7 +86,7 @@ function TideTable({ data }: { data: TideDataPoint[] }) {
             {rows.map((p, i) => (
               <AppTable.Row key={i}>
                 <AppTable.Td>{formatDateDDMMYYYY(p.date)}</AppTable.Td>
-                <AppTable.Td>{p.time}</AppTable.Td>
+                <AppTable.Td>{formatStationTime(p.time, timezone)}</AppTable.Td>
                 <AppTable.Td>{p.type === 'HIGH' ? 'Pasang' : 'Surut'}</AppTable.Td>
                 <AppTable.Td>{p.height}</AppTable.Td>
               </AppTable.Row>
@@ -180,8 +180,8 @@ export function PasangSurutPage() {
           <TideChart data={points} />
         </div>
       </section>
-      <TodaySummary data={points} />
-      <TideTable data={points} />
+      <TodaySummary data={points} timezone={picker.selectedTimezone} />
+      <TideTable data={points} timezone={picker.selectedTimezone} />
       <section aria-label="Cadangan operasi" className="mb-8">
         <Link
           to="/amaran-marin"
