@@ -10,6 +10,8 @@ import {
   StationSelect,
   AppButton,
   Icon,
+  WindCompass,
+  WaveVisual,
 } from '../../shared/components';
 import { getCalendar, type DailyOperationalRecord } from './kalendar-operasi.api';
 import { formatStationTime } from '../../shared/format/station-time';
@@ -202,9 +204,18 @@ function DayDetail({
   timezone: string | undefined;
 }) {
   const { dayNum, monthShort } = parseDay(record.date);
-  const fullDay = DAYS_BM[new Date(record.date + 'T00:00:00').getDay()] ?? '';
+  const parsedDate = new Date(record.date + 'T00:00:00');
+  const fullDay = DAYS_BM[parsedDate.getDay()] ?? '';
+  const year = parsedDate.getFullYear();
+  const tideTypeLabel =
+    record.tide?.type === 'LOW'
+      ? 'Surut'
+      : record.tide?.type === 'HIGH'
+        ? 'Pasang'
+        : (record.tide?.type ?? '—');
+
   const rows: { label: string; value: string }[] = [
-    { label: 'Tarikh Masihi', value: `${fullDay}, ${dayNum} ${monthShort}` },
+    { label: 'Tarikh Masihi', value: `${fullDay}, ${dayNum} ${monthShort} ${year}` },
     {
       label: 'Tarikh Hijrah',
       value: record.hijriDate !== '—' ? record.hijriDate : 'Tidak Tersedia',
@@ -214,7 +225,7 @@ function DayDetail({
       value: record.tide
         ? record.tide.nextHigh
           ? `Pasang ${record.tide.nextHigh.height}m @ ${formatStationTime(record.tide.nextHigh.time, timezone)}`
-          : record.tide.type
+          : tideTypeLabel
         : '—',
     },
     {
@@ -248,14 +259,39 @@ function DayDetail({
   ];
 
   return (
-    <dl className="grid grid-cols-1 gap-px overflow-hidden rounded-md border border-border-subtle bg-border-subtle sm:grid-cols-2 lg:grid-cols-4">
-      {rows.map((row) => (
-        <div key={row.label} className="bg-surface-raised px-4 py-3">
-          <dt className="text-xs uppercase tracking-wide text-text-muted">{row.label}</dt>
-          <dd className="mt-1 text-sm font-medium tabular-nums text-text-primary">{row.value}</dd>
+    <div className="space-y-4">
+      <dl className="grid grid-cols-1 gap-px overflow-hidden rounded-md border border-border-subtle bg-border-subtle sm:grid-cols-2 lg:grid-cols-4">
+        {rows.map((row) => (
+          <div key={row.label} className="bg-surface-raised px-4 py-3">
+            <dt className="text-xs uppercase tracking-wide text-text-muted">{row.label}</dt>
+            <dd className="mt-1 text-sm font-medium tabular-nums text-text-primary">{row.value}</dd>
+          </div>
+        ))}
+      </dl>
+
+      {/* Visual ringkasan untuk hari terpilih */}
+      {record.windWave && (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="surface px-3 py-3">
+            <p className="mb-2 text-xs font-medium uppercase tracking-wide text-text-muted">
+              Arah Angin
+            </p>
+            <WindCompass
+              direction={record.windWave.windDirection}
+              speed={record.windWave.windSpeed}
+              gusts={record.windWave.windGusts}
+              size={100}
+            />
+          </div>
+          <div className="surface px-3 py-3">
+            <p className="mb-2 text-xs font-medium uppercase tracking-wide text-text-muted">
+              Ketinggian Ombak
+            </p>
+            <WaveVisual height={record.windWave.waveHeight} period={record.windWave.wavePeriod} />
+          </div>
         </div>
-      ))}
-    </dl>
+      )}
+    </div>
   );
 }
 
