@@ -109,7 +109,7 @@ function WeekStrip({
 }) {
   return (
     <div
-      className="grid grid-cols-7 gap-px overflow-x-auto rounded-md border border-border-subtle bg-border-subtle"
+      className="grid grid-cols-7 gap-px overflow-hidden rounded-md border border-border-subtle bg-border-subtle"
       role="listbox"
       aria-label="Minggu operasi"
     >
@@ -127,11 +127,11 @@ function WeekStrip({
             aria-selected={active}
             aria-label={`${dayShort} ${dayNum} ${monthShort}${today ? ' (hari ini)' : ''}`}
             onClick={() => onSelect(r.date)}
-            className={`flex min-w-[5.25rem] flex-col gap-1 bg-surface-raised px-2 py-2.5 text-left transition-colors focus-visible:z-10 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ocean-400 ${
+            className={`flex min-w-0 flex-col gap-1 bg-surface-raised px-1.5 py-2.5 text-left transition-colors focus-visible:z-10 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ocean-400 ${
               active ? 'bg-marine-800 ring-1 ring-inset ring-ocean-400' : 'hover:bg-marine-800/60'
             }`}
           >
-            <div className="flex items-baseline justify-between">
+            <div className="flex items-baseline justify-between gap-1">
               <span
                 className={`text-[11px] font-medium uppercase ${
                   today ? 'text-ocean-400' : 'text-text-muted'
