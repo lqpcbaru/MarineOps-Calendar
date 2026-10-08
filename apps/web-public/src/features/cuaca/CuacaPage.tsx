@@ -14,6 +14,7 @@ import {
   StationSelect,
 } from '../../shared/components';
 import { useStationPicker } from '../../shared/hooks/use-station-picker';
+import { formatDateDDMMYYYY } from '../../shared/format/station-time';
 import { getWeather, type WeatherDataPoint } from './cuaca.api';
 
 function toLocalDateString(date: Date): string {
@@ -71,7 +72,7 @@ function RamalanCuaca({ data }: { data: WeatherDataPoint[] }) {
           <AppTable.Body>
             {data.slice(0, 7).map((p, i) => (
               <AppTable.Row key={i}>
-                <AppTable.Td>{p.date}</AppTable.Td>
+                <AppTable.Td>{formatDateDDMMYYYY(p.date)}</AppTable.Td>
                 <AppTable.Td>{p.conditions}</AppTable.Td>
                 <AppTable.Td>{p.temperature}</AppTable.Td>
                 <AppTable.Td>{p.visibility !== null ? p.visibility : '—'}</AppTable.Td>

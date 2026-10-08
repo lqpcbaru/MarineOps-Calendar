@@ -7,3 +7,5 @@ export { RiskBadge } from './RiskBadge';
 export { OperationalLegend } from './OperationalLegend';
 export { TideChart } from './TideChart';
 export { MoonPhaseVisual } from './MoonPhaseVisual';
+export { WindCompass } from './WindCompass';
+export { WaveVisual } from './WaveVisual';

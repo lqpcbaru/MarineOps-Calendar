@@ -16,6 +16,7 @@ import {
   TideChart,
 } from '../../shared/components';
 import { useStationPicker } from '../../shared/hooks/use-station-picker';
+import { formatDateDDMMYYYY } from '../../shared/format/station-time';
 import { getTide, type TideDataPoint } from './pasang-surut.api';
 
 function toLocalDateString(date: Date): string {
@@ -84,7 +85,7 @@ function TideTable({ data }: { data: TideDataPoint[] }) {
           <AppTable.Body>
             {rows.map((p, i) => (
               <AppTable.Row key={i}>
-                <AppTable.Td>{p.date}</AppTable.Td>
+                <AppTable.Td>{formatDateDDMMYYYY(p.date)}</AppTable.Td>
                 <AppTable.Td>{p.time}</AppTable.Td>
                 <AppTable.Td>{p.type === 'HIGH' ? 'Pasang' : 'Surut'}</AppTable.Td>
                 <AppTable.Td>{p.height}</AppTable.Td>

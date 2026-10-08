@@ -33,3 +33,5 @@ export { RiskBadge } from './operational/RiskBadge';
 export { OperationalLegend } from './operational/OperationalLegend';
 export { TideChart } from './operational/TideChart';
 export { MoonPhaseVisual } from './operational/MoonPhaseVisual';
+export { WindCompass } from './operational/WindCompass';
+export { WaveVisual } from './operational/WaveVisual';

@@ -13,8 +13,11 @@ import {
   MarineSummaryGrid,
   OperationalLegend,
   StationSelect,
+  WindCompass,
+  WaveVisual,
 } from '../../shared/components';
 import { useStationPicker } from '../../shared/hooks/use-station-picker';
+import { formatDateDDMMYYYY } from '../../shared/format/station-time';
 import { getWindWave, type WindWaveDataPoint } from './angin-ombak.api';
 
 function toLocalDateString(date: Date): string {
@@ -77,7 +80,7 @@ function JadualRamalan({ data }: { data: WindWaveDataPoint[] }) {
           <AppTable.Body>
             {data.slice(0, 7).map((p, i) => (
               <AppTable.Row key={i}>
-                <AppTable.Td>{p.date}</AppTable.Td>
+                <AppTable.Td>{formatDateDDMMYYYY(p.date)}</AppTable.Td>
                 <AppTable.Td>{p.windDirection}</AppTable.Td>
                 <AppTable.Td>{p.windSpeed}</AppTable.Td>
                 <AppTable.Td>{p.windGusts}</AppTable.Td>
@@ -135,6 +138,7 @@ export function AnginOmbakPage() {
     );
 
   const points = data?.data ?? [];
+  const current = points[0];
 
   return (
     <PageShell>
@@ -156,6 +160,24 @@ export function AnginOmbakPage() {
           onChange={(e) => picker.setStationId(e.target.value)}
         />
       </div>
+      {current && (
+        <section aria-label="Visual angin dan ombak" className="mb-8">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="surface px-3 py-4">
+              <SectionTitle>Arah Angin</SectionTitle>
+              <WindCompass
+                direction={current.windDirection}
+                speed={current.windSpeed}
+                gusts={current.windGusts}
+              />
+            </div>
+            <div className="surface px-3 py-4">
+              <SectionTitle>Ketinggian Ombak</SectionTitle>
+              <WaveVisual height={current.waveHeight} period={current.wavePeriod} />
+            </div>
+          </div>
+        </section>
+      )}
       <RingkasanHariIni data={points} />
       <JadualRamalan data={points} />
       <section className="mb-8">

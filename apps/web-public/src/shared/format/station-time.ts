@@ -50,3 +50,18 @@ export function formatDuration(iso: string | null | undefined): string {
   const parts = [hours ? `${hours}j` : null, minutes ? `${minutes}m` : null].filter(Boolean);
   return parts.length > 0 ? parts.join(' ') : iso;
 }
+
+/**
+ * Formats a date string as DD/MM/YYYY (Bahasa Melayu convention).
+ * Accepts either "YYYY-MM-DD" or a full ISO datetime; only the date part
+ * is used.
+ */
+export function formatDateDDMMYYYY(dateStr: string | null | undefined): string {
+  if (!dateStr) return '—';
+  const parsed = new Date(dateStr);
+  if (Number.isNaN(parsed.getTime())) return dateStr;
+  const day = String(parsed.getUTCDate()).padStart(2, '0');
+  const month = String(parsed.getUTCMonth() + 1).padStart(2, '0');
+  const year = parsed.getUTCFullYear();
+  return `${day}/${month}/${year}`;
+}

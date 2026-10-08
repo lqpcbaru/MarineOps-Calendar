@@ -15,6 +15,7 @@ import {
   type OperationalRecommendation,
   type RuleResult,
 } from './amaran-marin.api';
+import { formatDateDDMMYYYY } from '../../shared/format/station-time';
 
 function toLocalDateString(d: Date): string {
   const y = d.getFullYear();
@@ -74,7 +75,7 @@ function StationContext({ rec }: { rec: OperationalRecommendation }) {
   return (
     <div className="mb-4 text-sm text-text-secondary">
       Stesen: <span className="text-text-primary">{stationLabel}</span> · Tarikh:{' '}
-      <span className="text-text-primary">{rec.date}</span>
+      <span className="text-text-primary">{formatDateDDMMYYYY(rec.date)}</span>
     </div>
   );
 }

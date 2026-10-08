@@ -16,7 +16,7 @@ import {
   StationSelect,
   MoonPhaseVisual,
 } from '../../shared/components';
-import { formatStationTime } from '../../shared/format/station-time';
+import { formatStationTime, formatDateDDMMYYYY } from '../../shared/format/station-time';
 import { getStations } from '../stesen/stesen.api';
 import { getMoonPhase, type MoonDataPoint } from './fasa-bulan.api';
 
@@ -84,7 +84,7 @@ function JadualFasa({
         </AppTable.Head>
         <AppTable.Body>
           <AppTable.Row>
-            <AppTable.Td>{data.date}</AppTable.Td>
+            <AppTable.Td>{formatDateDDMMYYYY(data.date)}</AppTable.Td>
             <AppTable.Td>{data.phaseName}</AppTable.Td>
             <AppTable.Td>{data.illumination}%</AppTable.Td>
             <AppTable.Td>{data.ageDays}</AppTable.Td>

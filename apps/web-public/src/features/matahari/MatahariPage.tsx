@@ -15,7 +15,11 @@ import {
   OperationalLegend,
   StationSelect,
 } from '../../shared/components';
-import { formatDuration, formatStationTime } from '../../shared/format/station-time';
+import {
+  formatDuration,
+  formatStationTime,
+  formatDateDDMMYYYY,
+} from '../../shared/format/station-time';
 import { getStations } from '../stesen/stesen.api';
 import { getSunData, type SunDataPoint } from './matahari.api';
 
@@ -86,7 +90,7 @@ function JadualHarian({
         </AppTable.Head>
         <AppTable.Body>
           <AppTable.Row>
-            <AppTable.Td>{data.date}</AppTable.Td>
+            <AppTable.Td>{formatDateDDMMYYYY(data.date)}</AppTable.Td>
             <AppTable.Td>{formatStationTime(data.sunrise, timezone)}</AppTable.Td>
             <AppTable.Td>{formatStationTime(data.sunset, timezone)}</AppTable.Td>
             <AppTable.Td>{formatStationTime(data.solarNoon, timezone)}</AppTable.Td>
