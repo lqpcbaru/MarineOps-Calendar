@@ -263,13 +263,13 @@
     top: 0.5rem;
   }
 
-  /* ── Section heading (calm eyebrow, not a big h2) ── */
+  /* ── Section heading (calm editorial label, not a loud eyebrow) ── */
   .section-heading {
-    font-size: 0.8125rem;
+    font-size: 0.9375rem;
     font-weight: 600;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--color-text-muted);
+    letter-spacing: 0;
+    text-transform: none;
+    color: var(--color-text-primary);
     margin-bottom: 0.75rem;
   }
 

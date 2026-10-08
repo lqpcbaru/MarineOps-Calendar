@@ -2,18 +2,23 @@ import { useState } from 'react';
 import { Link } from '@tanstack/react-router';
 import { Navigation } from './Navigation';
 
-const mobileNavItems = [
+type MobileNavItem =
+  { to: string; label: string; isGroup?: false; indent?: true } | { label: string; isGroup: true };
+
+const mobileNavItems: MobileNavItem[] = [
   { to: '/', label: 'Laman Utama' },
-  { to: '/pasang-surut', label: 'Pasang Surut' },
-  { to: '/cuaca', label: 'Cuaca' },
-  { to: '/angin-ombak', label: 'Angin & Ombak' },
-  { to: '/fasa-bulan', label: 'Fasa Bulan' },
-  { to: '/matahari', label: 'Matahari' },
-  { to: '/kalendar-operasi', label: 'Kalendar Operasi' },
-  { to: '/stesen', label: 'Stesen' },
+  { label: 'Keadaan Marin', isGroup: true },
+  { to: '/pasang-surut', label: 'Pasang Surut', indent: true },
+  { to: '/cuaca', label: 'Cuaca', indent: true },
+  { to: '/angin-ombak', label: 'Angin & Ombak', indent: true },
+  { to: '/fasa-bulan', label: 'Fasa Bulan', indent: true },
+  { to: '/matahari', label: 'Matahari', indent: true },
+  { label: 'Operasi', isGroup: true },
+  { to: '/kalendar-operasi', label: 'Kalendar Operasi', indent: true },
+  { to: '/stesen', label: 'Stesen', indent: true },
   { to: '/amaran-marin', label: 'Amaran Marin' },
   { to: '/mengenai', label: 'Mengenai' },
-] as const;
+];
 
 export function Header() {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -87,19 +92,33 @@ export function Header() {
           className="border-t border-marine-700 md:hidden"
         >
           <ul className="space-y-1 px-4 py-3">
-            {mobileNavItems.map((item) => (
-              <li key={item.to}>
-                <Link
-                  to={item.to}
-                  className="nav-link block w-full"
-                  activeProps={{ className: 'nav-link active block w-full' }}
-                  activeOptions={{ exact: item.to === '/' }}
-                  onClick={() => setMobileOpen(false)}
-                >
-                  {item.label}
-                </Link>
-              </li>
-            ))}
+            {mobileNavItems.map((item) => {
+              if (item.isGroup) {
+                return (
+                  <li
+                    key={item.label}
+                    className="pt-2 text-xs font-semibold uppercase tracking-wide text-text-muted"
+                  >
+                    {item.label}
+                  </li>
+                );
+              }
+              return (
+                <li key={item.to}>
+                  <Link
+                    to={item.to}
+                    className={`nav-link block w-full ${item.indent ? 'pl-4' : ''}`}
+                    activeProps={{
+                      className: `nav-link active block w-full ${item.indent ? 'pl-4' : ''}`,
+                    }}
+                    activeOptions={{ exact: item.to === '/' }}
+                    onClick={() => setMobileOpen(false)}
+                  >
+                    {item.label}
+                  </Link>
+                </li>
+              );
+            })}
           </ul>
         </nav>
       )}

@@ -12,10 +12,9 @@ const colClasses: Record<number, string> = {
 };
 
 /**
- * Responsive grid for marine condition cards.
- * - Mobile: 2 columns
- * - sm+: 3 columns
- * - lg+: 4 columns (when columns=4)
+ * Responsive grid for marine metrics. Cells are separated by hairline
+ * dividers (a single bordered surface) rather than floating as individual
+ * cards — a calmer, more editorial presentation.
  */
 export function MarineSummaryGrid({
   children,
@@ -24,7 +23,10 @@ export function MarineSummaryGrid({
   ...rest
 }: MarineSummaryGridProps) {
   return (
-    <div className={`grid gap-2 ${colClasses[columns]} ${className}`} {...rest}>
+    <div
+      className={`grid ${colClasses[columns]} gap-px overflow-hidden rounded-md border border-border-subtle bg-border-subtle ${className}`}
+      {...rest}
+    >
       {children}
     </div>
   );

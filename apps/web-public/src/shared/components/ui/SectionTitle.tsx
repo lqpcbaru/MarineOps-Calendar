@@ -5,8 +5,8 @@ interface SectionTitleProps extends HTMLAttributes<HTMLHeadingElement> {
 }
 
 /**
- * Standard section heading — a calm uppercase eyebrow rather than a
- * heavy h2, so page structure reads as a hierarchy, not a stack of titles.
+ * Standard section heading — a calm, non-uppercase label that reads as a
+ * hierarchy level rather than a loud eyebrow. Restrained editorial tone.
  */
 export function SectionTitle({ children, className = '', ...rest }: SectionTitleProps) {
   return (
