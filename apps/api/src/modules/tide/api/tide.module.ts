@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TideService, TIDE_PROVIDER } from '../application/tide.service';
-import { StormGlassTideProvider } from '../infrastructure/stormglass/stormglass-tide.provider';
+import { OpenMeteoTideProvider } from '../infrastructure/open-meteo/open-meteo-tide.provider';
 import { StationsModule } from '../../stations/api/stations.module';
 import { CacheService } from '../../../shared/cache/cache.service';
 import { createCacheStore } from '../../../shared/cache/create-cache-store';
@@ -10,7 +10,7 @@ import { createCachePolicy } from '../../../shared/cache/cache-policy';
   imports: [StationsModule],
   providers: [
     TideService,
-    { provide: TIDE_PROVIDER, useClass: StormGlassTideProvider },
+    { provide: TIDE_PROVIDER, useClass: OpenMeteoTideProvider },
     {
       provide: 'CACHE_SERVICE',
       useFactory: () =>
